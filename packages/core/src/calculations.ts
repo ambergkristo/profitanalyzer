@@ -1,6 +1,7 @@
 import {
   type CalculatedDish,
   type CalculationWarning,
+  type CostDriverInsight,
   type Dish,
   type DishPerformanceExplanation,
   type DishStatus,
@@ -22,7 +23,7 @@ const roundCurrency = (value: number) => Math.round(value);
 const roundPercent = (value: number) => Number(value.toFixed(2));
 
 function formatCurrencyLabel(cents: number): string {
-  return `EUR ${(cents / 100).toFixed(2)}`;
+  return `€${(cents / 100).toFixed(2)}`;
 }
 
 export function calculateCostRatio(priceCents: number, costCents: number): number {
@@ -158,6 +159,31 @@ export function getIngredientBreakdown(
     percentOfDishCost:
       totalKnownCost === 0 ? 0 : roundPercent((item.lineCostCents / totalKnownCost) * 100)
   }));
+}
+
+export function getCostDriverInsight(
+  breakdown: IngredientCostBreakdown[]
+): CostDriverInsight | undefined {
+  const topCostDriver = [...breakdown]
+    .filter((item) => !item.isMissing)
+    .sort((left, right) => right.lineCostCents - left.lineCostCents)[0];
+
+  if (!topCostDriver) {
+    return undefined;
+  }
+
+  const isDominant = topCostDriver.percentOfDishCost > 35;
+
+  return {
+    ingredientId: topCostDriver.ingredientId,
+    ingredientName: topCostDriver.ingredientName,
+    lineCostCents: topCostDriver.lineCostCents,
+    percentOfDishCost: topCostDriver.percentOfDishCost,
+    isDominant,
+    message: isDominant
+      ? `${topCostDriver.ingredientName} is driving ${topCostDriver.percentOfDishCost.toFixed(1)}% of the dish cost.`
+      : `${topCostDriver.ingredientName} is the largest single cost input in this dish.`
+  };
 }
 
 export function calculateRecipeCost(recipe: Recipe, ingredients: Ingredient[]): RecipeCostResult {
@@ -342,17 +368,29 @@ export function simulateDishPriceChange(
     newMetrics.estimatedPeriodProfitCents - oldMetrics.estimatedPeriodProfitCents;
   const grossProfitPerSaleDeltaCents =
     newMetrics.grossProfitPerSaleCents - oldMetrics.grossProfitPerSaleCents;
+  const statusShift =
+    oldMetrics.status === newMetrics.status
+      ? `${oldMetrics.status} to ${newMetrics.status}`
+      : `${oldMetrics.status} to ${newMetrics.status}`;
 
   const message =
     profitDeltaCents > 0
-      ? `${dish.name} would add ${formatCurrencyLabel(
+      ? `At ${formatCurrencyLabel(newPriceCents)} this dish would move from ${oldMetrics.marginPercent.toFixed(
+          1
+        )}% to ${newMetrics.marginPercent.toFixed(
+          1
+        )}% margin, shift from ${statusShift}, and add about ${formatCurrencyLabel(
           profitDeltaCents
-        )} in estimated period profit at the new price.`
+        )} per period at current sales volume.`
       : profitDeltaCents < 0
-        ? `${dish.name} would give up ${formatCurrencyLabel(
+        ? `At ${formatCurrencyLabel(newPriceCents)} this dish would fall from ${oldMetrics.marginPercent.toFixed(
+            1
+          )}% to ${newMetrics.marginPercent.toFixed(
+            1
+          )}% margin, shift from ${statusShift}, and give up about ${formatCurrencyLabel(
             Math.abs(profitDeltaCents)
-          )} in estimated period profit at the new price.`
-        : `${dish.name} would hold roughly the same period profit at the new price.`;
+          )} per period at current sales volume.`
+        : `At ${formatCurrencyLabel(newPriceCents)} this dish would stay near the current margin and period profit.`;
 
   return {
     dishId: dish.id,

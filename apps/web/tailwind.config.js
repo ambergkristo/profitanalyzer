@@ -15,11 +15,11 @@ export default {
         accent: "#38d9ff"
       },
       boxShadow: {
-        telemetry: "0 0 0 1px rgba(36,36,45,0.8), 0 16px 40px rgba(0,0,0,0.35)"
+        telemetry: "0 0 0 1px rgba(36,36,45,0.88), 0 24px 60px rgba(0,0,0,0.4)"
       },
       fontFamily: {
-        display: ["Rajdhani", "Inter", "system-ui", "sans-serif"],
-        body: ["Inter", "system-ui", "sans-serif"]
+        display: ["Oxanium", "IBM Plex Sans", "system-ui", "sans-serif"],
+        body: ["IBM Plex Sans", "system-ui", "sans-serif"]
       }
     }
   },

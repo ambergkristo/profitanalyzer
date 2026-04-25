@@ -5,13 +5,32 @@ import { simulateDishPriceChange } from "../../../packages/core/src/index.js";
 import {
   getAllActions,
   getCalculatedDishes,
+  getDemoDatasets,
   getDishDetail,
   getOverview,
-  restaurantData
+  getResolvedDataset
 } from "./data.js";
 
 function isPositivePrice(value: unknown): value is number {
   return typeof value === "number" && Number.isFinite(value) && value > 0;
+}
+
+function parseDatasetId(value: unknown): string | undefined {
+  return typeof value === "string" && value.trim().length > 0 ? value : undefined;
+}
+
+function resolveDatasetOrRespond(
+  datasetId: string | undefined,
+  response: express.Response
+) {
+  const dataset = getResolvedDataset(datasetId);
+
+  if (!dataset) {
+    response.status(404).json({ message: `Unknown dataset "${datasetId}".` });
+    return null;
+  }
+
+  return dataset;
 }
 
 export function createApp() {
@@ -24,32 +43,59 @@ export function createApp() {
     response.json({ ok: true, service: "profit-analyzer-api" });
   });
 
+  app.get("/api/demo/datasets", (_request, response) => {
+    response.json(getDemoDatasets());
+  });
+
   app.get("/api/ingredients", (_request, response) => {
-    response.json(restaurantData.ingredients);
+    const dataset = getResolvedDataset();
+    response.json(dataset?.data.ingredients ?? []);
   });
 
   app.get("/api/recipes", (_request, response) => {
-    response.json(restaurantData.recipes);
+    const dataset = getResolvedDataset();
+    response.json(dataset?.data.recipes ?? []);
   });
 
   app.get("/api/dishes", (_request, response) => {
-    response.json(restaurantData.dishes);
+    const dataset = getResolvedDataset();
+    response.json(dataset?.data.dishes ?? []);
   });
 
-  app.get("/api/analytics/dishes", (_request, response) => {
-    response.json(getCalculatedDishes());
+  app.get("/api/analytics/dishes", (request, response) => {
+    const datasetId = parseDatasetId(request.query.dataset);
+    if (!resolveDatasetOrRespond(datasetId, response)) {
+      return;
+    }
+
+    response.json(getCalculatedDishes(datasetId));
   });
 
-  app.get("/api/analytics/overview", (_request, response) => {
-    response.json(getOverview());
+  app.get("/api/analytics/overview", (request, response) => {
+    const datasetId = parseDatasetId(request.query.dataset);
+    if (!resolveDatasetOrRespond(datasetId, response)) {
+      return;
+    }
+
+    response.json(getOverview(datasetId));
   });
 
-  app.get("/api/analytics/actions", (_request, response) => {
-    response.json(getAllActions());
+  app.get("/api/analytics/actions", (request, response) => {
+    const datasetId = parseDatasetId(request.query.dataset);
+    if (!resolveDatasetOrRespond(datasetId, response)) {
+      return;
+    }
+
+    response.json(getAllActions(datasetId));
   });
 
   app.get("/api/analytics/dish/:id", (request, response) => {
-    const detail = getDishDetail(request.params.id);
+    const datasetId = parseDatasetId(request.query.dataset);
+    if (!resolveDatasetOrRespond(datasetId, response)) {
+      return;
+    }
+
+    const detail = getDishDetail(request.params.id, datasetId);
     if (!detail) {
       response.status(404).json({ message: "Dish not found." });
       return;
@@ -59,6 +105,13 @@ export function createApp() {
   });
 
   app.post("/api/simulate/price", (request, response) => {
+    const datasetId = parseDatasetId(request.query.dataset);
+    const dataset = resolveDatasetOrRespond(datasetId, response);
+
+    if (!dataset) {
+      return;
+    }
+
     const { dishId, newPriceCents } = request.body as { dishId?: unknown; newPriceCents?: unknown };
 
     if (typeof dishId !== "string" || dishId.trim().length === 0 || !isPositivePrice(newPriceCents)) {
@@ -66,19 +119,19 @@ export function createApp() {
       return;
     }
 
-    const dish = restaurantData.dishes.find((item) => item.id === dishId);
+    const dish = dataset.data.dishes.find((item) => item.id === dishId);
     if (!dish) {
       response.status(404).json({ message: "Dish not found." });
       return;
     }
 
-    const recipe = restaurantData.recipes.find((item) => item.id === dish.recipeId);
+    const recipe = dataset.data.recipes.find((item) => item.id === dish.recipeId);
     if (!recipe) {
       response.status(404).json({ message: "Recipe not found." });
       return;
     }
 
-    response.json(simulateDishPriceChange(dish, recipe, restaurantData.ingredients, newPriceCents));
+    response.json(simulateDishPriceChange(dish, recipe, dataset.data.ingredients, newPriceCents));
   });
 
   return app;

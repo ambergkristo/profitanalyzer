@@ -14,9 +14,10 @@ const severityStyles = {
 interface ActionCardProps {
   action: DishAction;
   dishName?: string;
+  datasetId?: string;
 }
 
-export function ActionCard({ action, dishName }: ActionCardProps) {
+export function ActionCard({ action, dishName, datasetId }: ActionCardProps) {
   return (
     <div className={`rounded-[1.75rem] border p-5 shadow-telemetry ${severityStyles[action.severity]}`}>
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
@@ -53,9 +54,14 @@ export function ActionCard({ action, dishName }: ActionCardProps) {
 
       <div className="mt-5 flex items-center justify-between gap-4">
         <div className="text-xs uppercase tracking-[0.16em] text-muted">
-          {action.recommendedPriceCents ? `Suggested price ${formatEuro(action.recommendedPriceCents)}` : "No direct price target"}
+          {action.recommendedPriceCents
+            ? `Suggested price ${formatEuro(action.recommendedPriceCents)}`
+            : "No direct price target"}
         </div>
-        <Link className="text-sm font-medium text-accent" to={`/dishes/${action.dishId}`}>
+        <Link
+          className="text-sm font-medium text-accent"
+          to={`/dishes/${action.dishId}${datasetId ? `?dataset=${encodeURIComponent(datasetId)}` : ""}`}
+        >
           View dish
         </Link>
       </div>

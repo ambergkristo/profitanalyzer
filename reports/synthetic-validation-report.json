@@ -1,0 +1,283 @@
+{
+  "reports": [
+    {
+      "datasetId": "mixed-restaurant",
+      "datasetName": "Mixed Casual Restaurant",
+      "totalDishes": 8,
+      "profitableCount": 2,
+      "warningCount": 4,
+      "lossCount": 2,
+      "averageMarginPercent": 35.74,
+      "weightedAverageMarginPercent": 37,
+      "estimatedPeriodProfitCents": 556940,
+      "totalRevenueCents": 1505300,
+      "totalCostCents": 948360,
+      "topActions": [
+        {
+          "id": "repair-margin-dish-steak-frites",
+          "type": "margin_repair",
+          "title": "Repair Steak Frites margin before costs move again",
+          "message": "Steak Frites is running at 1.2% margin. Push it toward EUR 33.50 or reduce the priciest ingredient to rebuild a usable buffer.",
+          "dishId": "dish-steak-frites",
+          "severity": "high",
+          "estimatedImpactCents": 124500,
+          "confidence": "high",
+          "reasonCodes": [
+            "LOW_MARGIN",
+            "LOSS_MARGIN",
+            "PRICE_SIMULATION_UPSIDE",
+            "AGGRESSIVE_PRICE_INCREASE"
+          ],
+          "recommendedPriceCents": 3350,
+          "currentMarginPercent": 1.18,
+          "targetMarginPercent": 50,
+          "createdFromRule": "margin-below-30",
+          "isAggressive": true
+        },
+        {
+          "id": "protect-bestseller-dish-burger",
+          "type": "bestseller_protection",
+          "title": "Protect Beef Burger before volume hides the margin leak",
+          "message": "Beef Burger sells often but margin is only 35.6%. Test a EUR 4.00 price increase to EUR 17.50 or reduce the highest-cost ingredient.",
+          "dishId": "dish-burger",
+          "severity": "high",
+          "estimatedImpactCents": 116000,
+          "confidence": "high",
+          "reasonCodes": [
+            "LOW_MARGIN",
+            "HIGH_SALES_LOW_MARGIN",
+            "PRICE_SIMULATION_UPSIDE",
+            "STRONG_PROFIT_CONTRIBUTOR",
+            "AGGRESSIVE_PRICE_INCREASE"
+          ],
+          "recommendedPriceCents": 1750,
+          "currentMarginPercent": 35.56,
+          "targetMarginPercent": 50,
+          "createdFromRule": "high-sales-low-margin-bestseller",
+          "isAggressive": true
+        },
+        {
+          "id": "protect-bestseller-dish-salmon-bowl",
+          "type": "bestseller_protection",
+          "title": "Protect Salmon Bowl before volume hides the margin leak",
+          "message": "Salmon Bowl sells often but margin is only 30.3%. Test a EUR 6.50 price increase to EUR 23.00 or reduce the highest-cost ingredient.",
+          "dishId": "dish-salmon-bowl",
+          "severity": "high",
+          "estimatedImpactCents": 94250,
+          "confidence": "high",
+          "reasonCodes": [
+            "LOW_MARGIN",
+            "HIGH_SALES_LOW_MARGIN",
+            "PRICE_SIMULATION_UPSIDE",
+            "STRONG_PROFIT_CONTRIBUTOR",
+            "AGGRESSIVE_PRICE_INCREASE"
+          ],
+          "recommendedPriceCents": 2300,
+          "currentMarginPercent": 30.3,
+          "targetMarginPercent": 50,
+          "createdFromRule": "high-sales-low-margin-bestseller",
+          "isAggressive": true
+        }
+      ],
+      "actionTypeCounts": {
+        "margin_repair": 2,
+        "bestseller_protection": 3,
+        "data_quality": 1,
+        "warning_review": 1,
+        "promotion_opportunity": 1
+      },
+      "severityCounts": {
+        "critical": 0,
+        "high": 6,
+        "medium": 1,
+        "low": 1
+      },
+      "pass": true,
+      "warnings": [
+        "Missing ingredient basil for recipe \"Margherita Flatbread\"."
+      ],
+      "failures": []
+    },
+    {
+      "datasetId": "low-margin-kitchen",
+      "datasetName": "Low Margin Kitchen",
+      "totalDishes": 8,
+      "profitableCount": 0,
+      "warningCount": 4,
+      "lossCount": 4,
+      "averageMarginPercent": 20.26,
+      "weightedAverageMarginPercent": 20.99,
+      "estimatedPeriodProfitCents": 386165,
+      "totalRevenueCents": 1840150,
+      "totalCostCents": 1453985,
+      "topActions": [
+        {
+          "id": "protect-bestseller-dish-burger",
+          "type": "bestseller_protection",
+          "title": "Protect Beef Burger before volume hides the margin leak",
+          "message": "Beef Burger sells often but margin is only 20.2%. Test a EUR 6.60 price increase to EUR 17.50 or reduce the highest-cost ingredient.",
+          "dishId": "dish-burger",
+          "severity": "critical",
+          "estimatedImpactCents": 237600,
+          "confidence": "high",
+          "reasonCodes": [
+            "LOW_MARGIN",
+            "HIGH_SALES_LOW_MARGIN",
+            "PRICE_SIMULATION_UPSIDE",
+            "STRONG_PROFIT_CONTRIBUTOR",
+            "AGGRESSIVE_PRICE_INCREASE"
+          ],
+          "recommendedPriceCents": 1750,
+          "currentMarginPercent": 20.18,
+          "targetMarginPercent": 50,
+          "createdFromRule": "high-sales-low-margin-bestseller",
+          "isAggressive": true
+        },
+        {
+          "id": "margin-repair-dish-steak-frites",
+          "type": "margin_repair",
+          "title": "Steak Frites is losing cash on every sale",
+          "message": "Steak Frites loses EUR 1.80 per sale. Move price toward EUR 33.50 or cut the highest-cost ingredient before it drains another EUR 216.00 this period.",
+          "dishId": "dish-steak-frites",
+          "severity": "critical",
+          "estimatedImpactCents": 223200,
+          "confidence": "high",
+          "reasonCodes": [
+            "LOSS_MARGIN",
+            "NEGATIVE_PROFIT_PER_SALE",
+            "PRICE_SIMULATION_UPSIDE",
+            "AGGRESSIVE_PRICE_INCREASE"
+          ],
+          "recommendedPriceCents": 3350,
+          "currentMarginPercent": -12.08,
+          "targetMarginPercent": 50,
+          "createdFromRule": "negative-profit-per-sale",
+          "isAggressive": true
+        },
+        {
+          "id": "protect-bestseller-dish-salmon-bowl",
+          "type": "price_review",
+          "title": "Review Salmon Bowl pricing now",
+          "message": "Salmon Bowl sells often but margin is only 10.8%. Test a EUR 10.10 price increase to EUR 23.00 or reduce the highest-cost ingredient.",
+          "dishId": "dish-salmon-bowl",
+          "severity": "critical",
+          "estimatedImpactCents": 207050,
+          "confidence": "high",
+          "reasonCodes": [
+            "LOW_MARGIN",
+            "HIGH_SALES_LOW_MARGIN",
+            "PRICE_SIMULATION_UPSIDE",
+            "AGGRESSIVE_PRICE_INCREASE"
+          ],
+          "recommendedPriceCents": 2300,
+          "currentMarginPercent": 10.85,
+          "targetMarginPercent": 50,
+          "createdFromRule": "high-sales-low-margin",
+          "isAggressive": true
+        }
+      ],
+      "actionTypeCounts": {
+        "bestseller_protection": 3,
+        "margin_repair": 2,
+        "price_review": 1,
+        "warning_review": 2
+      },
+      "severityCounts": {
+        "critical": 4,
+        "high": 2,
+        "medium": 2,
+        "low": 0
+      },
+      "pass": true,
+      "warnings": [],
+      "failures": []
+    },
+    {
+      "datasetId": "high-margin-bistro",
+      "datasetName": "High Margin Bistro",
+      "totalDishes": 8,
+      "profitableCount": 5,
+      "warningCount": 3,
+      "lossCount": 0,
+      "averageMarginPercent": 51.64,
+      "weightedAverageMarginPercent": 51.59,
+      "estimatedPeriodProfitCents": 726695,
+      "totalRevenueCents": 1408700,
+      "totalCostCents": 682005,
+      "topActions": [
+        {
+          "id": "protect-bestseller-dish-salmon-bowl",
+          "type": "price_review",
+          "title": "Review Salmon Bowl pricing now",
+          "message": "Salmon Bowl sells often but margin is only 45.0%. Test a EUR 2.10 price increase to EUR 23.00 or reduce the highest-cost ingredient.",
+          "dishId": "dish-salmon-bowl",
+          "severity": "high",
+          "estimatedImpactCents": 19950,
+          "confidence": "high",
+          "reasonCodes": [
+            "LOW_MARGIN",
+            "HIGH_SALES_LOW_MARGIN",
+            "PRICE_SIMULATION_UPSIDE"
+          ],
+          "recommendedPriceCents": 2300,
+          "currentMarginPercent": 44.98,
+          "targetMarginPercent": 50,
+          "createdFromRule": "high-sales-low-margin",
+          "isAggressive": false
+        },
+        {
+          "id": "warning-review-dish-duck",
+          "type": "warning_review",
+          "title": "Duck a l'Orange needs a margin review",
+          "message": "Duck a l'Orange is still selling, but 34.9% margin leaves little room for supplier increases. Test a smaller price move or trim the recipe before the dish slips into the loss band.",
+          "dishId": "dish-duck",
+          "severity": "medium",
+          "estimatedImpactCents": 53200,
+          "confidence": "high",
+          "reasonCodes": [
+            "LOW_MARGIN",
+            "PRICE_SIMULATION_UPSIDE"
+          ],
+          "recommendedPriceCents": 3250,
+          "currentMarginPercent": 34.94,
+          "targetMarginPercent": 50,
+          "createdFromRule": "margin-between-30-and-50",
+          "isAggressive": true
+        },
+        {
+          "id": "warning-review-dish-steak-frites",
+          "type": "warning_review",
+          "title": "Steak Frites needs a margin review",
+          "message": "Steak Frites is still selling, but 32.9% margin leaves little room for supplier increases. Test a smaller price move or trim the recipe before the dish slips into the loss band.",
+          "dishId": "dish-steak-frites",
+          "severity": "medium",
+          "estimatedImpactCents": 38700,
+          "confidence": "high",
+          "reasonCodes": [
+            "LOW_MARGIN",
+            "PRICE_SIMULATION_UPSIDE"
+          ],
+          "recommendedPriceCents": 3350,
+          "currentMarginPercent": 32.93,
+          "targetMarginPercent": 50,
+          "createdFromRule": "margin-between-30-and-50",
+          "isAggressive": true
+        }
+      ],
+      "actionTypeCounts": {
+        "price_review": 1,
+        "warning_review": 2,
+        "promotion_opportunity": 1
+      },
+      "severityCounts": {
+        "critical": 0,
+        "high": 1,
+        "medium": 2,
+        "low": 1
+      },
+      "pass": true,
+      "warnings": [],
+      "failures": []
+    }
+  ]
+}

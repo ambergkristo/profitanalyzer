@@ -1,10 +1,20 @@
 import type {
   CalculatedDish,
+  DemoDatasetSummary,
   DishAction,
   DishDetailResponse,
   OverviewResponse,
   PriceSimulationResponse
 } from "../types.js";
+
+function buildPath(path: string, datasetId?: string): string {
+  if (!datasetId) {
+    return path;
+  }
+
+  const separator = path.includes("?") ? "&" : "?";
+  return `${path}${separator}dataset=${encodeURIComponent(datasetId)}`;
+}
 
 async function getJson<T>(path: string): Promise<T> {
   const response = await fetch(path);
@@ -32,10 +42,18 @@ async function postJson<T>(path: string, body: unknown): Promise<T> {
 }
 
 export const apiClient = {
-  getOverview: () => getJson<OverviewResponse>("/api/analytics/overview"),
-  getDishes: () => getJson<CalculatedDish[]>("/api/analytics/dishes"),
-  getActions: () => getJson<DishAction[]>("/api/analytics/actions"),
-  getDishDetail: (dishId: string) => getJson<DishDetailResponse>(`/api/analytics/dish/${dishId}`),
-  simulatePrice: (dishId: string, newPriceCents: number) =>
-    postJson<PriceSimulationResponse>("/api/simulate/price", { dishId, newPriceCents })
+  getDemoDatasets: () => getJson<DemoDatasetSummary[]>("/api/demo/datasets"),
+  getOverview: (datasetId?: string) =>
+    getJson<OverviewResponse>(buildPath("/api/analytics/overview", datasetId)),
+  getDishes: (datasetId?: string) =>
+    getJson<CalculatedDish[]>(buildPath("/api/analytics/dishes", datasetId)),
+  getActions: (datasetId?: string) =>
+    getJson<DishAction[]>(buildPath("/api/analytics/actions", datasetId)),
+  getDishDetail: (dishId: string, datasetId?: string) =>
+    getJson<DishDetailResponse>(buildPath(`/api/analytics/dish/${dishId}`, datasetId)),
+  simulatePrice: (dishId: string, newPriceCents: number, datasetId?: string) =>
+    postJson<PriceSimulationResponse>(buildPath("/api/simulate/price", datasetId), {
+      dishId,
+      newPriceCents
+    })
 };

@@ -6,6 +6,7 @@ import { DishDetailPage } from "../pages/DishDetail.js";
 
 vi.mock("../api/client.js", () => ({
   apiClient: {
+    getDemoDatasets: vi.fn(),
     getOverview: vi.fn(),
     getDishes: vi.fn(),
     getActions: vi.fn(),
@@ -23,8 +24,8 @@ describe("DishDetailPage", () => {
         id: "dish-burger",
         name: "Beef Burger",
         recipeId: "recipe-burger",
-        priceCents: 1390,
-        salesVolume: 320
+        priceCents: 1350,
+        salesVolume: 290
       },
       recipe: {
         id: "recipe-burger",
@@ -35,14 +36,14 @@ describe("DishDetailPage", () => {
       metrics: {
         dishId: "dish-burger",
         name: "Beef Burger",
-        priceCents: 1390,
+        priceCents: 1350,
         costCents: 870,
-        marginPercent: 37.41,
-        grossProfitPerSaleCents: 520,
-        estimatedPeriodProfitCents: 166400,
-        salesVolume: 320,
+        marginPercent: 35.56,
+        grossProfitPerSaleCents: 480,
+        estimatedPeriodProfitCents: 139200,
+        salesVolume: 290,
         status: "warning",
-        costRatioPercent: 62.59,
+        costRatioPercent: 64.44,
         contributionRank: 1,
         warnings: []
       },
@@ -58,10 +59,18 @@ describe("DishDetailPage", () => {
           isMissing: false
         }
       ],
+      costDriverInsight: {
+        ingredientId: "beef-patty",
+        ingredientName: "Beef Patty",
+        lineCostCents: 540,
+        percentOfDishCost: 62.07,
+        isDominant: true,
+        message: "Beef Patty is driving 62.1% of the dish cost."
+      },
       explanation: {
         headline: "Beef Burger is profitable but exposed",
         summary: "The dish still contributes profit, yet margin is thin.",
-        highlights: ["Margin is 37.4%.", "Estimated current-period profit is EUR 1664.00."],
+        highlights: ["Margin is 35.6%.", "Estimated current-period profit is €1392.00."],
         reasonCodes: ["LOW_MARGIN", "STRONG_PROFIT_CONTRIBUTOR"]
       },
       recommendedActionsForDish: [
@@ -69,33 +78,41 @@ describe("DishDetailPage", () => {
           id: "1",
           type: "bestseller_protection",
           title: "Protect Beef Burger before volume hides the margin leak",
-          message: "Beef Burger sells often but margin is only 37.4%.",
+          message: "Beef Burger sells often but margin is only 35.6%.",
           dishId: "dish-burger",
           severity: "high",
-          estimatedImpactCents: 32000,
+          estimatedImpactCents: 40600,
           confidence: "high",
           reasonCodes: ["HIGH_SALES_LOW_MARGIN", "PRICE_SIMULATION_UPSIDE"],
           recommendedPriceCents: 1490,
-          currentMarginPercent: 37.41,
+          currentMarginPercent: 35.56,
           targetMarginPercent: 50,
           createdFromRule: "high-sales-low-margin-bestseller"
         }
       ],
       simulationHints: {
-        currentPriceCents: 1390,
+        currentPriceCents: 1350,
         quickAdjustmentsCents: [50, 100, 200],
+        targetMarginActions: [
+          {
+            label: "Reach 50% margin",
+            targetMarginPercent: 50,
+            priceCents: 1790,
+            isAggressive: true
+          }
+        ],
         recommendedPriceCents: 1490,
         recommendedTargetMarginPercent: 50,
-        note: "Start by testing the suggested price."
+        note: "Use the suggested price as a decision test."
       }
     });
   });
 
-  it("renders the simulator panel and recommended actions", async () => {
+  it("renders the simulator panel and target-margin controls", async () => {
     render(
       <MemoryRouter
         future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
-        initialEntries={["/dishes/dish-burger"]}
+        initialEntries={["/dishes/dish-burger?dataset=mixed-restaurant"]}
       >
         <Routes>
           <Route element={<DishDetailPage />} path="/dishes/:dishId" />
@@ -104,7 +121,7 @@ describe("DishDetailPage", () => {
     );
 
     expect(await screen.findByText("Price simulator")).toBeInTheDocument();
-    expect(await screen.findByText("Run simulation")).toBeInTheDocument();
-    expect(await screen.findByText("Protect Beef Burger before volume hides the margin leak")).toBeInTheDocument();
+    expect(await screen.findByText("Reach 50% margin")).toBeInTheDocument();
+    expect(await screen.findByText("Practical next move")).toBeInTheDocument();
   });
 });

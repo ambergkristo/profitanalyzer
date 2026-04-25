@@ -8,13 +8,21 @@ import { StatusTag } from "./StatusTag.js";
 interface DishRowProps {
   dish: CalculatedDish;
   actionHint?: DishAction;
+  datasetId?: string;
 }
 
-export function DishRow({ dish, actionHint }: DishRowProps) {
+export function DishRow({ dish, actionHint, datasetId }: DishRowProps) {
+  const shellTone =
+    dish.status === "loss"
+      ? "border-danger/30"
+      : dish.status === "warning"
+        ? "border-warning/25"
+        : "border-profit/20";
+
   return (
     <Link
-      className="grid gap-4 rounded-[1.75rem] border border-border bg-panel p-5 shadow-telemetry transition hover:border-accent/40 hover:bg-white/[0.02] xl:grid-cols-[1.6fr_repeat(5,minmax(0,1fr))]"
-      to={`/dishes/${dish.dishId}`}
+      className={`grid gap-4 rounded-[1.75rem] border bg-panel p-5 shadow-telemetry transition hover:border-accent/40 hover:bg-white/[0.02] xl:grid-cols-[1.6fr_repeat(5,minmax(0,1fr))] ${shellTone}`}
+      to={`/dishes/${dish.dishId}${datasetId ? `?dataset=${encodeURIComponent(datasetId)}` : ""}`}
     >
       <div>
         <div className="flex flex-wrap items-center gap-3">
@@ -22,7 +30,7 @@ export function DishRow({ dish, actionHint }: DishRowProps) {
           <StatusTag status={dish.status} />
         </div>
         <p className="mt-2 text-xs uppercase tracking-[0.18em] text-muted">
-          Sales volume {dish.salesVolume} • Contribution rank #{dish.contributionRank}
+          Sales volume {dish.salesVolume} | Contribution rank #{dish.contributionRank}
         </p>
         {actionHint ? (
           <div className="mt-4 flex flex-wrap items-center gap-3">

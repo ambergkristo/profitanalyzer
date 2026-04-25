@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Link, useParams, useSearchParams } from "react-router-dom";
 
 import { apiClient } from "../api/client.js";
 import { ActionCard } from "../components/ActionCard.js";
+import { SeverityBadge } from "../components/SeverityBadge.js";
 import { StatePanel } from "../components/StatePanel.js";
 import { StatusTag } from "../components/StatusTag.js";
 import { useAsyncData } from "../hooks.js";
@@ -24,8 +25,13 @@ function parseInputToCents(value: string): number | null {
 
 export function DishDetailPage() {
   const params = useParams<{ dishId: string }>();
+  const [searchParams] = useSearchParams();
+  const datasetId = searchParams.get("dataset") ?? undefined;
   const dishId = params.dishId ?? "";
-  const loadDishDetail = useCallback(() => apiClient.getDishDetail(dishId), [dishId]);
+  const loadDishDetail = useCallback(
+    () => apiClient.getDishDetail(dishId, datasetId),
+    [dishId, datasetId]
+  );
   const { data, loading, error } = useAsyncData(loadDishDetail);
   const [priceInput, setPriceInput] = useState("");
   const [simulation, setSimulation] = useState<Awaited<ReturnType<typeof apiClient.simulatePrice>> | null>(null);
@@ -40,6 +46,16 @@ export function DishDetailPage() {
     }
   }, [data]);
 
+  const detail = data;
+  const parsedPriceCents = parseInputToCents(priceInput);
+  const costDrivers = useMemo(
+    () =>
+      [...(detail?.ingredientBreakdown ?? [])]
+        .sort((left, right) => right.lineCostCents - left.lineCostCents)
+        .slice(0, 3),
+    [detail]
+  );
+
   if (loading) {
     return (
       <StatePanel
@@ -49,20 +65,26 @@ export function DishDetailPage() {
     );
   }
 
-  if (error || !data) {
+  if (error || !detail) {
     return (
       <StatePanel
-        title="Dish detail unavailable"
-        message="Backend is not reachable. Start the API with npm run dev."
+        title={error?.includes("404") ? "Dish not available in this scenario" : "Dish detail unavailable"}
+        message={
+          error?.includes("404")
+            ? "This dish does not exist in the selected scenario. Open the scenario dish list and choose another item."
+            : "Backend is not reachable. Start the API with npm run dev."
+        }
       />
     );
   }
 
-  const detail = data;
-  const parsedPriceCents = parseInputToCents(priceInput);
-  const costDrivers = [...detail.ingredientBreakdown]
-    .sort((left, right) => right.lineCostCents - left.lineCostCents)
-    .slice(0, 3);
+  const resolvedDetail = detail;
+  const practicalNextMove =
+    resolvedDetail.recommendedActionsForDish[0]?.message ??
+    "This dish does not need an immediate intervention, so focus on keeping the margin stable.";
+  const aggressiveSimulation =
+    parsedPriceCents !== null &&
+    ((parsedPriceCents - resolvedDetail.dish.priceCents) / resolvedDetail.dish.priceCents) * 100 > 25;
 
   async function runSimulation(nextPriceCents: number | null = parsedPriceCents) {
     if (!nextPriceCents) {
@@ -75,7 +97,8 @@ export function DishDetailPage() {
     setSimulationError(null);
 
     try {
-      const result = await apiClient.simulatePrice(detail.dish.id, nextPriceCents);
+      const result = await apiClient.simulatePrice(resolvedDetail.dish.id, nextPriceCents, datasetId);
+      setPriceInput(centsToInputValue(nextPriceCents));
       setSimulation(result);
     } catch (reason) {
       setSimulation(null);
@@ -85,10 +108,10 @@ export function DishDetailPage() {
     }
   }
 
-  function applyQuickAdjustment(deltaCents: number) {
-    const currentValue = parseInputToCents(priceInput) ?? detail.dish.priceCents;
+  function runQuickAdjustment(deltaCents: number) {
+    const currentValue = parseInputToCents(priceInput) ?? resolvedDetail.dish.priceCents;
     const nextValue = Math.max(50, currentValue + deltaCents);
-    setPriceInput(centsToInputValue(nextValue));
+    void runSimulation(nextValue);
   }
 
   return (
@@ -113,15 +136,25 @@ export function DishDetailPage() {
             <MetricCard label="Sales volume" value={`${detail.metrics.salesVolume}`} />
           </div>
 
-          <div className="mt-8 rounded-[1.75rem] border border-white/8 bg-black/20 p-5">
-            <p className="text-xs uppercase tracking-[0.18em] text-muted">Why this dish is flagged</p>
-            <h3 className="mt-3 font-display text-2xl text-text">{detail.explanation.headline}</h3>
-            <div className="mt-4 space-y-2">
-              {detail.explanation.highlights.map((item) => (
-                <p key={item} className="text-sm leading-6 text-muted">
-                  {item}
-                </p>
-              ))}
+          <div className="mt-8 grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
+            <div className="rounded-[1.75rem] border border-white/8 bg-black/20 p-5">
+              <p className="text-xs uppercase tracking-[0.18em] text-muted">Decision summary</p>
+              <h3 className="mt-3 font-display text-2xl text-text">{detail.explanation.headline}</h3>
+              <div className="mt-4 space-y-2">
+                {detail.explanation.highlights.map((item) => (
+                  <p key={item} className="text-sm leading-6 text-muted">
+                    {item}
+                  </p>
+                ))}
+              </div>
+            </div>
+
+            <div className="rounded-[1.75rem] border border-white/8 bg-black/20 p-5">
+              <p className="text-xs uppercase tracking-[0.18em] text-muted">Practical next move</p>
+              <p className="mt-3 text-sm leading-6 text-text">{practicalNextMove}</p>
+              {detail.costDriverInsight ? (
+                <p className="mt-4 text-sm leading-6 text-warning">{detail.costDriverInsight.message}</p>
+              ) : null}
             </div>
           </div>
         </div>
@@ -131,10 +164,18 @@ export function DishDetailPage() {
             <p className="text-xs uppercase tracking-[0.2em] text-muted">Cost driver panel</p>
             <h3 className="mt-2 font-display text-3xl">What makes it expensive</h3>
             <div className="mt-6 space-y-3">
-              {costDrivers.map((item) => (
-                <div key={item.ingredientId} className="rounded-[1.5rem] border border-border bg-white/[0.02] p-4">
+              {costDrivers.map((item, index) => (
+                <div
+                  key={item.ingredientId}
+                  className={`rounded-[1.5rem] border p-4 ${
+                    index === 0 ? "border-warning/30 bg-warning/10" : "border-border bg-white/[0.02]"
+                  }`}
+                >
                   <div className="flex items-center justify-between gap-3">
-                    <p className="font-medium text-text">{item.ingredientName}</p>
+                    <div className="flex flex-wrap items-center gap-3">
+                      <p className="font-medium text-text">{item.ingredientName}</p>
+                      {index === 0 ? <SeverityBadge severity="high" /> : null}
+                    </div>
                     <p className="text-sm text-text">{formatEuro(item.lineCostCents)}</p>
                   </div>
                   <p className="mt-2 text-xs uppercase tracking-[0.16em] text-muted">
@@ -177,21 +218,22 @@ export function DishDetailPage() {
                   <button
                     key={delta}
                     className="rounded-full border border-border bg-black/20 px-4 py-2 text-sm text-text transition hover:border-accent/40 hover:text-accent"
-                    onClick={() => applyQuickAdjustment(delta)}
+                    onClick={() => runQuickAdjustment(delta)}
                     type="button"
                   >
                     +{formatEuro(delta)}
                   </button>
                 ))}
-                {detail.simulationHints.recommendedPriceCents ? (
+                {detail.simulationHints.targetMarginActions.map((target) => (
                   <button
+                    key={target.label}
                     className="rounded-full border border-profit/35 bg-profit/10 px-4 py-2 text-sm text-profit transition hover:border-profit/60"
-                    onClick={() => setPriceInput(centsToInputValue(detail.simulationHints.recommendedPriceCents!))}
+                    onClick={() => void runSimulation(target.priceCents)}
                     type="button"
                   >
-                    Use suggested price
+                    {target.label}
                   </button>
-                ) : null}
+                ))}
               </div>
 
               <button
@@ -203,6 +245,12 @@ export function DishDetailPage() {
                 {isSimulating ? "Running simulation..." : "Run simulation"}
               </button>
             </div>
+
+            {aggressiveSimulation ? (
+              <p className="mt-4 text-sm leading-6 text-warning">
+                This simulated price is more than 25% above the current menu price. Treat it as an aggressive test.
+              </p>
+            ) : null}
 
             {simulationError ? (
               <p className="mt-4 text-sm leading-6 text-danger">{simulationError}</p>
@@ -260,8 +308,18 @@ export function DishDetailPage() {
         </section>
 
         <section className="rounded-[2rem] border border-border bg-panel p-6 shadow-telemetry">
-          <p className="text-xs uppercase tracking-[0.2em] text-muted">Recommended actions</p>
-          <h3 className="mt-2 font-display text-3xl">What to do with this dish</h3>
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <p className="text-xs uppercase tracking-[0.2em] text-muted">Recommended actions</p>
+              <h3 className="mt-2 font-display text-3xl">What to do with this dish</h3>
+            </div>
+            <Link
+              className="text-sm font-medium text-accent"
+              to={`/dishes${datasetId ? `?dataset=${encodeURIComponent(datasetId)}` : ""}`}
+            >
+              Back to dish list
+            </Link>
+          </div>
           <div className="mt-6 space-y-4">
             {detail.recommendedActionsForDish.length === 0 ? (
               <div className="rounded-[1.5rem] border border-border bg-black/20 p-5">
@@ -270,7 +328,12 @@ export function DishDetailPage() {
               </div>
             ) : (
               detail.recommendedActionsForDish.map((action) => (
-                <ActionCard key={action.id} action={action} dishName={detail.dish.name} />
+                <ActionCard
+                  key={action.id}
+                  action={action}
+                  datasetId={datasetId}
+                  dishName={detail.dish.name}
+                />
               ))
             )}
           </div>

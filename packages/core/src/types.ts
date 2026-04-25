@@ -134,12 +134,29 @@ export interface PriceSimulationResult {
   message: string;
 }
 
+export interface SimulationTargetAction {
+  label: string;
+  targetMarginPercent: number;
+  priceCents: number;
+  isAggressive: boolean;
+}
+
 export interface SimulationHints {
   currentPriceCents: number;
   quickAdjustmentsCents: number[];
+  targetMarginActions: SimulationTargetAction[];
   recommendedPriceCents?: number;
   recommendedTargetMarginPercent?: number;
   note: string;
+}
+
+export interface CostDriverInsight {
+  ingredientId: string;
+  ingredientName: string;
+  lineCostCents: number;
+  percentOfDishCost: number;
+  isDominant: boolean;
+  message: string;
 }
 
 export interface DishDetailAnalytics {
@@ -147,6 +164,7 @@ export interface DishDetailAnalytics {
   recipe: Recipe;
   metrics: CalculatedDish;
   ingredientBreakdown: IngredientCostBreakdown[];
+  costDriverInsight?: CostDriverInsight;
   explanation: DishPerformanceExplanation;
   recommendedActionsForDish: DishAction[];
   simulationHints: SimulationHints;
@@ -156,6 +174,19 @@ export interface SampleRestaurantData {
   ingredients: Ingredient[];
   recipes: Recipe[];
   dishes: Dish[];
+}
+
+export type DemoDatasetProfile = "high-margin" | "low-margin" | "mixed";
+
+export interface DemoDatasetSummary {
+  id: string;
+  name: string;
+  description: string;
+  profile: DemoDatasetProfile;
+}
+
+export interface DemoDatasetDefinition extends DemoDatasetSummary {
+  data: SampleRestaurantData;
 }
 
 export interface OverviewMetrics {
@@ -172,4 +203,24 @@ export interface OverviewMetrics {
   topProfitContributors: CalculatedDish[];
   riskiestDishes: CalculatedDish[];
   dataQualityWarnings: string[];
+}
+
+export interface ValidationReport {
+  datasetId: string;
+  datasetName: string;
+  totalDishes: number;
+  profitableCount: number;
+  warningCount: number;
+  lossCount: number;
+  averageMarginPercent: number;
+  weightedAverageMarginPercent: number;
+  estimatedPeriodProfitCents: number;
+  totalRevenueCents: number;
+  totalCostCents: number;
+  topActions: DishAction[];
+  actionTypeCounts: Partial<Record<DishActionType, number>>;
+  severityCounts: Record<DishActionSeverity, number>;
+  pass: boolean;
+  warnings: string[];
+  failures: string[];
 }

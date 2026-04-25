@@ -101,6 +101,8 @@ Manual check: simulate 0.50 EUR, 1.00 EUR, and 2.00 EUR price changes and confir
 
 ## RM5 - Synthetic Restaurant Validation
 
+Status: completed in MAX SPRINT 3.
+
 ### Goal
 
 Validate the decision engine with realistic simulated restaurant datasets before customer interviews become mandatory.
@@ -133,6 +135,8 @@ Validate the decision engine with realistic simulated restaurant datasets before
 Manual check: run all three restaurant datasets through the engine, verify action quality, and compare ranking stability across stress scenarios.
 
 ## RM6 - UX Polish + Decision-First Interface
+
+Status: in progress in MAX SPRINT 3.
 
 ### Goal
 

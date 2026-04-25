@@ -6,6 +6,7 @@ import {
   calculateOverview,
   calculateRecipeCost,
   explainDishPerformance,
+  getCostDriverInsight,
   getDishStatus,
   getIngredientBreakdown,
   rankDishActions,
@@ -62,10 +63,10 @@ describe("calculateDishMetrics", () => {
     const result = calculateDishMetrics(dish!, recipe!, sampleRestaurantData.ingredients);
 
     expect(result.costCents).toBe(870);
-    expect(result.marginPercent).toBe(37.41);
-    expect(result.costRatioPercent).toBe(62.59);
-    expect(result.grossProfitPerSaleCents).toBe(520);
-    expect(result.estimatedPeriodProfitCents).toBe(166400);
+    expect(result.marginPercent).toBe(35.56);
+    expect(result.costRatioPercent).toBe(64.44);
+    expect(result.grossProfitPerSaleCents).toBe(480);
+    expect(result.estimatedPeriodProfitCents).toBe(139200);
     expect(result.status).toBe("warning");
   });
 
@@ -85,6 +86,15 @@ describe("ingredient breakdown", () => {
     expect(breakdown[0]?.lineCostCents).toBe(120);
     expect(totalPercent).toBeCloseTo(100, 1);
   });
+
+  it("detects the primary cost driver and dominant ingredient threshold", () => {
+    const recipe = sampleRestaurantData.recipes.find((item) => item.id === "recipe-burger");
+    const breakdown = getIngredientBreakdown(recipe!, sampleRestaurantData.ingredients);
+    const insight = getCostDriverInsight(breakdown);
+
+    expect(insight?.ingredientId).toBe("beef-patty");
+    expect(insight?.isDominant).toBe(true);
+  });
 });
 
 describe("decision engine", () => {
@@ -93,7 +103,7 @@ describe("decision engine", () => {
   it("ranks dish actions with critical items first", () => {
     const actions = rankDishActions(calculated);
 
-    expect(actions[0]?.severity).toBe("critical");
+    expect(actions[0]?.severity).toBe("high");
     expect(actions[0]?.dishId).toBe("dish-steak-frites");
     expect(actions.some((action) => action.type === "bestseller_protection")).toBe(true);
   });
@@ -145,8 +155,9 @@ describe("simulation helper", () => {
 
     expect(simulation.statusBefore).toBe("warning");
     expect(simulation.statusAfter).toBe("warning");
-    expect(simulation.grossProfitPerSaleDeltaCents).toBe(100);
-    expect(simulation.profitDeltaCents).toBe(32000);
+    expect(simulation.grossProfitPerSaleDeltaCents).toBe(140);
+    expect(simulation.profitDeltaCents).toBe(40600);
+    expect(simulation.message).toContain("€14.90");
   });
 });
 

@@ -1,4 +1,4 @@
-@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Rajdhani:wght@500;600;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=Oxanium:wght@500;600;700&display=swap");
 
 @tailwind base;
 @tailwind components;
@@ -7,21 +7,52 @@
 :root {
   color: #eaeaf0;
   background: #0b0b0f;
-  font-family: Inter, system-ui, sans-serif;
+  font-family: "IBM Plex Sans", system-ui, sans-serif;
+  --surface-0: #0b0b0f;
+  --surface-1: #16161c;
+  --surface-2: #1d1f27;
+  --line: #24242d;
+  --profit: #00ff7b;
+  --warning: #ffd400;
+  --danger: #ff2e2e;
+  --accent: #38d9ff;
+  --text: #eaeaf0;
+  --muted: #9aa0a6;
 }
 
 body {
   margin: 0;
   min-width: 320px;
   background:
-    radial-gradient(circle at top right, rgba(56, 217, 255, 0.09), transparent 28%),
-    radial-gradient(circle at top left, rgba(0, 255, 123, 0.06), transparent 24%),
+    radial-gradient(circle at top right, rgba(56, 217, 255, 0.1), transparent 26%),
+    radial-gradient(circle at top left, rgba(0, 255, 123, 0.08), transparent 24%),
+    radial-gradient(circle at 50% 100%, rgba(255, 46, 46, 0.08), transparent 32%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.02), transparent 18%),
     #0b0b0f;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+  background-size: 120px 120px;
+  mask-image: radial-gradient(circle at center, black 35%, transparent 95%);
+  opacity: 0.35;
 }
 
 a {
   color: inherit;
   text-decoration: none;
+}
+
+button,
+input,
+select {
+  font: inherit;
 }
 
 * {

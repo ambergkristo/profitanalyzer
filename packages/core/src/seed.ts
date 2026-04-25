@@ -1,4 +1,10 @@
-import { type Ingredient, type Recipe, type SampleRestaurantData } from "./types.js";
+import {
+  type DemoDatasetDefinition,
+  type DemoDatasetSummary,
+  type Ingredient,
+  type Recipe,
+  type SampleRestaurantData
+} from "./types.js";
 
 const baseIngredients: Ingredient[] = [
   { id: "romaine", name: "Romaine Lettuce", costPerUnitCents: 1, unit: "g" },
@@ -141,49 +147,86 @@ function createRestaurantData(
   };
 }
 
-export const sampleRestaurantData: SampleRestaurantData = createRestaurantData([
-  { id: "dish-caesar", name: "Caesar Salad", recipeId: "recipe-caesar", priceCents: 1490, salesVolume: 180 },
-  { id: "dish-burger", name: "Beef Burger", recipeId: "recipe-burger", priceCents: 1390, salesVolume: 320 },
-  { id: "dish-carbonara", name: "Pasta Carbonara", recipeId: "recipe-carbonara", priceCents: 1590, salesVolume: 140 },
-  { id: "dish-salmon-bowl", name: "Salmon Bowl", recipeId: "recipe-salmon-bowl", priceCents: 1690, salesVolume: 160 },
-  { id: "dish-duck", name: "Duck a l'Orange", recipeId: "recipe-duck", priceCents: 1790, salesVolume: 70 },
-  { id: "dish-panna-cotta", name: "Panna Cotta", recipeId: "recipe-panna-cotta", priceCents: 990, salesVolume: 120 },
-  { id: "dish-flatbread", name: "Margherita Flatbread", recipeId: "recipe-flatbread", priceCents: 1490, salesVolume: 65 },
-  { id: "dish-steak-frites", name: "Steak Frites", recipeId: "recipe-steak-frites", priceCents: 1590, salesVolume: 90 }
-]);
+function createDataset(definition: DemoDatasetDefinition): DemoDatasetDefinition {
+  return definition;
+}
+
+export const canonicalDemoDatasets = [
+  createDataset({
+    id: "mixed-restaurant",
+    name: "Mixed Casual Restaurant",
+    description:
+      "Balanced casual dining scenario with a few strong winners, a couple of leaks, and one recipe-data warning to prove graceful handling.",
+    profile: "mixed",
+    data: createRestaurantData(
+      [
+        { id: "dish-caesar", name: "Caesar Salad", recipeId: "recipe-caesar", priceCents: 1450, salesVolume: 170 },
+        { id: "dish-burger", name: "Beef Burger", recipeId: "recipe-burger", priceCents: 1350, salesVolume: 290 },
+        { id: "dish-carbonara", name: "Pasta Carbonara", recipeId: "recipe-carbonara", priceCents: 1590, salesVolume: 130 },
+        { id: "dish-salmon-bowl", name: "Salmon Bowl", recipeId: "recipe-salmon-bowl", priceCents: 1650, salesVolume: 145 },
+        { id: "dish-duck", name: "Duck a l'Orange", recipeId: "recipe-duck", priceCents: 1750, salesVolume: 55 },
+        { id: "dish-panna-cotta", name: "Panna Cotta", recipeId: "recipe-panna-cotta", priceCents: 990, salesVolume: 95 },
+        { id: "dish-flatbread", name: "Margherita Flatbread", recipeId: "recipe-flatbread", priceCents: 1490, salesVolume: 70 },
+        { id: "dish-steak-frites", name: "Steak Frites", recipeId: "recipe-steak-frites", priceCents: 1690, salesVolume: 75 }
+      ],
+      baseIngredients.filter((ingredient) => ingredient.id !== "basil")
+    )
+  }),
+  createDataset({
+    id: "low-margin-kitchen",
+    name: "Low Margin Kitchen",
+    description:
+      "Volume-heavy kitchen under pricing pressure where repair actions should dominate the first screen.",
+    profile: "low-margin",
+    data: createRestaurantData([
+      { id: "dish-caesar", name: "Caesar Salad", recipeId: "recipe-caesar", priceCents: 1190, salesVolume: 220 },
+      { id: "dish-burger", name: "Beef Burger", recipeId: "recipe-burger", priceCents: 1090, salesVolume: 360 },
+      { id: "dish-carbonara", name: "Pasta Carbonara", recipeId: "recipe-carbonara", priceCents: 1190, salesVolume: 230 },
+      { id: "dish-salmon-bowl", name: "Salmon Bowl", recipeId: "recipe-salmon-bowl", priceCents: 1290, salesVolume: 205 },
+      { id: "dish-duck", name: "Duck a l'Orange", recipeId: "recipe-duck", priceCents: 1490, salesVolume: 115 },
+      { id: "dish-panna-cotta", name: "Panna Cotta", recipeId: "recipe-panna-cotta", priceCents: 790, salesVolume: 170 },
+      { id: "dish-flatbread", name: "Margherita Flatbread", recipeId: "recipe-flatbread", priceCents: 990, salesVolume: 165 },
+      { id: "dish-steak-frites", name: "Steak Frites", recipeId: "recipe-steak-frites", priceCents: 1490, salesVolume: 120 }
+    ])
+  }),
+  createDataset({
+    id: "high-margin-bistro",
+    name: "High Margin Bistro",
+    description:
+      "Healthy premium bistro where most dishes are profitable and the engine should emphasize growth and protection of winners.",
+    profile: "high-margin",
+    data: createRestaurantData([
+      { id: "dish-caesar", name: "Caesar Salad", recipeId: "recipe-caesar", priceCents: 1890, salesVolume: 120 },
+      { id: "dish-burger", name: "Beef Burger", recipeId: "recipe-burger", priceCents: 1790, salesVolume: 165 },
+      { id: "dish-carbonara", name: "Pasta Carbonara", recipeId: "recipe-carbonara", priceCents: 1890, salesVolume: 110 },
+      { id: "dish-salmon-bowl", name: "Salmon Bowl", recipeId: "recipe-salmon-bowl", priceCents: 2090, salesVolume: 95 },
+      { id: "dish-duck", name: "Duck a l'Orange", recipeId: "recipe-duck", priceCents: 2490, salesVolume: 70 },
+      { id: "dish-panna-cotta", name: "Panna Cotta", recipeId: "recipe-panna-cotta", priceCents: 1290, salesVolume: 60 },
+      { id: "dish-flatbread", name: "Margherita Flatbread", recipeId: "recipe-flatbread", priceCents: 1790, salesVolume: 65 },
+      { id: "dish-steak-frites", name: "Steak Frites", recipeId: "recipe-steak-frites", priceCents: 2490, salesVolume: 45 }
+    ])
+  })
+] as const satisfies readonly DemoDatasetDefinition[];
+
+export const defaultDemoDatasetId = "mixed-restaurant";
+
+export const sampleRestaurantData = canonicalDemoDatasets[0].data;
 
 export const syntheticRestaurantDatasets = {
-  highMargin: createRestaurantData([
-    { id: "hm-caesar", name: "Caesar Salad Reserve", recipeId: "recipe-caesar", priceCents: 1890, salesVolume: 120 },
-    { id: "hm-burger", name: "Prime Beef Burger", recipeId: "recipe-burger", priceCents: 1790, salesVolume: 170 },
-    { id: "hm-carbonara", name: "Carbonara Classica", recipeId: "recipe-carbonara", priceCents: 1890, salesVolume: 130 },
-    { id: "hm-salmon", name: "Nordic Salmon Bowl", recipeId: "recipe-salmon-bowl", priceCents: 2090, salesVolume: 95 },
-    { id: "hm-duck", name: "Duck a l'Orange", recipeId: "recipe-duck", priceCents: 2490, salesVolume: 75 },
-    { id: "hm-panna", name: "Vanilla Panna Cotta", recipeId: "recipe-panna-cotta", priceCents: 1290, salesVolume: 80 },
-    { id: "hm-flatbread", name: "Margherita Flatbread", recipeId: "recipe-flatbread", priceCents: 1690, salesVolume: 70 },
-    { id: "hm-steak", name: "Steak Frites", recipeId: "recipe-steak-frites", priceCents: 2390, salesVolume: 60 }
-  ]),
-  lowMargin: createRestaurantData([
-    { id: "lm-caesar", name: "Caesar Salad", recipeId: "recipe-caesar", priceCents: 1190, salesVolume: 200 },
-    { id: "lm-burger", name: "Beef Burger", recipeId: "recipe-burger", priceCents: 1090, salesVolume: 330 },
-    { id: "lm-carbonara", name: "Pasta Carbonara", recipeId: "recipe-carbonara", priceCents: 1190, salesVolume: 210 },
-    { id: "lm-salmon", name: "Salmon Bowl", recipeId: "recipe-salmon-bowl", priceCents: 1290, salesVolume: 190 },
-    { id: "lm-duck", name: "Duck a l'Orange", recipeId: "recipe-duck", priceCents: 1490, salesVolume: 95 },
-    { id: "lm-panna", name: "Panna Cotta", recipeId: "recipe-panna-cotta", priceCents: 790, salesVolume: 160 },
-    { id: "lm-flatbread", name: "Margherita Flatbread", recipeId: "recipe-flatbread", priceCents: 990, salesVolume: 150 },
-    { id: "lm-steak", name: "Steak Frites", recipeId: "recipe-steak-frites", priceCents: 1490, salesVolume: 105 }
-  ]),
-  mixed: createRestaurantData(
-    [
-      { id: "mx-caesar", name: "Caesar Salad", recipeId: "recipe-caesar", priceCents: 1450, salesVolume: 170 },
-      { id: "mx-burger", name: "Beef Burger", recipeId: "recipe-burger", priceCents: 1350, salesVolume: 290 },
-      { id: "mx-carbonara", name: "Pasta Carbonara", recipeId: "recipe-carbonara", priceCents: 1590, salesVolume: 130 },
-      { id: "mx-salmon", name: "Salmon Bowl", recipeId: "recipe-salmon-bowl", priceCents: 1650, salesVolume: 145 },
-      { id: "mx-duck", name: "Duck a l'Orange", recipeId: "recipe-duck", priceCents: 1750, salesVolume: 55 },
-      { id: "mx-panna", name: "Panna Cotta", recipeId: "recipe-panna-cotta", priceCents: 990, salesVolume: 95 },
-      { id: "mx-flatbread", name: "Margherita Flatbread", recipeId: "recipe-flatbread", priceCents: 1490, salesVolume: 70 },
-      { id: "mx-steak", name: "Steak Frites", recipeId: "recipe-steak-frites", priceCents: 1690, salesVolume: 75 }
-    ],
-    baseIngredients.filter((ingredient) => ingredient.id !== "basil")
-  )
+  mixed: canonicalDemoDatasets[0].data,
+  lowMargin: canonicalDemoDatasets[1].data,
+  highMargin: canonicalDemoDatasets[2].data
 } as const;
+
+export function listDemoDatasets(): DemoDatasetSummary[] {
+  return canonicalDemoDatasets.map((dataset) => ({
+    id: dataset.id,
+    name: dataset.name,
+    description: dataset.description,
+    profile: dataset.profile
+  }));
+}
+
+export function getDemoDataset(datasetId = defaultDemoDatasetId): DemoDatasetDefinition | undefined {
+  return canonicalDemoDatasets.find((dataset) => dataset.id === datasetId);
+}

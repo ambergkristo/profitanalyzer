@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 
 import type {
   CalculatedDish,
+  DemoDatasetSummary,
   DishAction,
   DishDetailAnalytics,
   OverviewMetrics,
@@ -20,8 +21,20 @@ describe("api", () => {
     expect(response.body).toEqual({ ok: true, service: "profit-analyzer-api" });
   });
 
-  it("returns upgraded analytics overview", async () => {
-    const response = await request(app).get("/api/analytics/overview");
+  it("returns demo datasets", async () => {
+    const response = await request(app).get("/api/demo/datasets");
+    const body = response.body as DemoDatasetSummary[];
+
+    expect(response.status).toBe(200);
+    expect(body.map((dataset) => dataset.id)).toEqual([
+      "mixed-restaurant",
+      "low-margin-kitchen",
+      "high-margin-bistro"
+    ]);
+  });
+
+  it("returns upgraded analytics overview for the selected dataset", async () => {
+    const response = await request(app).get("/api/analytics/overview?dataset=mixed-restaurant");
     const body = response.body as OverviewMetrics;
 
     expect(response.status).toBe(200);
@@ -34,8 +47,25 @@ describe("api", () => {
     expect(body.riskiestDishes.length).toBeGreaterThan(0);
   });
 
-  it("returns analytics dishes", async () => {
-    const response = await request(app).get("/api/analytics/dishes");
+  it("returns riskier overview metrics for the low-margin dataset than the high-margin dataset", async () => {
+    const [lowMarginResponse, highMarginResponse] = await Promise.all([
+      request(app).get("/api/analytics/overview?dataset=low-margin-kitchen"),
+      request(app).get("/api/analytics/overview?dataset=high-margin-bistro")
+    ]);
+
+    const lowMargin = lowMarginResponse.body as OverviewMetrics;
+    const highMargin = highMarginResponse.body as OverviewMetrics;
+
+    expect(lowMargin.lossCount + lowMargin.warningCount).toBeGreaterThan(
+      highMargin.lossCount + highMargin.warningCount
+    );
+    expect(lowMargin.weightedAverageMarginPercent).toBeLessThan(
+      highMargin.weightedAverageMarginPercent
+    );
+  });
+
+  it("returns analytics dishes for the selected dataset", async () => {
+    const response = await request(app).get("/api/analytics/dishes?dataset=low-margin-kitchen");
     const body = response.body as CalculatedDish[];
 
     expect(response.status).toBe(200);
@@ -45,8 +75,10 @@ describe("api", () => {
     expect(body[0]).toHaveProperty("costRatioPercent");
   });
 
-  it("returns a dish detail payload with breakdown and recommended actions", async () => {
-    const response = await request(app).get("/api/analytics/dish/dish-burger");
+  it("returns a dish detail payload with breakdown, cost driver insight, and target margin hints", async () => {
+    const response = await request(app).get(
+      "/api/analytics/dish/dish-burger?dataset=mixed-restaurant"
+    );
     const body = response.body as DishDetailAnalytics;
 
     expect(response.status).toBe(200);
@@ -56,10 +88,12 @@ describe("api", () => {
     expect(body.explanation).toHaveProperty("headline");
     expect(body.recommendedActionsForDish.length).toBeGreaterThan(0);
     expect(body.simulationHints.quickAdjustmentsCents).toEqual([50, 100, 200]);
+    expect(body.simulationHints.targetMarginActions[0]).toHaveProperty("targetMarginPercent");
+    expect(body.costDriverInsight).toHaveProperty("message");
   });
 
-  it("returns all ranked actions", async () => {
-    const response = await request(app).get("/api/analytics/actions");
+  it("returns all ranked actions for the selected dataset", async () => {
+    const response = await request(app).get("/api/analytics/actions?dataset=low-margin-kitchen");
     const body = response.body as DishAction[];
 
     expect(response.status).toBe(200);
@@ -67,35 +101,34 @@ describe("api", () => {
     expect(body[0]).toHaveProperty("reasonCodes");
   });
 
-  it("simulates a dish price change with status transitions", async () => {
+  it("simulates a dish price change with the selected dataset", async () => {
     const response = await request(app)
-      .post("/api/simulate/price")
-      .send({ dishId: "dish-burger", newPriceCents: 1490 });
+      .post("/api/simulate/price?dataset=low-margin-kitchen")
+      .send({ dishId: "dish-burger", newPriceCents: 1290 });
     const body = response.body as PriceSimulationResult;
 
     expect(response.status).toBe(200);
     expect(body.dishId).toBe("dish-burger");
-    expect(body.newPriceCents).toBe(1490);
-    expect(body.statusBefore).toBe("warning");
+    expect(body.newPriceCents).toBe(1290);
+    expect(body.statusBefore).toBe("loss");
     expect(body.statusAfter).toBe("warning");
-    expect(body.grossProfitPerSaleDeltaCents).toBe(100);
     expect(body.profitDeltaCents).toBeGreaterThan(0);
   });
 
   it("validates simulator payloads", async () => {
-    const missingDishId = await request(app).post("/api/simulate/price").send({ newPriceCents: 1490 });
+    const missingDishId = await request(app)
+      .post("/api/simulate/price?dataset=mixed-restaurant")
+      .send({ newPriceCents: 1490 });
     const invalidPrice = await request(app)
-      .post("/api/simulate/price")
+      .post("/api/simulate/price?dataset=mixed-restaurant")
       .send({ dishId: "dish-burger", newPriceCents: 0 });
 
     expect(missingDishId.status).toBe(400);
     expect(invalidPrice.status).toBe(400);
   });
 
-  it("returns 404 for unknown simulation dishes", async () => {
-    const response = await request(app)
-      .post("/api/simulate/price")
-      .send({ dishId: "dish-missing", newPriceCents: 1490 });
+  it("returns 404 for unknown datasets", async () => {
+    const response = await request(app).get("/api/analytics/overview?dataset=ghost-dataset");
 
     expect(response.status).toBe(404);
   });

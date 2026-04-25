@@ -1,18 +1,18 @@
 # Menu Profit Optimizer
 
-Menu Profit Optimizer is a restaurant profit decision engine for owners and managers. Sprint 2 turns the Sprint 1 foundation into a stronger decision product: the dashboard now prioritizes what to fix first, dish detail explains cost drivers, and the frontend runs price simulations through the backend API instead of duplicating formulas.
+Menu Profit Optimizer is a restaurant profit decision engine for owners and managers. Sprint 3 turns the working feature set into a stronger demo product: scenario switching, synthetic validation, and a more polished decision-first cockpit sit on top of the deterministic pricing and margin engine.
 
-## Sprint 2 Scope
+## Sprint 3 Scope
 
-MAX SPRINT 2 implements:
+MAX SPRINT 3 implements:
 
-- richer shared dish metrics, reason codes, and explainable action output
-- dashboard KPIs for profit, weighted margin, revenue, and dishes at risk
-- ranked action cards, top profit contributors, and riskiest dish sections
-- dish detail explanation, ingredient cost percentages, and cost-driver panels
-- frontend price simulator backed by `POST /api/simulate/price`
-- synthetic restaurant datasets for high-margin, low-margin, and mixed validation
-- expanded tests across core, API, and frontend
+- canonical synthetic restaurant scenarios
+- dataset-aware API responses without introducing a database
+- scenario selector in the frontend using URL query params
+- repeatable `npm run validate:synthetic` reports
+- premium dashboard, dishes, detail, and simulator polish
+- target-margin simulator quick actions and stronger cost-driver detail
+- expanded RM5 and RM6 test coverage
 
 Current non-goals remain:
 
@@ -38,6 +38,7 @@ npm run build
 npm test
 npm run lint
 npm run typecheck
+npm run validate:synthetic
 npm audit
 ```
 
@@ -48,6 +49,7 @@ npm audit
 - Health check: `http://localhost:3001/health`
 - Dashboard overview: `http://localhost:3001/api/analytics/overview`
 - Ranked actions: `http://localhost:3001/api/analytics/actions`
+- Demo datasets: `http://localhost:3001/api/demo/datasets`
 
 ## Workspace Layout
 
@@ -67,6 +69,7 @@ tasks/    local sprint tracking notes
 - `GET /api/ingredients`
 - `GET /api/recipes`
 - `GET /api/dishes`
+- `GET /api/demo/datasets`
 - `GET /api/analytics/dishes`
 - `GET /api/analytics/overview`
 - `GET /api/analytics/actions`
@@ -77,5 +80,7 @@ tasks/    local sprint tracking notes
 
 - Shared decision logic lives in `packages/core`.
 - The simulator UI only reads backend simulation results.
-- Overview responses now include weighted margin, total revenue, total cost, contributors, risks, and top actions.
-- Synthetic datasets exist to seed RM5 validation without adding invoice, OCR, or database scope.
+- Overview responses include weighted margin, total revenue, total cost, contributors, risks, and top actions.
+- Scenario selection is demo-mode only and flows through `?dataset=...`.
+- Synthetic validation reports live in `reports/`.
+- No invoice/OCR/POS/accounting/inventory/auth/persistent database scope has been added.

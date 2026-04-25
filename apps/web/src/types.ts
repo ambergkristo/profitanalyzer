@@ -1,19 +1,24 @@
 import type {
   CalculatedDish,
+  CostDriverInsight,
+  DemoDatasetSummary,
   Dish,
   DishAction,
+  DishActionSeverity,
   DishDetailAnalytics,
   DishStatus,
-  DishActionSeverity,
   Ingredient,
   IngredientCostBreakdown,
   OverviewMetrics,
   PriceSimulationResult,
-  Recipe
+  Recipe,
+  SimulationTargetAction
 } from "../../../packages/core/src/index.js";
 
 export type {
   CalculatedDish,
+  CostDriverInsight,
+  DemoDatasetSummary,
   Dish,
   DishAction,
   DishActionSeverity,
@@ -23,7 +28,8 @@ export type {
   IngredientCostBreakdown,
   OverviewMetrics,
   PriceSimulationResult,
-  Recipe
+  Recipe,
+  SimulationTargetAction
 };
 
 export type OverviewResponse = OverviewMetrics;
