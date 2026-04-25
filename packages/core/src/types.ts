@@ -30,8 +30,10 @@ export interface Dish {
 
 export type DishStatus = "loss" | "warning" | "profitable";
 
+export type CalculationWarningCode = "MISSING_INGREDIENT" | "UNIT_MISMATCH" | "INVALID_YIELD";
+
 export interface CalculationWarning {
-  code: "MISSING_INGREDIENT" | "UNIT_MISMATCH" | "INVALID_YIELD";
+  code: CalculationWarningCode;
   message: string;
   ingredientId?: string;
 }
@@ -42,8 +44,10 @@ export interface IngredientCostBreakdown {
   quantity: number;
   unit: IngredientUnit;
   unitCostCents: number | null;
-  totalCostCents: number;
+  lineCostCents: number;
+  percentOfDishCost: number;
   isMissing: boolean;
+  warning?: string;
 }
 
 export interface RecipeCostResult {
@@ -62,25 +66,90 @@ export interface CalculatedDish {
   estimatedPeriodProfitCents: number;
   salesVolume: number;
   status: DishStatus;
+  costRatioPercent: number;
+  contributionRank: number;
   warnings: CalculationWarning[];
 }
 
-export type ActionSeverity = "urgent" | "warning" | "opportunity";
-export type ActionType =
-  | "urgent_margin_repair"
+export type DishActionSeverity = "critical" | "high" | "medium" | "low";
+export type DishActionConfidence = "high" | "medium" | "low";
+
+export type DishActionType =
+  | "margin_repair"
   | "price_review"
   | "warning_review"
-  | "promotion_opportunity";
+  | "bestseller_protection"
+  | "promotion_opportunity"
+  | "data_quality";
 
-export interface RankedDishAction {
+export type DishActionReasonCode =
+  | "LOW_MARGIN"
+  | "LOSS_MARGIN"
+  | "HIGH_SALES_LOW_MARGIN"
+  | "HIGH_MARGIN_LOW_SALES"
+  | "NEGATIVE_PROFIT_PER_SALE"
+  | "STRONG_PROFIT_CONTRIBUTOR"
+  | "PRICE_SIMULATION_UPSIDE"
+  | "MISSING_COST_DATA"
+  | "AGGRESSIVE_PRICE_INCREASE";
+
+export interface DishAction {
   id: string;
-  type: ActionType;
+  type: DishActionType;
   title: string;
   message: string;
   dishId: string;
-  severity: ActionSeverity;
+  severity: DishActionSeverity;
   estimatedImpactCents: number;
-  confidence: "low" | "medium" | "high";
+  confidence: DishActionConfidence;
+  reasonCodes: DishActionReasonCode[];
+  recommendedPriceCents?: number;
+  currentMarginPercent?: number;
+  targetMarginPercent?: number;
+  createdFromRule: string;
+  isAggressive?: boolean;
+}
+
+export type RankedDishAction = DishAction;
+
+export interface DishPerformanceExplanation {
+  headline: string;
+  summary: string;
+  highlights: string[];
+  reasonCodes: DishActionReasonCode[];
+}
+
+export interface PriceSimulationResult {
+  dishId: string;
+  oldPriceCents: number;
+  newPriceCents: number;
+  oldMarginPercent: number;
+  newMarginPercent: number;
+  oldEstimatedPeriodProfitCents: number;
+  newEstimatedPeriodProfitCents: number;
+  profitDeltaCents: number;
+  grossProfitPerSaleDeltaCents: number;
+  statusBefore: DishStatus;
+  statusAfter: DishStatus;
+  message: string;
+}
+
+export interface SimulationHints {
+  currentPriceCents: number;
+  quickAdjustmentsCents: number[];
+  recommendedPriceCents?: number;
+  recommendedTargetMarginPercent?: number;
+  note: string;
+}
+
+export interface DishDetailAnalytics {
+  dish: Dish;
+  recipe: Recipe;
+  metrics: CalculatedDish;
+  ingredientBreakdown: IngredientCostBreakdown[];
+  explanation: DishPerformanceExplanation;
+  recommendedActionsForDish: DishAction[];
+  simulationHints: SimulationHints;
 }
 
 export interface SampleRestaurantData {
@@ -96,5 +165,11 @@ export interface OverviewMetrics {
   lossCount: number;
   averageMarginPercent: number;
   estimatedPeriodProfitCents: number;
-  topActions: RankedDishAction[];
+  totalRevenueCents: number;
+  totalCostCents: number;
+  weightedAverageMarginPercent: number;
+  topActions: DishAction[];
+  topProfitContributors: CalculatedDish[];
+  riskiestDishes: CalculatedDish[];
+  dataQualityWarnings: string[];
 }

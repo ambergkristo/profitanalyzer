@@ -1,8 +1,18 @@
 import cors from "cors";
 import express from "express";
 
-import { calculateDishMetrics } from "../../../packages/core/src/index.js";
-import { getCalculatedDishes, getDishDetail, getOverview, restaurantData } from "./data.js";
+import { simulateDishPriceChange } from "../../../packages/core/src/index.js";
+import {
+  getAllActions,
+  getCalculatedDishes,
+  getDishDetail,
+  getOverview,
+  restaurantData
+} from "./data.js";
+
+function isPositivePrice(value: unknown): value is number {
+  return typeof value === "number" && Number.isFinite(value) && value > 0;
+}
 
 export function createApp() {
   const app = express();
@@ -34,6 +44,10 @@ export function createApp() {
     response.json(getOverview());
   });
 
+  app.get("/api/analytics/actions", (_request, response) => {
+    response.json(getAllActions());
+  });
+
   app.get("/api/analytics/dish/:id", (request, response) => {
     const detail = getDishDetail(request.params.id);
     if (!detail) {
@@ -45,10 +59,10 @@ export function createApp() {
   });
 
   app.post("/api/simulate/price", (request, response) => {
-    const { dishId, newPriceCents } = request.body as { dishId?: string; newPriceCents?: number };
+    const { dishId, newPriceCents } = request.body as { dishId?: unknown; newPriceCents?: unknown };
 
-    if (!dishId || typeof newPriceCents !== "number") {
-      response.status(400).json({ message: "dishId and newPriceCents are required." });
+    if (typeof dishId !== "string" || dishId.trim().length === 0 || !isPositivePrice(newPriceCents)) {
+      response.status(400).json({ message: "dishId is required and newPriceCents must be a positive number." });
       return;
     }
 
@@ -64,25 +78,7 @@ export function createApp() {
       return;
     }
 
-    const oldMetrics = getCalculatedDishes().find((item) => item.dishId === dishId);
-    const simulatedDish = { ...dish, priceCents: newPriceCents };
-    const newMetrics = calculateDishMetrics(simulatedDish, recipe, restaurantData.ingredients);
-
-    if (!oldMetrics) {
-      response.status(500).json({ message: "Simulation failed." });
-      return;
-    }
-
-    response.json({
-      dishId,
-      oldPriceCents: dish.priceCents,
-      newPriceCents,
-      oldMarginPercent: oldMetrics.marginPercent,
-      newMarginPercent: newMetrics.marginPercent,
-      oldEstimatedPeriodProfitCents: oldMetrics.estimatedPeriodProfitCents,
-      newEstimatedPeriodProfitCents: newMetrics.estimatedPeriodProfitCents,
-      profitDeltaCents: newMetrics.estimatedPeriodProfitCents - oldMetrics.estimatedPeriodProfitCents
-    });
+    response.json(simulateDishPriceChange(dish, recipe, restaurantData.ingredients, newPriceCents));
   });
 
   return app;

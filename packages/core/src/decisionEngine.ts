@@ -1,95 +1,364 @@
-import { type CalculatedDish, type OverviewMetrics, type RankedDishAction } from "./types.js";
+import {
+  type CalculatedDish,
+  type DishAction,
+  type DishActionConfidence,
+  type DishActionReasonCode,
+  type DishActionSeverity,
+  type OverviewMetrics
+} from "./types.js";
+import { suggestPriceForTargetMargin } from "./calculations.js";
 
-const severityRank = {
-  urgent: 3,
-  warning: 2,
-  opportunity: 1
-} as const;
+const severityWeight: Record<DishActionSeverity, number> = {
+  critical: 4,
+  high: 3,
+  medium: 2,
+  low: 1
+};
 
-function estimateTargetImpact(dish: CalculatedDish, targetMarginPercent: number): number {
-  const targetGrossProfit = Math.max(0, Math.round((dish.priceCents * targetMarginPercent) / 100));
-  const improvementPerSale = Math.max(0, targetGrossProfit - dish.grossProfitPerSaleCents);
+const confidenceWeight: Record<DishActionConfidence, number> = {
+  high: 3,
+  medium: 2,
+  low: 1
+};
 
-  return improvementPerSale * dish.salesVolume;
+function formatCurrencyLabel(cents: number): string {
+  return `EUR ${(cents / 100).toFixed(2)}`;
 }
 
-export function rankDishActions(calculatedDishes: CalculatedDish[]): RankedDishAction[] {
+function getBaseConfidence(
+  dish: CalculatedDish,
+  inferred: boolean,
+  materiallyPartial = false
+): DishActionConfidence {
+  if (materiallyPartial) {
+    return "low";
+  }
+
+  if (dish.warnings.length > 0) {
+    return "medium";
+  }
+
+  return inferred ? "medium" : "high";
+}
+
+function getSalesStats(calculatedDishes: CalculatedDish[]) {
   const averageSalesVolume =
     calculatedDishes.length === 0
       ? 0
       : calculatedDishes.reduce((sum, dish) => sum + dish.salesVolume, 0) / calculatedDishes.length;
 
-  const actions = calculatedDishes.flatMap<RankedDishAction>((dish) => {
-    if (dish.marginPercent < 30) {
-      return [
-        {
-          id: `urgent-margin-${dish.dishId}`,
-          type: "urgent_margin_repair",
-          title: `Repair ${dish.name} margin now`,
-          message: `${dish.name} is below the 30% margin floor. Review price or recipe cost immediately.`,
-          dishId: dish.dishId,
-          severity: "urgent",
-          estimatedImpactCents: estimateTargetImpact(dish, 30),
-          confidence: dish.warnings.length === 0 ? "high" : "medium"
-        }
-      ];
+  const averageEstimatedProfit =
+    calculatedDishes.length === 0
+      ? 0
+      : calculatedDishes.reduce((sum, dish) => sum + dish.estimatedPeriodProfitCents, 0) /
+        calculatedDishes.length;
+
+  return {
+    averageSalesVolume,
+    averageEstimatedProfit
+  };
+}
+
+function getRecommendedPrice(dish: CalculatedDish, targetMargins: number[]) {
+  const evaluated = targetMargins
+    .map((targetMarginPercent) => {
+      const recommendedPriceCents = suggestPriceForTargetMargin(
+        dish.costCents,
+        targetMarginPercent
+      );
+      const increasePercent =
+        dish.priceCents <= 0
+          ? 0
+          : Number(
+              (((recommendedPriceCents - dish.priceCents) / dish.priceCents) * 100).toFixed(2)
+            );
+
+      return {
+        targetMarginPercent,
+        recommendedPriceCents,
+        increasePercent
+      };
+    })
+    .filter((candidate) => candidate.recommendedPriceCents > dish.priceCents);
+
+  if (evaluated.length === 0) {
+    return null;
+  }
+
+  const nonAggressive = evaluated.find((candidate) => candidate.increasePercent <= 25);
+  const chosen =
+    nonAggressive ??
+    [...evaluated].sort(
+      (left, right) => left.recommendedPriceCents - right.recommendedPriceCents
+    )[0];
+
+  return {
+    ...chosen,
+    isAggressive: chosen.increasePercent > 25
+  };
+}
+
+function getEstimatedPriceImpact(
+  dish: CalculatedDish,
+  recommendedPriceCents: number | undefined
+): number {
+  if (!recommendedPriceCents || recommendedPriceCents <= dish.priceCents) {
+    return 0;
+  }
+
+  return (recommendedPriceCents - dish.priceCents) * dish.salesVolume;
+}
+
+function dedupeReasonCodes(reasonCodes: DishActionReasonCode[]) {
+  return [...new Set(reasonCodes)];
+}
+
+function buildPrimaryAction(
+  dish: CalculatedDish,
+  averageSalesVolume: number,
+  averageEstimatedProfit: number
+): DishAction | null {
+  const highSales = dish.salesVolume >= averageSalesVolume;
+  const strongContributor =
+    dish.contributionRank <= 3 || dish.estimatedPeriodProfitCents >= averageEstimatedProfit;
+
+  if (dish.grossProfitPerSaleCents < 0) {
+    const recommendation = getRecommendedPrice(dish, [50]);
+    const reasonCodes: DishActionReasonCode[] = [
+      "LOSS_MARGIN",
+      "NEGATIVE_PROFIT_PER_SALE",
+      "PRICE_SIMULATION_UPSIDE"
+    ];
+
+    if (recommendation?.isAggressive) {
+      reasonCodes.push("AGGRESSIVE_PRICE_INCREASE");
     }
 
-    if (dish.salesVolume >= averageSalesVolume && dish.marginPercent < 50) {
-      return [
-        {
-          id: `price-review-${dish.dishId}`,
-          type: "price_review",
-          title: `Review ${dish.name} pricing`,
-          message: `${dish.name} sells well but margin is weak. A small price update may unlock profit quickly.`,
-          dishId: dish.dishId,
-          severity: "urgent",
-          estimatedImpactCents: estimateTargetImpact(dish, 50),
-          confidence: dish.warnings.length === 0 ? "high" : "medium"
-        }
-      ];
+    return {
+      id: `margin-repair-${dish.dishId}`,
+      type: "margin_repair",
+      title: `${dish.name} is losing cash on every sale`,
+      message: `${dish.name} loses ${formatCurrencyLabel(
+        Math.abs(dish.grossProfitPerSaleCents)
+      )} per sale. Move price toward ${formatCurrencyLabel(
+        recommendation?.recommendedPriceCents ?? dish.priceCents
+      )} or cut the highest-cost ingredient before it drains another ${formatCurrencyLabel(
+        Math.abs(dish.estimatedPeriodProfitCents)
+      )} this period.`,
+      dishId: dish.dishId,
+      severity: "critical",
+      estimatedImpactCents: getEstimatedPriceImpact(
+        dish,
+        recommendation?.recommendedPriceCents
+      ),
+      confidence: getBaseConfidence(dish, false),
+      reasonCodes: dedupeReasonCodes(reasonCodes),
+      recommendedPriceCents: recommendation?.recommendedPriceCents,
+      currentMarginPercent: dish.marginPercent,
+      targetMarginPercent: recommendation?.targetMarginPercent,
+      createdFromRule: "negative-profit-per-sale",
+      isAggressive: recommendation?.isAggressive
+    };
+  }
+
+  if (highSales && dish.marginPercent < 50) {
+    const recommendation = getRecommendedPrice(dish, strongContributor ? [60, 50] : [50]);
+    const reasonCodes: DishActionReasonCode[] = [
+      "LOW_MARGIN",
+      "HIGH_SALES_LOW_MARGIN",
+      "PRICE_SIMULATION_UPSIDE"
+    ];
+
+    if (strongContributor) {
+      reasonCodes.push("STRONG_PROFIT_CONTRIBUTOR");
     }
 
-    if (dish.marginPercent < 50) {
-      return [
-        {
-          id: `warning-review-${dish.dishId}`,
-          type: "warning_review",
-          title: `Watch ${dish.name} closely`,
-          message: `${dish.name} is in the 30-50% margin band. Review cost drivers before it becomes a loss item.`,
-          dishId: dish.dishId,
-          severity: "warning",
-          estimatedImpactCents: estimateTargetImpact(dish, 50),
-          confidence: dish.warnings.length === 0 ? "medium" : "low"
-        }
-      ];
+    if (recommendation?.isAggressive) {
+      reasonCodes.push("AGGRESSIVE_PRICE_INCREASE");
     }
 
-    if (dish.marginPercent >= 50 && dish.salesVolume < averageSalesVolume) {
-      return [
-        {
-          id: `promotion-${dish.dishId}`,
-          type: "promotion_opportunity",
-          title: `Promote ${dish.name}`,
-          message: `${dish.name} has strong margin but lower sales volume. It may be worth featuring more prominently.`,
-          dishId: dish.dishId,
-          severity: "opportunity",
-          estimatedImpactCents: Math.max(0, Math.round(dish.grossProfitPerSaleCents * Math.max(1, dish.salesVolume * 0.1))),
-          confidence: dish.warnings.length === 0 ? "medium" : "low"
-        }
-      ];
+    return {
+      id: `protect-bestseller-${dish.dishId}`,
+      type: strongContributor ? "bestseller_protection" : "price_review",
+      title: strongContributor
+        ? `Protect ${dish.name} before volume hides the margin leak`
+        : `Review ${dish.name} pricing now`,
+      message: `${dish.name} sells often but margin is only ${dish.marginPercent.toFixed(
+        1
+      )}%. Test a ${formatCurrencyLabel(
+        (recommendation?.recommendedPriceCents ?? dish.priceCents) - dish.priceCents
+      )} price increase${recommendation?.recommendedPriceCents ? ` to ${formatCurrencyLabel(recommendation.recommendedPriceCents)}` : ""} or reduce the highest-cost ingredient.`,
+      dishId: dish.dishId,
+      severity: dish.marginPercent < 30 ? "critical" : "high",
+      estimatedImpactCents: getEstimatedPriceImpact(
+        dish,
+        recommendation?.recommendedPriceCents
+      ),
+      confidence: getBaseConfidence(dish, false),
+      reasonCodes: dedupeReasonCodes(reasonCodes),
+      recommendedPriceCents: recommendation?.recommendedPriceCents,
+      currentMarginPercent: dish.marginPercent,
+      targetMarginPercent: recommendation?.targetMarginPercent,
+      createdFromRule: strongContributor ? "high-sales-low-margin-bestseller" : "high-sales-low-margin",
+      isAggressive: recommendation?.isAggressive
+    };
+  }
+
+  if (dish.marginPercent < 30) {
+    const recommendation = getRecommendedPrice(dish, [50]);
+    const reasonCodes: DishActionReasonCode[] = [
+      "LOW_MARGIN",
+      "LOSS_MARGIN",
+      "PRICE_SIMULATION_UPSIDE"
+    ];
+
+    if (recommendation?.isAggressive) {
+      reasonCodes.push("AGGRESSIVE_PRICE_INCREASE");
     }
 
-    return [];
+    return {
+      id: `repair-margin-${dish.dishId}`,
+      type: "margin_repair",
+      title: `Repair ${dish.name} margin before costs move again`,
+      message: `${dish.name} is running at ${dish.marginPercent.toFixed(
+        1
+      )}% margin. Push it toward ${formatCurrencyLabel(
+        recommendation?.recommendedPriceCents ?? dish.priceCents
+      )} or reduce the priciest ingredient to rebuild a usable buffer.`,
+      dishId: dish.dishId,
+      severity: "high",
+      estimatedImpactCents: getEstimatedPriceImpact(
+        dish,
+        recommendation?.recommendedPriceCents
+      ),
+      confidence: getBaseConfidence(dish, false),
+      reasonCodes: dedupeReasonCodes(reasonCodes),
+      recommendedPriceCents: recommendation?.recommendedPriceCents,
+      currentMarginPercent: dish.marginPercent,
+      targetMarginPercent: recommendation?.targetMarginPercent,
+      createdFromRule: "margin-below-30",
+      isAggressive: recommendation?.isAggressive
+    };
+  }
+
+  if (dish.marginPercent < 50) {
+    const recommendation = getRecommendedPrice(dish, [50]);
+
+    return {
+      id: `warning-review-${dish.dishId}`,
+      type: "warning_review",
+      title: `${dish.name} needs a margin review`,
+      message: `${dish.name} is still selling, but ${dish.marginPercent.toFixed(
+        1
+      )}% margin leaves little room for supplier increases. Test a smaller price move or trim the recipe before the dish slips into the loss band.`,
+      dishId: dish.dishId,
+      severity: "medium",
+      estimatedImpactCents: getEstimatedPriceImpact(
+        dish,
+        recommendation?.recommendedPriceCents
+      ),
+      confidence: getBaseConfidence(dish, false),
+      reasonCodes: dedupeReasonCodes(["LOW_MARGIN", "PRICE_SIMULATION_UPSIDE"]),
+      recommendedPriceCents: recommendation?.recommendedPriceCents,
+      currentMarginPercent: dish.marginPercent,
+      targetMarginPercent: recommendation?.targetMarginPercent,
+      createdFromRule: "margin-between-30-and-50",
+      isAggressive: recommendation?.isAggressive
+    };
+  }
+
+  if (dish.marginPercent >= 60 && dish.salesVolume < averageSalesVolume) {
+    return {
+      id: `promotion-${dish.dishId}`,
+      type: "promotion_opportunity",
+      title: `${dish.name} has margin headroom to promote`,
+      message: `${dish.name} keeps a ${dish.marginPercent.toFixed(
+        1
+      )}% margin, but sales volume is only ${dish.salesVolume}. Give it better placement or a staff recommendation to let the menu's healthiest profit item pull more weight.`,
+      dishId: dish.dishId,
+      severity: "low",
+      estimatedImpactCents: Math.max(
+        0,
+        Math.round(dish.grossProfitPerSaleCents * Math.max(10, dish.salesVolume * 0.15))
+      ),
+      confidence: getBaseConfidence(dish, true),
+      reasonCodes: dedupeReasonCodes(["HIGH_MARGIN_LOW_SALES"]),
+      currentMarginPercent: dish.marginPercent,
+      createdFromRule: "high-margin-low-sales"
+    };
+  }
+
+  return null;
+}
+
+function buildDataQualityAction(dish: CalculatedDish): DishAction | null {
+  if (dish.warnings.length === 0) {
+    return null;
+  }
+
+  return {
+    id: `data-quality-${dish.dishId}`,
+    type: "data_quality",
+    title: `Confirm ${dish.name} cost inputs`,
+    message: `${dish.name} has missing or mismatched ingredient costs. Fix the recipe inputs before trusting the dish margin or acting on pricing.`,
+    dishId: dish.dishId,
+    severity: "high",
+    estimatedImpactCents: Math.max(0, dish.estimatedPeriodProfitCents),
+    confidence: getBaseConfidence(dish, false, true),
+    reasonCodes: ["MISSING_COST_DATA"],
+    currentMarginPercent: dish.marginPercent,
+    createdFromRule: "data-quality-warning"
+  };
+}
+
+export function rankDishActions(calculatedDishes: CalculatedDish[]): DishAction[] {
+  const { averageSalesVolume, averageEstimatedProfit } = getSalesStats(calculatedDishes);
+  const actions = calculatedDishes.flatMap<DishAction>((dish) => {
+    const actionList: DishAction[] = [];
+    const dataQualityAction = buildDataQualityAction(dish);
+    const primaryAction = buildPrimaryAction(
+      dish,
+      averageSalesVolume,
+      averageEstimatedProfit
+    );
+
+    if (dataQualityAction) {
+      actionList.push(dataQualityAction);
+    }
+
+    if (primaryAction) {
+      actionList.push(primaryAction);
+    }
+
+    return actionList;
   });
 
   return actions.sort((left, right) => {
-    const severityDifference = severityRank[right.severity] - severityRank[left.severity];
+    const severityDifference = severityWeight[right.severity] - severityWeight[left.severity];
     if (severityDifference !== 0) {
       return severityDifference;
     }
 
-    return right.estimatedImpactCents - left.estimatedImpactCents;
+    if (right.estimatedImpactCents !== left.estimatedImpactCents) {
+      return right.estimatedImpactCents - left.estimatedImpactCents;
+    }
+
+    const rightSalesVolume =
+      calculatedDishes.find((dish) => dish.dishId === right.dishId)?.salesVolume ?? 0;
+    const leftSalesVolume =
+      calculatedDishes.find((dish) => dish.dishId === left.dishId)?.salesVolume ?? 0;
+
+    if (rightSalesVolume !== leftSalesVolume) {
+      return rightSalesVolume - leftSalesVolume;
+    }
+
+    const confidenceDifference =
+      confidenceWeight[right.confidence] - confidenceWeight[left.confidence];
+    if (confidenceDifference !== 0) {
+      return confidenceDifference;
+    }
+
+    return left.id.localeCompare(right.id);
   });
 }
 
@@ -102,6 +371,20 @@ export function calculateOverview(calculatedDishes: CalculatedDish[]): OverviewM
     (sum, dish) => sum + dish.estimatedPeriodProfitCents,
     0
   );
+  const totalRevenueCents = calculatedDishes.reduce(
+    (sum, dish) => sum + dish.priceCents * dish.salesVolume,
+    0
+  );
+  const totalCostCents = calculatedDishes.reduce(
+    (sum, dish) => sum + dish.costCents * dish.salesVolume,
+    0
+  );
+  const weightedAverageMarginPercent =
+    totalRevenueCents === 0
+      ? 0
+      : Number((((totalRevenueCents - totalCostCents) / totalRevenueCents) * 100).toFixed(2));
+
+  const actions = rankDishActions(calculatedDishes);
 
   return {
     totalDishes: calculatedDishes.length,
@@ -111,6 +394,40 @@ export function calculateOverview(calculatedDishes: CalculatedDish[]): OverviewM
     averageMarginPercent:
       calculatedDishes.length === 0 ? 0 : Number((totalMargin / calculatedDishes.length).toFixed(2)),
     estimatedPeriodProfitCents,
-    topActions: rankDishActions(calculatedDishes).slice(0, 3)
+    totalRevenueCents,
+    totalCostCents,
+    weightedAverageMarginPercent,
+    topActions: actions.slice(0, 3),
+    topProfitContributors: [...calculatedDishes]
+      .sort((left, right) => {
+        if (right.estimatedPeriodProfitCents !== left.estimatedPeriodProfitCents) {
+          return right.estimatedPeriodProfitCents - left.estimatedPeriodProfitCents;
+        }
+
+        return left.dishId.localeCompare(right.dishId);
+      })
+      .slice(0, 4),
+    riskiestDishes: [...calculatedDishes]
+      .filter((dish) => dish.status !== "profitable")
+      .sort((left, right) => {
+        const statusDifference =
+          (left.status === "loss" ? 0 : 1) - (right.status === "loss" ? 0 : 1);
+
+        if (statusDifference !== 0) {
+          return statusDifference;
+        }
+
+        if (right.salesVolume !== left.salesVolume) {
+          return right.salesVolume - left.salesVolume;
+        }
+
+        if (left.marginPercent !== right.marginPercent) {
+          return left.marginPercent - right.marginPercent;
+        }
+
+        return left.dishId.localeCompare(right.dishId);
+      })
+      .slice(0, 4),
+    dataQualityWarnings: [...new Set(calculatedDishes.flatMap((dish) => dish.warnings.map((warning) => warning.message)))]
   };
 }

@@ -1,12 +1,19 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  calculateCalculatedDishes,
   calculateDishMetrics,
   calculateOverview,
   calculateRecipeCost,
+  explainDishPerformance,
   getDishStatus,
+  getIngredientBreakdown,
   rankDishActions,
-  sampleRestaurantData
+  roundToRestaurantFriendlyPrice,
+  sampleRestaurantData,
+  simulateDishPriceChange,
+  suggestPriceForTargetMargin,
+  syntheticRestaurantDatasets
 } from "../src/index.js";
 
 describe("calculateRecipeCost", () => {
@@ -32,20 +39,33 @@ describe("calculateRecipeCost", () => {
 
     expect(result.costCents).toBe(0);
     expect(result.warnings[0]?.code).toBe("MISSING_INGREDIENT");
+    expect(result.breakdown[0]?.warning).toContain("Missing ingredient");
+  });
+});
+
+describe("pricing helpers", () => {
+  it("rounds target prices to restaurant-friendly endings", () => {
+    expect(roundToRestaurantFriendlyPrice(1372)).toBe(1390);
+    expect(roundToRestaurantFriendlyPrice(1395)).toBe(1400);
+  });
+
+  it("suggests the friendly price needed to hit a target margin", () => {
+    expect(suggestPriceForTargetMargin(686, 50)).toBe(1390);
   });
 });
 
 describe("calculateDishMetrics", () => {
-  it("calculates dish margin and estimated profit", () => {
+  it("calculates dish margin, cost ratio, and estimated profit", () => {
     const dish = sampleRestaurantData.dishes.find((item) => item.id === "dish-burger");
     const recipe = sampleRestaurantData.recipes.find((item) => item.id === dish?.recipeId);
 
     const result = calculateDishMetrics(dish!, recipe!, sampleRestaurantData.ingredients);
 
-    expect(result.costCents).toBe(855);
-    expect(result.marginPercent).toBe(46.23);
-    expect(result.grossProfitPerSaleCents).toBe(735);
-    expect(result.estimatedPeriodProfitCents).toBe(191100);
+    expect(result.costCents).toBe(870);
+    expect(result.marginPercent).toBe(37.41);
+    expect(result.costRatioPercent).toBe(62.59);
+    expect(result.grossProfitPerSaleCents).toBe(520);
+    expect(result.estimatedPeriodProfitCents).toBe(166400);
     expect(result.status).toBe("warning");
   });
 
@@ -56,27 +76,105 @@ describe("calculateDishMetrics", () => {
   });
 });
 
-describe("decision engine", () => {
-  const calculated = sampleRestaurantData.dishes.map((dish) => {
-    const recipe = sampleRestaurantData.recipes.find((item) => item.id === dish.recipeId)!;
-    return calculateDishMetrics(dish, recipe, sampleRestaurantData.ingredients);
-  });
+describe("ingredient breakdown", () => {
+  it("includes deterministic percentage-of-cost values", () => {
+    const recipe = sampleRestaurantData.recipes.find((item) => item.id === "recipe-caesar");
+    const breakdown = getIngredientBreakdown(recipe!, sampleRestaurantData.ingredients);
+    const totalPercent = breakdown.reduce((sum, item) => sum + item.percentOfDishCost, 0);
 
-  it("ranks dish actions with urgent items first", () => {
+    expect(breakdown[0]?.lineCostCents).toBe(120);
+    expect(totalPercent).toBeCloseTo(100, 1);
+  });
+});
+
+describe("decision engine", () => {
+  const calculated = calculateCalculatedDishes(sampleRestaurantData);
+
+  it("ranks dish actions with critical items first", () => {
     const actions = rankDishActions(calculated);
 
-    expect(actions[0]?.severity).toBe("urgent");
-    expect(actions.some((action) => action.type === "urgent_margin_repair")).toBe(true);
-    expect(actions.some((action) => action.type === "price_review")).toBe(true);
+    expect(actions[0]?.severity).toBe("critical");
+    expect(actions[0]?.dishId).toBe("dish-steak-frites");
+    expect(actions.some((action) => action.type === "bestseller_protection")).toBe(true);
   });
 
-  it("calculates overview metrics", () => {
+  it("emits explicit reason codes and practical guidance", () => {
+    const burgerAction = rankDishActions(calculated).find(
+      (action) => action.dishId === "dish-burger" && action.type === "bestseller_protection"
+    );
+
+    expect(burgerAction?.reasonCodes).toContain("HIGH_SALES_LOW_MARGIN");
+    expect(burgerAction?.reasonCodes).toContain("PRICE_SIMULATION_UPSIDE");
+    expect(burgerAction?.message).toContain("sells often");
+  });
+
+  it("explains dish performance with structured reasons", () => {
+    const duck = calculated.find((dish) => dish.dishId === "dish-duck");
+    const explanation = explainDishPerformance(duck!);
+
+    expect(explanation.reasonCodes).toContain("LOSS_MARGIN");
+    expect(explanation.summary).toContain("margin");
+  });
+
+  it("calculates upgraded overview metrics", () => {
     const overview = calculateOverview(calculated);
 
-    expect(overview.totalDishes).toBe(6);
-    expect(overview.profitableCount).toBeGreaterThanOrEqual(2);
-    expect(overview.warningCount).toBeGreaterThanOrEqual(2);
-    expect(overview.lossCount).toBeGreaterThanOrEqual(1);
+    expect(overview.totalDishes).toBe(8);
+    expect(overview.totalRevenueCents).toBeGreaterThan(0);
+    expect(overview.totalCostCents).toBeGreaterThan(0);
     expect(overview.topActions).toHaveLength(3);
+    expect(overview.topProfitContributors[0]?.dishId).toBe("dish-burger");
+    expect(overview.weightedAverageMarginPercent).toBeCloseTo(
+      ((overview.totalRevenueCents - overview.totalCostCents) / overview.totalRevenueCents) * 100,
+      2
+    );
+  });
+});
+
+describe("simulation helper", () => {
+  it("returns before-and-after statuses and deltas", () => {
+    const dish = sampleRestaurantData.dishes.find((item) => item.id === "dish-burger");
+    const recipe = sampleRestaurantData.recipes.find((item) => item.id === dish?.recipeId);
+
+    const simulation = simulateDishPriceChange(
+      dish!,
+      recipe!,
+      sampleRestaurantData.ingredients,
+      1490
+    );
+
+    expect(simulation.statusBefore).toBe("warning");
+    expect(simulation.statusAfter).toBe("warning");
+    expect(simulation.grossProfitPerSaleDeltaCents).toBe(100);
+    expect(simulation.profitDeltaCents).toBe(32000);
+  });
+});
+
+describe("synthetic datasets", () => {
+  it("produce deterministic action ordering and distinct risk profiles", () => {
+    const highMarginActions = rankDishActions(
+      calculateCalculatedDishes(syntheticRestaurantDatasets.highMargin)
+    );
+    const lowMarginActions = rankDishActions(
+      calculateCalculatedDishes(syntheticRestaurantDatasets.lowMargin)
+    );
+    const mixedActions = rankDishActions(
+      calculateCalculatedDishes(syntheticRestaurantDatasets.mixed)
+    );
+
+    expect(highMarginActions.length).toBeGreaterThanOrEqual(3);
+    expect(lowMarginActions.length).toBeGreaterThanOrEqual(3);
+    expect(mixedActions.length).toBeGreaterThanOrEqual(3);
+    expect(highMarginActions.filter((action) => action.severity !== "low").length).toBeLessThan(
+      lowMarginActions.filter((action) => action.severity !== "low").length
+    );
+    expect(
+      lowMarginActions.filter((action) => action.severity === "critical" || action.severity === "high")
+        .length
+    ).toBeGreaterThanOrEqual(3);
+    expect(new Set(mixedActions.map((action) => action.type)).size).toBeGreaterThanOrEqual(3);
+    expect(rankDishActions(calculateCalculatedDishes(syntheticRestaurantDatasets.mixed)).map((action) => action.id)).toEqual(
+      mixedActions.map((action) => action.id)
+    );
   });
 });

@@ -1,104 +1,189 @@
-import { type SampleRestaurantData } from "./types.js";
+import { type Ingredient, type Recipe, type SampleRestaurantData } from "./types.js";
 
-export const sampleRestaurantData: SampleRestaurantData = {
-  ingredients: [
-    { id: "romaine", name: "Romaine Lettuce", costPerUnitCents: 1, unit: "g" },
-    { id: "parmesan", name: "Parmesan", costPerUnitCents: 6, unit: "g" },
-    { id: "croutons", name: "Croutons", costPerUnitCents: 3, unit: "g" },
-    { id: "caesar-dressing", name: "Caesar Dressing", costPerUnitCents: 5, unit: "ml" },
-    { id: "chicken", name: "Chicken Breast", costPerUnitCents: 2, unit: "g" },
-    { id: "bun", name: "Brioche Bun", costPerUnitCents: 90, unit: "piece" },
-    { id: "beef-patty", name: "Beef Patty", costPerUnitCents: 3, unit: "g" },
-    { id: "cheddar", name: "Cheddar", costPerUnitCents: 5, unit: "g" },
-    { id: "carbonara-pasta", name: "Pasta", costPerUnitCents: 1, unit: "g" },
-    { id: "guanciale", name: "Guanciale", costPerUnitCents: 5, unit: "g" },
-    { id: "cream", name: "Cream", costPerUnitCents: 2, unit: "ml" },
-    { id: "egg", name: "Egg", costPerUnitCents: 45, unit: "piece" },
-    { id: "salmon", name: "Salmon Fillet", costPerUnitCents: 5, unit: "g" },
-    { id: "avocado", name: "Avocado", costPerUnitCents: 4, unit: "g" },
-    { id: "citrus-dressing", name: "Citrus Dressing", costPerUnitCents: 4, unit: "ml" },
-    { id: "duck-breast", name: "Duck Breast", costPerUnitCents: 6, unit: "g" },
-    { id: "orange-glaze", name: "Orange Glaze", costPerUnitCents: 3, unit: "ml" },
-    { id: "potato", name: "Potato", costPerUnitCents: 1, unit: "g" },
-    { id: "cream-dessert", name: "Dessert Cream", costPerUnitCents: 2, unit: "ml" },
-    { id: "gelatin", name: "Gelatin", costPerUnitCents: 12, unit: "g" },
-    { id: "vanilla", name: "Vanilla", costPerUnitCents: 20, unit: "g" },
-    { id: "berry-compote", name: "Berry Compote", costPerUnitCents: 4, unit: "g" }
-  ],
-  recipes: [
-    {
-      id: "recipe-caesar",
-      name: "Caesar Salad",
-      yield: 1,
-      ingredients: [
-        { ingredientId: "romaine", quantity: 120, unit: "g" },
-        { ingredientId: "parmesan", quantity: 20, unit: "g" },
-        { ingredientId: "croutons", quantity: 30, unit: "g" },
-        { ingredientId: "caesar-dressing", quantity: 45, unit: "ml" },
-        { ingredientId: "chicken", quantity: 110, unit: "g" }
-      ]
-    },
-    {
-      id: "recipe-burger",
-      name: "Beef Burger",
-      yield: 1,
-      ingredients: [
-        { ingredientId: "bun", quantity: 1, unit: "piece" },
-        { ingredientId: "beef-patty", quantity: 180, unit: "g" },
-        { ingredientId: "cheddar", quantity: 25, unit: "g" },
-        { ingredientId: "caesar-dressing", quantity: 20, unit: "ml" }
-      ]
-    },
-    {
-      id: "recipe-carbonara",
-      name: "Pasta Carbonara",
-      yield: 1,
-      ingredients: [
-        { ingredientId: "carbonara-pasta", quantity: 110, unit: "g" },
-        { ingredientId: "guanciale", quantity: 70, unit: "g" },
-        { ingredientId: "cream", quantity: 60, unit: "ml" },
-        { ingredientId: "egg", quantity: 1, unit: "piece" },
-        { ingredientId: "parmesan", quantity: 20, unit: "g" }
-      ]
-    },
-    {
-      id: "recipe-salmon",
-      name: "Salmon Tartare",
-      yield: 1,
-      ingredients: [
-        { ingredientId: "salmon", quantity: 140, unit: "g" },
-        { ingredientId: "avocado", quantity: 80, unit: "g" },
-        { ingredientId: "citrus-dressing", quantity: 25, unit: "ml" }
-      ]
-    },
-    {
-      id: "recipe-duck",
-      name: "Duck a l'Orange",
-      yield: 1,
-      ingredients: [
-        { ingredientId: "duck-breast", quantity: 220, unit: "g" },
-        { ingredientId: "orange-glaze", quantity: 40, unit: "ml" },
-        { ingredientId: "potato", quantity: 180, unit: "g" }
-      ]
-    },
-    {
-      id: "recipe-panna-cotta",
-      name: "Panna Cotta",
-      yield: 1,
-      ingredients: [
-        { ingredientId: "cream-dessert", quantity: 150, unit: "ml" },
-        { ingredientId: "gelatin", quantity: 4, unit: "g" },
-        { ingredientId: "vanilla", quantity: 2, unit: "g" },
-        { ingredientId: "berry-compote", quantity: 40, unit: "g" }
-      ]
-    }
-  ],
-  dishes: [
-    { id: "dish-caesar", name: "Caesar Salad", recipeId: "recipe-caesar", priceCents: 1690, salesVolume: 120 },
-    { id: "dish-burger", name: "Beef Burger", recipeId: "recipe-burger", priceCents: 1590, salesVolume: 260 },
-    { id: "dish-carbonara", name: "Pasta Carbonara", recipeId: "recipe-carbonara", priceCents: 1650, salesVolume: 180 },
-    { id: "dish-salmon", name: "Salmon Tartare", recipeId: "recipe-salmon", priceCents: 1950, salesVolume: 70 },
-    { id: "dish-duck", name: "Duck a l'Orange", recipeId: "recipe-duck", priceCents: 1750, salesVolume: 45 },
-    { id: "dish-panna-cotta", name: "Panna Cotta", recipeId: "recipe-panna-cotta", priceCents: 990, salesVolume: 95 }
-  ]
-};
+const baseIngredients: Ingredient[] = [
+  { id: "romaine", name: "Romaine Lettuce", costPerUnitCents: 1, unit: "g" },
+  { id: "parmesan", name: "Parmesan", costPerUnitCents: 6, unit: "g" },
+  { id: "croutons", name: "Croutons", costPerUnitCents: 3, unit: "g" },
+  { id: "caesar-dressing", name: "Caesar Dressing", costPerUnitCents: 5, unit: "ml" },
+  { id: "chicken", name: "Chicken Breast", costPerUnitCents: 2, unit: "g" },
+  { id: "bun", name: "Brioche Bun", costPerUnitCents: 90, unit: "piece" },
+  { id: "beef-patty", name: "Beef Patty", costPerUnitCents: 3, unit: "g" },
+  { id: "cheddar", name: "Cheddar", costPerUnitCents: 5, unit: "g" },
+  { id: "burger-sauce", name: "Burger Sauce", costPerUnitCents: 4, unit: "ml" },
+  { id: "tomato", name: "Tomato", costPerUnitCents: 1, unit: "g" },
+  { id: "lettuce", name: "Butter Lettuce", costPerUnitCents: 1, unit: "g" },
+  { id: "pasta", name: "Fresh Pasta", costPerUnitCents: 1, unit: "g" },
+  { id: "guanciale", name: "Guanciale", costPerUnitCents: 5, unit: "g" },
+  { id: "cream", name: "Cream", costPerUnitCents: 2, unit: "ml" },
+  { id: "egg", name: "Egg", costPerUnitCents: 45, unit: "piece" },
+  { id: "salmon", name: "Salmon Fillet", costPerUnitCents: 5, unit: "g" },
+  { id: "avocado", name: "Avocado", costPerUnitCents: 4, unit: "g" },
+  { id: "citrus-dressing", name: "Citrus Dressing", costPerUnitCents: 4, unit: "ml" },
+  { id: "rice", name: "Sushi Rice", costPerUnitCents: 1, unit: "g" },
+  { id: "duck-breast", name: "Duck Breast", costPerUnitCents: 6, unit: "g" },
+  { id: "orange-glaze", name: "Orange Glaze", costPerUnitCents: 3, unit: "ml" },
+  { id: "potato", name: "Potato", costPerUnitCents: 1, unit: "g" },
+  { id: "cream-dessert", name: "Dessert Cream", costPerUnitCents: 2, unit: "ml" },
+  { id: "gelatin", name: "Gelatin", costPerUnitCents: 12, unit: "g" },
+  { id: "vanilla", name: "Vanilla", costPerUnitCents: 20, unit: "g" },
+  { id: "berry-compote", name: "Berry Compote", costPerUnitCents: 4, unit: "g" },
+  { id: "flatbread-base", name: "Flatbread Base", costPerUnitCents: 120, unit: "piece" },
+  { id: "tomato-sauce", name: "Tomato Sauce", costPerUnitCents: 2, unit: "g" },
+  { id: "mozzarella", name: "Mozzarella", costPerUnitCents: 3, unit: "g" },
+  { id: "basil", name: "Basil", costPerUnitCents: 15, unit: "g" },
+  { id: "steak", name: "Sirloin Steak", costPerUnitCents: 7, unit: "g" },
+  { id: "fries", name: "Fries", costPerUnitCents: 1, unit: "g" },
+  { id: "pepper-sauce", name: "Pepper Sauce", costPerUnitCents: 4, unit: "ml" }
+];
+
+const baseRecipes: Recipe[] = [
+  {
+    id: "recipe-caesar",
+    name: "Caesar Salad",
+    yield: 1,
+    ingredients: [
+      { ingredientId: "romaine", quantity: 120, unit: "g" },
+      { ingredientId: "parmesan", quantity: 20, unit: "g" },
+      { ingredientId: "croutons", quantity: 30, unit: "g" },
+      { ingredientId: "caesar-dressing", quantity: 45, unit: "ml" },
+      { ingredientId: "chicken", quantity: 110, unit: "g" }
+    ]
+  },
+  {
+    id: "recipe-burger",
+    name: "Beef Burger",
+    yield: 1,
+    ingredients: [
+      { ingredientId: "bun", quantity: 1, unit: "piece" },
+      { ingredientId: "beef-patty", quantity: 180, unit: "g" },
+      { ingredientId: "cheddar", quantity: 25, unit: "g" },
+      { ingredientId: "burger-sauce", quantity: 20, unit: "ml" },
+      { ingredientId: "tomato", quantity: 20, unit: "g" },
+      { ingredientId: "lettuce", quantity: 15, unit: "g" }
+    ]
+  },
+  {
+    id: "recipe-carbonara",
+    name: "Pasta Carbonara",
+    yield: 1,
+    ingredients: [
+      { ingredientId: "pasta", quantity: 110, unit: "g" },
+      { ingredientId: "guanciale", quantity: 70, unit: "g" },
+      { ingredientId: "cream", quantity: 60, unit: "ml" },
+      { ingredientId: "egg", quantity: 1, unit: "piece" },
+      { ingredientId: "parmesan", quantity: 20, unit: "g" }
+    ]
+  },
+  {
+    id: "recipe-salmon-bowl",
+    name: "Salmon Bowl",
+    yield: 1,
+    ingredients: [
+      { ingredientId: "salmon", quantity: 130, unit: "g" },
+      { ingredientId: "avocado", quantity: 70, unit: "g" },
+      { ingredientId: "rice", quantity: 140, unit: "g" },
+      { ingredientId: "citrus-dressing", quantity: 20, unit: "ml" }
+    ]
+  },
+  {
+    id: "recipe-duck",
+    name: "Duck a l'Orange",
+    yield: 1,
+    ingredients: [
+      { ingredientId: "duck-breast", quantity: 220, unit: "g" },
+      { ingredientId: "orange-glaze", quantity: 40, unit: "ml" },
+      { ingredientId: "potato", quantity: 180, unit: "g" }
+    ]
+  },
+  {
+    id: "recipe-panna-cotta",
+    name: "Panna Cotta",
+    yield: 1,
+    ingredients: [
+      { ingredientId: "cream-dessert", quantity: 150, unit: "ml" },
+      { ingredientId: "gelatin", quantity: 4, unit: "g" },
+      { ingredientId: "vanilla", quantity: 2, unit: "g" },
+      { ingredientId: "berry-compote", quantity: 40, unit: "g" }
+    ]
+  },
+  {
+    id: "recipe-flatbread",
+    name: "Margherita Flatbread",
+    yield: 1,
+    ingredients: [
+      { ingredientId: "flatbread-base", quantity: 1, unit: "piece" },
+      { ingredientId: "tomato-sauce", quantity: 50, unit: "g" },
+      { ingredientId: "mozzarella", quantity: 90, unit: "g" },
+      { ingredientId: "basil", quantity: 1, unit: "g" }
+    ]
+  },
+  {
+    id: "recipe-steak-frites",
+    name: "Steak Frites",
+    yield: 1,
+    ingredients: [
+      { ingredientId: "steak", quantity: 200, unit: "g" },
+      { ingredientId: "fries", quantity: 150, unit: "g" },
+      { ingredientId: "pepper-sauce", quantity: 30, unit: "ml" }
+    ]
+  }
+];
+
+function createRestaurantData(
+  dishes: SampleRestaurantData["dishes"],
+  ingredients: Ingredient[] = baseIngredients,
+  recipes: Recipe[] = baseRecipes
+): SampleRestaurantData {
+  return {
+    ingredients,
+    recipes,
+    dishes
+  };
+}
+
+export const sampleRestaurantData: SampleRestaurantData = createRestaurantData([
+  { id: "dish-caesar", name: "Caesar Salad", recipeId: "recipe-caesar", priceCents: 1490, salesVolume: 180 },
+  { id: "dish-burger", name: "Beef Burger", recipeId: "recipe-burger", priceCents: 1390, salesVolume: 320 },
+  { id: "dish-carbonara", name: "Pasta Carbonara", recipeId: "recipe-carbonara", priceCents: 1590, salesVolume: 140 },
+  { id: "dish-salmon-bowl", name: "Salmon Bowl", recipeId: "recipe-salmon-bowl", priceCents: 1690, salesVolume: 160 },
+  { id: "dish-duck", name: "Duck a l'Orange", recipeId: "recipe-duck", priceCents: 1790, salesVolume: 70 },
+  { id: "dish-panna-cotta", name: "Panna Cotta", recipeId: "recipe-panna-cotta", priceCents: 990, salesVolume: 120 },
+  { id: "dish-flatbread", name: "Margherita Flatbread", recipeId: "recipe-flatbread", priceCents: 1490, salesVolume: 65 },
+  { id: "dish-steak-frites", name: "Steak Frites", recipeId: "recipe-steak-frites", priceCents: 1590, salesVolume: 90 }
+]);
+
+export const syntheticRestaurantDatasets = {
+  highMargin: createRestaurantData([
+    { id: "hm-caesar", name: "Caesar Salad Reserve", recipeId: "recipe-caesar", priceCents: 1890, salesVolume: 120 },
+    { id: "hm-burger", name: "Prime Beef Burger", recipeId: "recipe-burger", priceCents: 1790, salesVolume: 170 },
+    { id: "hm-carbonara", name: "Carbonara Classica", recipeId: "recipe-carbonara", priceCents: 1890, salesVolume: 130 },
+    { id: "hm-salmon", name: "Nordic Salmon Bowl", recipeId: "recipe-salmon-bowl", priceCents: 2090, salesVolume: 95 },
+    { id: "hm-duck", name: "Duck a l'Orange", recipeId: "recipe-duck", priceCents: 2490, salesVolume: 75 },
+    { id: "hm-panna", name: "Vanilla Panna Cotta", recipeId: "recipe-panna-cotta", priceCents: 1290, salesVolume: 80 },
+    { id: "hm-flatbread", name: "Margherita Flatbread", recipeId: "recipe-flatbread", priceCents: 1690, salesVolume: 70 },
+    { id: "hm-steak", name: "Steak Frites", recipeId: "recipe-steak-frites", priceCents: 2390, salesVolume: 60 }
+  ]),
+  lowMargin: createRestaurantData([
+    { id: "lm-caesar", name: "Caesar Salad", recipeId: "recipe-caesar", priceCents: 1190, salesVolume: 200 },
+    { id: "lm-burger", name: "Beef Burger", recipeId: "recipe-burger", priceCents: 1090, salesVolume: 330 },
+    { id: "lm-carbonara", name: "Pasta Carbonara", recipeId: "recipe-carbonara", priceCents: 1190, salesVolume: 210 },
+    { id: "lm-salmon", name: "Salmon Bowl", recipeId: "recipe-salmon-bowl", priceCents: 1290, salesVolume: 190 },
+    { id: "lm-duck", name: "Duck a l'Orange", recipeId: "recipe-duck", priceCents: 1490, salesVolume: 95 },
+    { id: "lm-panna", name: "Panna Cotta", recipeId: "recipe-panna-cotta", priceCents: 790, salesVolume: 160 },
+    { id: "lm-flatbread", name: "Margherita Flatbread", recipeId: "recipe-flatbread", priceCents: 990, salesVolume: 150 },
+    { id: "lm-steak", name: "Steak Frites", recipeId: "recipe-steak-frites", priceCents: 1490, salesVolume: 105 }
+  ]),
+  mixed: createRestaurantData(
+    [
+      { id: "mx-caesar", name: "Caesar Salad", recipeId: "recipe-caesar", priceCents: 1450, salesVolume: 170 },
+      { id: "mx-burger", name: "Beef Burger", recipeId: "recipe-burger", priceCents: 1350, salesVolume: 290 },
+      { id: "mx-carbonara", name: "Pasta Carbonara", recipeId: "recipe-carbonara", priceCents: 1590, salesVolume: 130 },
+      { id: "mx-salmon", name: "Salmon Bowl", recipeId: "recipe-salmon-bowl", priceCents: 1650, salesVolume: 145 },
+      { id: "mx-duck", name: "Duck a l'Orange", recipeId: "recipe-duck", priceCents: 1750, salesVolume: 55 },
+      { id: "mx-panna", name: "Panna Cotta", recipeId: "recipe-panna-cotta", priceCents: 990, salesVolume: 95 },
+      { id: "mx-flatbread", name: "Margherita Flatbread", recipeId: "recipe-flatbread", priceCents: 1490, salesVolume: 70 },
+      { id: "mx-steak", name: "Steak Frites", recipeId: "recipe-steak-frites", priceCents: 1690, salesVolume: 75 }
+    ],
+    baseIngredients.filter((ingredient) => ingredient.id !== "basil")
+  )
+} as const;

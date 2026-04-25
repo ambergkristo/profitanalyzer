@@ -1,30 +1,34 @@
 import type {
   CalculatedDish,
+  Dish,
+  DishAction,
+  DishDetailAnalytics,
+  DishStatus,
+  DishActionSeverity,
   Ingredient,
   IngredientCostBreakdown,
-  RankedDishAction,
-  Recipe,
-  Dish
+  OverviewMetrics,
+  PriceSimulationResult,
+  Recipe
 } from "../../../packages/core/src/index.js";
 
-export type { CalculatedDish, Dish, Ingredient, IngredientCostBreakdown, RankedDishAction, Recipe };
+export type {
+  CalculatedDish,
+  Dish,
+  DishAction,
+  DishActionSeverity,
+  DishDetailAnalytics,
+  DishStatus,
+  Ingredient,
+  IngredientCostBreakdown,
+  OverviewMetrics,
+  PriceSimulationResult,
+  Recipe
+};
 
-export interface OverviewResponse {
-  totalDishes: number;
-  profitableCount: number;
-  warningCount: number;
-  lossCount: number;
-  averageMarginPercent: number;
-  estimatedPeriodProfitCents: number;
-  topActions: RankedDishAction[];
-}
+export type OverviewResponse = OverviewMetrics;
+export type DishDetailResponse = DishDetailAnalytics;
+export type PriceSimulationResponse = PriceSimulationResult;
 
-export interface DishDetailResponse {
-  dish: Dish;
-  recipe: Recipe;
-  ingredientBreakdown: IngredientCostBreakdown[];
-  calculated: CalculatedDish;
-  status: CalculatedDish["status"];
-  explanation: string;
-  whyThisMatters: string;
-}
+export type DishFilter = "all" | DishStatus;
+export type DishSortKey = "margin" | "estimatedProfit" | "salesVolume" | "cost";

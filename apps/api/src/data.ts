@@ -1,29 +1,41 @@
 import {
-  calculateDishMetrics,
+  calculateCalculatedDishes,
   calculateOverview,
   calculateRecipeCost,
+  explainDishPerformance,
+  rankDishActions,
   sampleRestaurantData,
-  type CalculatedDish
+  type CalculatedDish,
+  type DishDetailAnalytics,
+  type DishAction
 } from "../../../packages/core/src/index.js";
 
 export const restaurantData = sampleRestaurantData;
 
-export function getCalculatedDishes(): CalculatedDish[] {
-  return restaurantData.dishes.map((dish) => {
-    const recipe = restaurantData.recipes.find((item) => item.id === dish.recipeId);
-    if (!recipe) {
-      throw new Error(`Missing recipe ${dish.recipeId} for dish ${dish.name}.`);
-    }
+function getAnalyticsSnapshot() {
+  const calculatedDishes = calculateCalculatedDishes(restaurantData);
+  const actions = rankDishActions(calculatedDishes);
 
-    return calculateDishMetrics(dish, recipe, restaurantData.ingredients);
-  });
+  return {
+    calculatedDishes,
+    actions,
+    overview: calculateOverview(calculatedDishes)
+  };
+}
+
+export function getCalculatedDishes(): CalculatedDish[] {
+  return getAnalyticsSnapshot().calculatedDishes;
+}
+
+export function getAllActions(): DishAction[] {
+  return getAnalyticsSnapshot().actions;
 }
 
 export function getOverview() {
-  return calculateOverview(getCalculatedDishes());
+  return getAnalyticsSnapshot().overview;
 }
 
-export function getDishDetail(dishId: string) {
+export function getDishDetail(dishId: string): DishDetailAnalytics | null {
   const dish = restaurantData.dishes.find((item) => item.id === dishId);
   if (!dish) {
     return null;
@@ -34,28 +46,34 @@ export function getDishDetail(dishId: string) {
     return null;
   }
 
-  const metrics = calculateDishMetrics(dish, recipe, restaurantData.ingredients);
-  const recipeCost = calculateRecipeCost(recipe, restaurantData.ingredients);
-  const topCostDriver = recipeCost.breakdown
-    .filter((item) => !item.isMissing)
-    .sort((left, right) => right.totalCostCents - left.totalCostCents)[0];
+  const { calculatedDishes, actions } = getAnalyticsSnapshot();
+  const metrics = calculatedDishes.find((item) => item.dishId === dishId);
 
-  const explanation = topCostDriver
-    ? `${topCostDriver.ingredientName} is the main cost driver at €${(topCostDriver.totalCostCents / 100).toFixed(2)} per serving.`
-    : "No cost driver explanation is available because recipe inputs are incomplete.";
+  if (!metrics) {
+    return null;
+  }
+
+  const recipeCost = calculateRecipeCost(recipe, restaurantData.ingredients);
+  const recommendedActionsForDish = actions.filter((action) => action.dishId === dishId);
+  const simulationAction = recommendedActionsForDish.find(
+    (action) => action.recommendedPriceCents !== undefined
+  );
 
   return {
     dish,
     recipe,
+    metrics,
     ingredientBreakdown: recipeCost.breakdown,
-    calculated: metrics,
-    status: metrics.status,
-    explanation,
-    whyThisMatters:
-      metrics.status === "loss"
-        ? "This dish is destroying margin and should be reviewed immediately."
-        : metrics.status === "warning"
-          ? "This dish still sells, but the current margin leaves little room for cost increases."
-          : "This dish is contributing healthy profit and can support promotion or premium positioning."
+    explanation: explainDishPerformance(metrics),
+    recommendedActionsForDish,
+    simulationHints: {
+      currentPriceCents: dish.priceCents,
+      quickAdjustmentsCents: [50, 100, 200],
+      recommendedPriceCents: simulationAction?.recommendedPriceCents,
+      recommendedTargetMarginPercent: simulationAction?.targetMarginPercent,
+      note: simulationAction?.recommendedPriceCents
+        ? `Start by testing the suggested price and compare the new margin before changing the live menu.`
+        : "Try small EUR 0.50 to EUR 2.00 price moves before changing the live menu."
+    }
   };
 }

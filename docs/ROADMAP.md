@@ -26,6 +26,8 @@ Manual check: create dishes manually, verify cost and margin results against han
 
 ## RM2 - Dashboard + Core Insights
 
+Status: completed in MAX SPRINT 2.
+
 ### Goal
 
 Turn cost and margin data into owner-facing decisions.
@@ -50,6 +52,8 @@ Manual check: with seeded data, the dashboard surfaces the top problem dishes an
 
 ## RM3 - Dish Detail + Cost Breakdown
 
+Status: completed in MAX SPRINT 2.
+
 ### Goal
 
 Explain why a dish is profitable, risky, or loss-making.
@@ -72,6 +76,8 @@ Explain why a dish is profitable, risky, or loss-making.
 Manual check: open a flagged dish and explain the result using the detail view without external notes.
 
 ## RM4 - Price Simulator
+
+Status: completed in MAX SPRINT 2.
 
 ### Goal
 
