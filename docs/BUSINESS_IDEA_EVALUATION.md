@@ -8,35 +8,54 @@ The short evaluation is retained only as a quick reference. The deeper audit con
 
 ## Final Verdict From The Deep Audit
 
-**CONDITIONAL YES**
+**GO (build-driven validation)**
 
-Proceed only through validation-first execution.
+Proceed with synthetic validation and core product build.
 
-The idea is worth pursuing if and only if the founder can prove three things quickly:
+The current recommendation is to validate the product logic through:
 
-1. owners will share enough real menu data to produce trusted findings
-2. manual audits uncover meaningful margin improvements
-3. at least 2-3 prospects will pay for audit, setup, or pilot before a serious build starts
+1. synthetic menu datasets
+2. deterministic margin and profit modeling
+3. recommendation stress testing across multiple scenarios
 
 ## Best Version Of The Idea
 
-A premium, weekly menu profit audit tool for independent restaurants that shows where the menu leaks profit and what action to take next.
+A premium, decision-first restaurant profit engine that outputs 3-5 clear weekly actions with visible EUR impact and can turn supplier invoices into confirmed cost updates and margin alerts.
 
 ## Weakest Part Of The Idea
 
-The math is not the hard part. The hard part is messy restaurant data, weak maintenance discipline, and existing competitors that already cover costing and menu engineering from broader operational platforms.
+The biggest unresolved risk is still whether the engine produces non-trivial, trustworthy actions from imperfect restaurant data. Invoice Scan / Supplier Cost Intake reduces stale-input risk, but it does not eliminate OCR, unit-normalization, or supplier-format risk.
 
 ## Recommended Immediate Action
 
-Do not build the product yet.
+Build the engine and validate it through simulation.
 
 Run:
 
-- 15-20 owner/manager interviews
-- 5 manual menu audits
-- paid pricing tests using audit or setup offers
+- synthetic restaurant datasets
+- deterministic profit modeling
+- recommendation ranking tests
+- scenario-based stress testing
+- invoice cost-intake workflow definition with confirm-before-write behavior
 
-If those do not produce paid traction and recurring interest, stop or park the idea.
+If the outputs are trivial, unstable, or require unrealistic inputs, kill or pivot before broader market validation.
+
+Business caveat remains:
+
+- willingness to pay is not proven
+- live retention is not proven
+- invoice scan improves the recurring workflow story, but does not prove it commercially
+
+## Invoice Scan Implication
+
+Invoice Scan / Supplier Cost Intake strengthens the product thesis because it:
+
+- reduces stale or missing ingredient cost input
+- creates a recurring weekly or monthly workflow
+- makes price-change alerts more credible
+- improves retention potential
+
+It should stay positioned as a cost-intake and alert workflow, not an accounting or invoice-management product.
 
 ## Read Next
 

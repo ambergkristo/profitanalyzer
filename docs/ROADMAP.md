@@ -156,3 +156,36 @@ Prepare for first live restaurant usage.
 
 Manual check: onboard one pilot menu end to end and produce at least one credible recommendation.
 
+## RM7 - Invoice Scan Cost Intake
+
+### Goal
+
+Turn supplier invoices into confirmed ingredient cost updates and price-change alerts.
+
+This milestone belongs to V2 build-driven validation and depends on a stable core calculation engine, dashboard, and dish detail flow. It extends the core. It does not replace RM1-RM6 foundations.
+
+### Scope
+
+- Supplier model
+- Purchase invoice model
+- Invoice line model
+- Cost history model
+- Mock parser or structured parser interface
+- Upload, review, and confirm flow
+- Ingredient matching suggestions
+- Price-change alert generation
+- Affected dish margin recalculation
+
+### Exit Criteria
+
+- User can upload or submit a sample invoice image or mocked parsed invoice
+- System shows parsed invoice review screen
+- User can confirm or correct lines
+- Confirmed lines create ingredient cost history
+- Current ingredient cost updates only after confirmation
+- Price-change alerts are created
+- Dashboard shows affected dishes
+
+### Validation Check
+
+Manual check: upload a sample invoice image or mocked parsed invoice, confirm the rows, verify ingredient cost history is created, and confirm the dashboard shows price-change alerts with affected dishes.

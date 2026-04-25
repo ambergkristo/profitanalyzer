@@ -27,15 +27,45 @@ For every dish, the product should be able to show:
 - status: profit / warning / loss
 - next suggested action
 
+## V2 Feature Section
+
+### Invoice Scan + Cost Alerts
+
+This feature belongs to V2 build-driven validation after the core calculation engine, dashboard, and dish detail flow are stable.
+
+Capabilities:
+
+1. phone image upload
+2. supplier detection
+3. invoice date detection
+4. invoice line parsing
+5. product name, quantity, unit, and unit price or line total extraction
+6. ingredient matching suggestions
+7. confirm screen before save
+8. ingredient cost update after confirmation
+9. price-change alerts
+10. affected dish impact
+
+Workflow:
+
+1. User uploads a phone photo of a supplier invoice
+2. System creates a structured intermediate invoice record
+3. System proposes parsed lines and ingredient matches
+4. User confirms or corrects supplier, invoice date, and parsed rows
+5. System updates ingredient current cost only from confirmed lines
+6. System creates price-change alerts and affected dish margin impact
+
 ## Non-Goals
 
 - POS replacement
 - full inventory management
 - accounting workflows
+- full accounting or bookkeeping
 - supplier ordering
 - labor optimization
 - kitchen prep workflows
-- automated invoice parsing in MVP
+- blind auto-import from OCR
+- supplier API integration in the first invoice scan version
 - multi-location management in MVP
 - AI-generated recommendations in MVP
 
@@ -44,6 +74,7 @@ For every dish, the product should be able to show:
 ### Functional
 
 - When ingredient prices change, help me see which dishes are now risky.
+- When I upload a supplier invoice, help me turn it into confirmed cost updates instead of manual spreadsheet work.
 - When I review the menu, help me identify which dishes need attention first.
 - When I consider a price change, show me the likely profit impact immediately.
 - When I suspect a dish is underperforming, show me the ingredient-level reason.
@@ -73,6 +104,7 @@ For every dish, the product should be able to show:
 - At least one clear recommended action generated for a typical sample menu
 - User can complete a price simulation without help
 - User can understand why a dish is flagged without reading documentation
+- User can review and confirm a parsed supplier invoice without blind trust in OCR
 
 ### Commercial Success
 
@@ -90,11 +122,20 @@ For every dish, the product should be able to show:
 6. User adjusts price or cost assumptions in the simulator
 7. System shows updated margin and estimated profit impact
 
+V2 recurring cost-intake flow:
+
+1. User uploads a supplier invoice photo
+2. System parses supplier and line-item data into a review screen
+3. User confirms or corrects parsed rows
+4. System updates confirmed ingredient costs
+5. Dashboard shows price-change alerts and affected dishes
+
 ## User Stories
 
 - As an owner, I want to see which dishes make money so I can stop guessing.
 - As a manager, I want to identify low-margin high-volume dishes so I can prioritize price changes.
 - As an operator, I want to test a new dish price before changing the printed menu.
+- As an operator, I want to upload a supplier invoice and confirm cost changes quickly so my menu margins stay current.
 - As a buyer, I want a simple tool that tells me what action matters most this week.
 
 ## Acceptance Criteria For MVP
@@ -104,4 +145,3 @@ For every dish, the product should be able to show:
 - The dashboard ranks dishes by issue severity and expected impact.
 - The simulator updates calculations instantly after price input changes.
 - The interface remains usable on mobile without spreadsheet-style horizontal scrolling as the default experience.
-

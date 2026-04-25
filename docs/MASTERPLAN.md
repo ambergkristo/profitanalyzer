@@ -32,6 +32,8 @@ What they usually do not have is a decision layer that answers:
 - What changed when ingredient prices moved?
 - What menu action should happen this week?
 
+One of the biggest reasons this decision layer breaks in real life is stale ingredient cost input. Operators may know their menu and prices, but supplier invoice changes often never make it into recipe costing quickly enough.
+
 The real problem is not missing data storage. The real problem is missing decision clarity.
 
 ## Product Positioning
@@ -62,6 +64,15 @@ That thesis only holds if:
 - recommendations are specific enough to change behavior
 - the output feels more like an action console than a spreadsheet
 
+Invoice Scan / Supplier Cost Intake is a core strengthening direction because:
+
+- it solves stale or missing ingredient cost input
+- it creates a recurring usage trigger
+- it strengthens the decision-layer positioning
+- it turns supplier invoices into cost updates and actionable margin alerts
+
+The value is not document OCR itself. The value is converting supplier invoices into confirmed ingredient cost changes and affected-dish alerts.
+
 ## Monetization
 
 Initial pricing hypothesis:
@@ -85,10 +96,12 @@ The product will not win on raw feature novelty alone. Current tools already cov
 - more action-oriented
 - faster to first insight
 - easier to buy than a full operations suite
+- better at turning supplier cost changes into profit actions
 
 ## Major Risks
 
 - restaurants do not maintain recipe and ingredient data consistently
+- supplier cost inputs go stale unless the update workflow is extremely easy
 - buyer pain is real but not urgent enough to trigger fast purchase
 - existing spreadsheet workflows are ugly but acceptable to many operators
 - the product drifts into a generic dashboard with weak recommendations
@@ -101,6 +114,7 @@ The product will not win on raw feature novelty alone. Current tools already cov
 - Action before analytics depth
 - One obvious recommendation beats ten charts
 - Manual-first onboarding before automation
+- Confirm cost changes before they affect live ingredient pricing
 - Narrow ICP before multi-location expansion
 - Root-cause clarity over vanity dashboards
 - Build the commercial demo before the full product
@@ -108,4 +122,3 @@ The product will not win on raw feature novelty alone. Current tools already cov
 ## Near-Term Goal
 
 The first objective is not product breadth. The first objective is five paying restaurants that believe the tool helps them make better menu decisions than their current spreadsheet or POS report workflow.
-

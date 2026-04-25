@@ -96,6 +96,9 @@ Rules:
 - Ingredient breakdown list
 - Margin meter
 - Scenario simulator panel
+- Invoice upload panel
+- Invoice review row/card
+- Price change alert card
 - Empty state with guided next action
 - Import or manual-entry stepper
 
@@ -104,16 +107,54 @@ Rules:
 - Any flagged dish must expose why it is flagged.
 - Any recommendation must show estimated impact and confidence.
 - Any simulation change must update outputs immediately.
+- Invoice scan must always route through a confirm screen before cost updates are saved.
 - Use progressive disclosure for formula detail.
 - Use hover states on desktop, but never rely on hover for core meaning.
 - Use confirmation only for destructive actions, not for routine data edits.
+
+## Invoice Scan UI Guidance
+
+### Upload Invoice View
+
+- Support phone photo upload as the primary path.
+- Present upload as a cost-intake action, not accounting admin.
+- Emphasize the user outcome: updated ingredient costs and margin alerts.
+
+### Invoice Review View
+
+- Review screen must be table-like but not Excel-like.
+- Rows should show raw product name, parsed quantity or unit, parsed price, matched ingredient, and confidence.
+- Problem rows must be visually highlighted.
+- Confidence must be visible but not overly technical.
+- Main user actions:
+  - confirm supplier
+  - confirm invoice date
+  - confirm or correct parsed rows
+  - confirm ingredient matches
+  - save cost updates
+
+### Price Change Alerts View
+
+- Show ingredient-level price movement first.
+- Show affected dishes and estimated impact without pushing the user into bookkeeping detail.
+- Allow quick drill-down from alert to affected dish and updated cost reason.
 
 ## Copy Rules
 
 - Use operational language, not finance jargon where avoidable.
 - Say "Raise price by 1 EUR" instead of "Optimize pricing strategy."
+- Say "3 ingredient costs updated" instead of "invoice synchronization complete."
 - Keep recommendation text short and imperative.
 - Always explain consequences in euros or percent where possible.
+
+## Post-Confirmation Summary
+
+After invoice confirmation, show an immediate summary:
+
+- ingredients updated
+- price changes detected
+- dishes affected
+- top actions
 
 ## Premium Feel Requirements
 
@@ -128,10 +169,10 @@ Rules:
 - Plain white dashboard
 - default Tailwind-looking card grid
 - spreadsheet-first layout
+- OCR results saved directly without a human review step
 - giant empty hero sections inside product UI
 - decorative charts with no decision value
 - all-gray status treatment
 - buried recommendation logic
 - forms with excessive fields on one screen
 - long setup wizard before the user sees any value
-

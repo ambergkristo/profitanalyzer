@@ -37,6 +37,9 @@ Recommendation: choose Node.js and Express for founder-speed unless there is a s
 - dishes list
 - dish detail
 - simulation panel
+- invoice upload
+- invoice review
+- price change alerts
 - shared calculation display components
 
 ### Backend Modules
@@ -48,6 +51,9 @@ Recommendation: choose Node.js and Express for founder-speed unless there is a s
 - analytics
 - simulation
 - recommendation engine
+- invoice ingestion
+- invoice review
+- alerts
 
 ### Core Services
 
@@ -55,6 +61,12 @@ Recommendation: choose Node.js and Express for founder-speed unless there is a s
 - margin calculation service
 - profit estimation service
 - recommendation rules service
+- invoice ingestion service
+- document parse service
+- invoice review service
+- ingredient matching service
+- cost update service
+- price change alert service
 
 ## Proposed API
 
@@ -69,13 +81,24 @@ Recommendation: choose Node.js and Express for founder-speed unless there is a s
 
 - `GET /ingredients`
 - `POST /ingredients`
+- `GET /ingredients/:id/cost-history`
 - `GET /recipes`
 - `POST /recipes`
+
+### Invoice Cost Intake
+
+- `POST /invoices/upload`
+- `GET /invoices/:id`
+- `POST /invoices/:id/review-confirm`
 
 ### Analytics
 
 - `GET /analytics/overview`
 - `GET /analytics/dish/:id`
+
+### Alerts
+
+- `GET /alerts/price-changes`
 
 ### Simulation
 
@@ -95,6 +118,12 @@ Response idea:
 - current profit estimate
 - simulated profit estimate
 - delta
+
+Important architecture rule for invoice cost intake:
+
+- parsing must create a structured intermediate invoice record
+- parsing must never directly update ingredient current cost
+- `POST /invoices/:id/review-confirm` is the only place where ingredient current cost and ingredient cost history are written
 
 ## Calculation Engine
 
@@ -130,6 +159,7 @@ Profit estimate:
 - Do not require POS integration for MVP.
 - Every calculation should be traceable to source ingredients.
 - The user must be able to see why a dish cost looks wrong.
+- Invoice OCR or vision output must be treated as draft data until confirmed by the user.
 
 ## Recommendation Engine
 
@@ -146,6 +176,7 @@ The recommendation engine should consume:
 - margin amount
 - sales volume
 - recent cost changes if available
+- invoice-confirmed ingredient cost deltas when available
 
 It should output:
 
@@ -161,6 +192,11 @@ MVP reality:
 - most data will be manually updated
 - freshness is bounded by user discipline
 - system should display last-updated timestamps and stale-data warnings
+
+V2 cost-intake direction:
+
+- phone invoice upload should become a low-friction cost refresh workflow
+- supplier invoice intake should improve cost freshness without turning the product into an accounting system
 
 ## Security and Access
 
@@ -178,10 +214,13 @@ MVP reality:
 - How should archived dishes be handled in analytics?
 - Do recommendations need versioning for auditability?
 - What is the minimum dataset required to show a reliable dashboard?
+- How should invoice line parse status and review status be modeled?
+- What confidence threshold should trigger automatic ingredient suggestions versus manual review?
+- What is the parser contract for mocked versus OCR-backed invoice input?
 
 ## Technical Constraints
 
 - Calculation correctness matters more than animation quality.
 - Traceability matters more than automation in v1.
 - The API should stay narrow enough to support a manual-first onboarding motion.
-
+- Do not start building OCR integration until the repo has a stable core calculation engine, dashboard, and dish detail flow.

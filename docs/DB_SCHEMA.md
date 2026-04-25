@@ -46,6 +46,17 @@ Purpose:
 Purpose:
 
 - source cost object used by recipes
+- stores the current effective cost used in live calculations
+
+### Supplier
+
+- `id`
+- `restaurant_id`
+- `name`
+
+Purpose:
+
+- supplier identity for invoice intake and cost history
 
 ### Recipe
 
@@ -91,6 +102,68 @@ Purpose:
 
 - sellable menu item linked to one primary recipe in MVP
 
+### PurchaseInvoice
+
+- `id`
+- `restaurant_id`
+- `supplier_id`
+- `invoice_date`
+- `invoice_number`
+- `source_image_url`
+- `parse_status`
+- `total_amount_cents`
+- `created_at`
+
+Purpose:
+
+- structured intermediate invoice record created from uploaded supplier invoice data
+
+### PurchaseInvoiceLine
+
+- `id`
+- `invoice_id`
+- `raw_product_name`
+- `parsed_quantity`
+- `parsed_unit`
+- `parsed_unit_price_cents`
+- `parsed_line_total_cents`
+- `matched_ingredient_id`
+- `match_confidence`
+- `review_status`
+
+Purpose:
+
+- parsed or corrected invoice line used for ingredient matching and cost update review
+
+### IngredientCostHistory
+
+- `id`
+- `ingredient_id`
+- `supplier_id`
+- `invoice_line_id`
+- `cost_per_unit_cents`
+- `unit`
+- `effective_date`
+- `created_at`
+
+Purpose:
+
+- stores historical truth for confirmed ingredient cost changes
+
+### SupplierProductMatch
+
+- `id`
+- `restaurant_id`
+- `supplier_id`
+- `raw_product_name`
+- `ingredient_id`
+- `confidence`
+- `last_confirmed_at`
+
+Purpose:
+
+- remembers confirmed supplier product name to ingredient mapping for future invoice matching
+
 ### DishAnalyticsSnapshot
 
 - `id`
@@ -126,10 +199,17 @@ Purpose:
 
 - one `Restaurant` has many `Users`
 - one `Restaurant` has many `Ingredients`
+- one `Restaurant` has many `Suppliers`
 - one `Restaurant` has many `Recipes`
 - one `Restaurant` has many `Dishes`
+- one `Restaurant` has many `PurchaseInvoices`
+- one `Restaurant` has many `SupplierProductMatch` rows
 - one `Recipe` has many `RecipeIngredients`
 - one `Ingredient` can be used by many `RecipeIngredients`
+- one `Supplier` has many `PurchaseInvoices`
+- one `PurchaseInvoice` has many `PurchaseInvoiceLine` rows
+- one `Ingredient` can be matched by many `PurchaseInvoiceLine` rows
+- one `Ingredient` has many `IngredientCostHistory` rows
 - one `Dish` belongs to one `Recipe` in MVP
 - one `Dish` can have many `DishAnalyticsSnapshot` rows
 - one `Dish` can have many `Recommendation` rows over time
@@ -139,6 +219,9 @@ Purpose:
 - `Dish -> Recipe` is one-to-one for MVP simplicity. Multi-recipe dishes, modifiers, and combo meals are deferred.
 - `RecipeIngredient.unit` may duplicate ingredient unit data to preserve the entered measurement basis at the time of recipe definition.
 - Snapshots are optional early on. They become useful once dashboard performance or historical comparisons matter.
+- `Ingredient.cost_per_unit_cents` remains the current effective cost used in live calculations.
+- `IngredientCostHistory` stores historical truth from confirmed invoice lines.
+- Current ingredient cost must be updated only by confirmed invoice lines, never directly by raw OCR output.
 
 ## Example Calculation Path
 
@@ -151,10 +234,18 @@ Purpose:
 7. Multiply margin amount by `Dish.sales_volume`.
 8. Generate a current recommendation row if rules trigger.
 
+Invoice-driven update path:
+
+1. Upload invoice image or mocked parsed invoice.
+2. Create `PurchaseInvoice`.
+3. Create parsed `PurchaseInvoiceLine` rows.
+4. Let the user confirm supplier, date, matches, and parsed values.
+5. Write `IngredientCostHistory` from confirmed lines only.
+6. Update `Ingredient.cost_per_unit_cents` from confirmed lines only.
+7. Recalculate affected dish costs and generate price-change alerts.
+
 ## Deliberately Deferred
 
-- supplier tables
-- invoice tables
 - POS transaction tables
 - modifier trees
 - sub-recipe graphs
@@ -167,6 +258,7 @@ Purpose:
 - unit conversion can become messy fast if not normalized early
 - recipe completeness determines output reliability
 - sales volume without date range semantics is too vague for real analytics
+- supplier invoice formats can vary enough to weaken parse quality
 
 ## Open Schema Questions
 
@@ -174,4 +266,5 @@ Purpose:
 - Should `Dish` support manual cost override for incomplete recipe data?
 - Do recommendations need restaurant-level summary storage?
 - Should recipe yield support decimal portions?
-
+- Should `SupplierProductMatch` support multiple aliases per supplier product line?
+- How should review status values be normalized for invoice lines?

@@ -24,6 +24,7 @@ Reason:
 - sales volume
 - profit estimate
 - optional recent ingredient cost change
+- confirmed ingredient cost history when available
 
 ## Core Thresholds
 
@@ -105,6 +106,18 @@ Each recommendation should include:
 - `expected_impact_eur`
 - `confidence`
 
+V2 price-change alert output should include:
+
+- `alert_type`
+- `affected_ingredient`
+- `previous_cost`
+- `new_cost`
+- `delta_percent`
+- `affected_dishes`
+- `estimated_margin_impact`
+- `recommended_action`
+- `confidence`
+
 Example:
 
 - action: Raise burger price by 1 EUR
@@ -150,6 +163,9 @@ If the engine cannot explain itself clearly, it will not be trusted.
 - recommendation history
 - richer stale-data warnings
 - alerts for margin degradation
+- invoice-confirmed ingredient cost updates
+- supplier price-change alerts
+- affected dish margin recalculation after confirmed cost changes
 
 ### v3
 
@@ -163,4 +179,54 @@ If the engine cannot explain itself clearly, it will not be trusted.
 - Never show a confident recommendation on obviously stale or incomplete data.
 - Never hide assumptions behind a single score.
 - Prefer no recommendation over a misleading recommendation.
+- Never overwrite ingredient current cost from raw OCR or vision output before user confirmation.
 
+## V2 Price-Change Alert Rules
+
+### Rule 6: Ingredient Price Up
+
+Condition:
+
+- confirmed ingredient cost increases above configured threshold
+
+Output:
+
+- `alert_type: ingredient_price_up`
+- recommended action: review affected dishes now
+- confidence: medium to high depending on data completeness
+
+### Rule 7: Ingredient Price Down
+
+Condition:
+
+- confirmed ingredient cost decreases above configured threshold
+
+Output:
+
+- `alert_type: ingredient_price_down`
+- recommended action: review whether margin opportunity exists
+- confidence: medium
+
+### Rule 8: Dish Margin At Risk Due To Cost Change
+
+Condition:
+
+- confirmed ingredient cost increase pushes dish margin below warning or loss threshold
+
+Output:
+
+- `alert_type: dish_margin_at_risk_due_to_cost_change`
+- recommended action: review price, recipe, or promotion mix
+- confidence: high when ingredient match and dish linkage are strong
+
+### Rule 9: High-Sales Dish Cost Change Priority Boost
+
+Condition:
+
+- ingredient price movement affects a high-sales dish
+
+Output:
+
+- raise alert priority
+- increase estimated impact weighting
+- surface the dish closer to the top actions area
