@@ -1,191 +1,270 @@
 # Roadmap
 
-## RM0 - Validation Before Product
+## RM1 - Core Engine + Basic UI
 
 ### Goal
 
-Prove that owners care enough about dish-level profit decisions to pay for an audit or pilot.
+Working system that calculates dish cost and margin from manually entered data.
 
 ### Scope
 
-- customer interviews
-- manual audit workflow
-- pricing test
-- clickable or spreadsheet-backed demo
+- Ingredient, Recipe, RecipeIngredient, and Dish models
+- Cost calculation logic
+- Margin calculation
+- Basic API
+- Simple dish table UI
 
 ### Exit Criteria
 
-- 15 qualified interviews completed
-- 5 restaurants agree to receive an audit or demo
-- at least 2 say they would pay after seeing output
+- User can input dishes manually
+- System shows correct dish cost and margin
+- Calculations are deterministic and test-covered
 
 ### Validation Check
 
-Manual check: interview notes and audit outcomes documented, with clear yes/no buying signals.
+Manual check: create dishes manually, verify cost and margin results against hand calculations, and confirm deterministic outputs across repeated runs.
 
-## RM1 - Core Engine + Manual Data Entry
-
-### Goal
-
-Build a trustworthy dish costing and margin engine.
-
-### Scope
-
-- ingredients
-- recipes
-- dishes
-- yield-aware costing
-- margin formulas
-
-### Exit Criteria
-
-- dish cost and margin calculations are reproducible and traceable
-- sample data set covers at least 10 dishes
-- incorrect inputs are surfaced clearly
-
-### Validation Check
-
-Manual check: create a dish from ingredients and verify the displayed cost matches a hand calculation.
-
-## RM2 - Dashboard + Action Layer
+## RM2 - Dashboard + Core Insights
 
 ### Goal
 
-Turn raw calculations into obvious owner-facing decisions.
+Turn cost and margin data into owner-facing decisions.
 
 ### Scope
 
 - KPI cards
-- top actions panel
-- dish status table
-- margin status labels
+- Basic alerts
+- Top 3 recommendations
+- Rule-based decision output
+- Low margin and loss flags
 
 ### Exit Criteria
 
-- dashboard highlights the top problem dishes without opening detail views
-- each flagged dish includes recommendation, impact, and confidence
+- Dashboard shows actionable insights
+- User can see what to fix first
+- Recommendations include expected impact and confidence
 
 ### Validation Check
 
-Manual check: with seeded data, a user can identify the worst margin issue in under 30 seconds.
+Manual check: with seeded data, the dashboard surfaces the top problem dishes and shows ranked actions with impact and confidence.
 
 ## RM3 - Dish Detail + Cost Breakdown
 
 ### Goal
 
-Make every margin result explainable.
+Explain why a dish is profitable, risky, or loss-making.
 
 ### Scope
 
-- dish detail page
-- ingredient line-item cost breakdown
-- yield and assumption display
+- Ingredient breakdown
+- Cost visualization
+- Margin explanation
+- Cost driver highlighting
+- Simple margin trend placeholder if needed
 
 ### Exit Criteria
 
-- user can see why a dish is flagged
-- user can identify the major cost driver for a dish
+- User can open a dish and understand the main cost drivers
+- Dish detail supports decision-making, not just data display
 
 ### Validation Check
 
-Manual check: open a flagged dish and explain the result without external notes.
+Manual check: open a flagged dish and explain the result using the detail view without external notes.
 
 ## RM4 - Price Simulator
 
 ### Goal
 
-Show the business effect of changing price or cost assumptions.
+Allow the user to test price changes instantly.
 
 ### Scope
 
-- price simulation input
-- recalculated margin
-- profit delta output
-- before/after comparison
+- Price slider
+- Real-time margin update
+- Profit impact estimation
+- Before or after comparison
 
 ### Exit Criteria
 
-- user can test at least one price change and see immediate effect
-- delta is shown in both percent and euros
+- User can simulate a price change instantly
+- UI shows margin and estimated profit delta
 
 ### Validation Check
 
-Manual check: simulate a 1 EUR price increase and confirm updated margin and profit delta render instantly.
+Manual check: simulate 0.50 EUR, 1.00 EUR, and 2.00 EUR price changes and confirm instant recalculation of margin and profit delta.
 
-## RM5 - First Customer Ready UX
+## RM5 - Synthetic Restaurant Validation
 
 ### Goal
 
-Make the product credible enough for real pilot use.
+Validate the decision engine with realistic simulated restaurant datasets before customer interviews become mandatory.
 
 ### Scope
 
-- mobile usability fixes
-- empty states
-- onboarding clarity
-- premium dashboard polish
+- High-margin restaurant dataset
+- Low-margin restaurant dataset
+- Mixed restaurant dataset
+- 15-30 dishes per dataset
+- Ingredients, quantities, yields, prices, and sales volume
+- Stress cases:
+  - ingredient cost spike
+  - high-sales low-margin bestseller
+  - low-sales high-margin dish
+  - missing yield
+  - partial recipe data
+  - 0.50 EUR, 1.00 EUR, and 2.00 EUR price changes
 
 ### Exit Criteria
 
-- first demo can be run on laptop and phone
-- product no longer feels like a spreadsheet wrapper
+- Each dataset produces 3-5 plausible actions
+- At least one action per dataset shows meaningful profit impact
+- Recommendation ranking is stable and explainable
+- Partial data still produces useful output with lower confidence
+- Engine does not collapse when input data is imperfect
 
 ### Validation Check
 
-Manual check: complete the demo flow on mobile without horizontal table dependency.
+Manual check: run all three restaurant datasets through the engine, verify action quality, and compare ranking stability across stress scenarios.
 
-## RM6 - Pilot Readiness
+## RM6 - UX Polish + Decision-First Interface
 
 ### Goal
 
-Prepare for first live restaurant usage.
+Make the product feel premium, fast, and decision-first.
 
 ### Scope
 
-- account setup flow
-- CSV import for menu data
-- stale data warnings
-- basic support/admin tooling
+- Apply full visual design system
+- Dark premium dashboard
+- KPI cards
+- Action cards
+- Heat-colored dish table
+- No default Tailwind look
+- No Excel-like primary screens
+- Mobile-first improvements
 
 ### Exit Criteria
 
-- pilot customer can enter or import enough data to get value
-- stale or incomplete data does not silently produce misleading advice
+- UI looks production-grade
+- Main user path is clear
+- Important actions are visible without digging
 
 ### Validation Check
 
-Manual check: onboard one pilot menu end to end and produce at least one credible recommendation.
+Manual check: complete the main dashboard-to-dish-detail-to-simulator flow on desktop and mobile without relying on spreadsheet-like layouts.
 
 ## RM7 - Invoice Scan Cost Intake
 
 ### Goal
 
-Turn supplier invoices into confirmed ingredient cost updates and price-change alerts.
+Turn supplier invoice data into confirmed ingredient cost updates and price-change alerts.
 
-This milestone belongs to V2 build-driven validation and depends on a stable core calculation engine, dashboard, and dish detail flow. It extends the core. It does not replace RM1-RM6 foundations.
+Important:
+
+This milestone must first use a mocked or structured parser. Real OCR or vision integration does not belong here.
 
 ### Scope
 
 - Supplier model
-- Purchase invoice model
-- Invoice line model
-- Cost history model
-- Mock parser or structured parser interface
-- Upload, review, and confirm flow
+- PurchaseInvoice model
+- PurchaseInvoiceLine model
+- IngredientCostHistory model
+- SupplierProductMatch or IngredientAlias model
+- Mock parsed invoice input
+- Upload, review, and confirm workflow
 - Ingredient matching suggestions
-- Price-change alert generation
-- Affected dish margin recalculation
+- Confirm screen
+- Cost update service
+- Price-change alert service
+- Affected dish recalculation trigger
+
+### Required Workflow
+
+1. User uploads or submits a sample invoice or mocked parsed invoice.
+2. System creates a structured invoice draft.
+3. System shows invoice review screen.
+4. User confirms supplier, date, invoice lines, quantities, units, prices, and ingredient matches.
+5. System writes cost history only for confirmed lines.
+6. System updates `Ingredient` current effective cost only after confirmation.
+7. System creates price-change alerts.
+8. Dashboard shows affected dishes and recommended actions.
 
 ### Exit Criteria
 
-- User can upload or submit a sample invoice image or mocked parsed invoice
-- System shows parsed invoice review screen
-- User can confirm or correct lines
-- Confirmed lines create ingredient cost history
-- Current ingredient cost updates only after confirmation
+- User can review parsed invoice lines before saving
+- Unknown or low-confidence lines do not update costs automatically
+- Confirmed invoice lines create `IngredientCostHistory` records
+- `Ingredient` current cost updates only after confirmation
 - Price-change alerts are created
-- Dashboard shows affected dishes
+- Affected dishes are recalculated or flagged
+- Dashboard shows at least one invoice-driven action card
 
 ### Validation Check
 
-Manual check: upload a sample invoice image or mocked parsed invoice, confirm the rows, verify ingredient cost history is created, and confirm the dashboard shows price-change alerts with affected dishes.
+Manual check: load a mocked invoice, correct low-confidence lines, confirm the draft, verify cost history creation, and confirm the dashboard surfaces invoice-driven actions.
+
+## RM8 - Real OCR/Vision Adapter
+
+### Goal
+
+Add real phone photo or image-based invoice parsing after the review-confirm cost intake workflow is stable.
+
+### Scope
+
+- Image upload handling
+- OCR or vision adapter interface
+- Raw text capture
+- Field extraction for:
+  - supplier
+  - invoice number
+  - invoice date
+  - product name
+  - quantity
+  - unit
+  - unit price or line total
+- Confidence scoring
+- Needs-review status for uncertain fields
+- Error handling for poor image quality
+
+### Exit Criteria
+
+- System can process a simple one-page supplier invoice image
+- Parsed fields are shown in the existing review screen
+- Low-confidence fields are clearly marked
+- No OCR result can update ingredient costs without user confirmation
+- Existing mock parser tests still pass
+
+### Validation Check
+
+Manual check: submit a simple invoice image, verify parsed fields flow into the existing review screen, and confirm low-confidence fields require review before any cost update.
+
+## RM9 - First Customer Ready / Pilot Package
+
+### Goal
+
+Prepare the product for a first controlled restaurant pilot.
+
+### Scope
+
+- Auth
+- Data persistence
+- Basic onboarding
+- Demo restaurant data
+- Deployment readiness
+- Seed data
+- Basic error states
+- Pilot checklist
+- Manual fallback flow for bad invoice scans
+
+### Exit Criteria
+
+- One restaurant can be onboarded
+- User can enter dishes manually
+- User can see dashboard insights
+- User can simulate price changes
+- User can test invoice cost intake
+- System can produce a credible weekly profit action summary
+
+### Validation Check
+
+Manual check: onboard one pilot restaurant, complete the manual data flow, run the dashboard and simulator, test invoice cost intake, and produce a weekly profit action summary.

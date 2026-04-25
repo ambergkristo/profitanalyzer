@@ -85,7 +85,7 @@ Recommendation: choose Node.js and Express for founder-speed unless there is a s
 - `GET /recipes`
 - `POST /recipes`
 
-### Invoice Cost Intake
+### V2 Invoice Cost Intake
 
 - `POST /invoices/upload`
 - `GET /invoices/:id`
@@ -124,6 +124,11 @@ Important architecture rule for invoice cost intake:
 - parsing must create a structured intermediate invoice record
 - parsing must never directly update ingredient current cost
 - `POST /invoices/:id/review-confirm` is the only place where ingredient current cost and ingredient cost history are written
+
+V2 scope rule:
+
+- use a mocked or structured parser first
+- keep real OCR or vision adapters separate until the review-confirm workflow is stable
 
 ## Calculation Engine
 
@@ -197,6 +202,10 @@ V2 cost-intake direction:
 
 - phone invoice upload should become a low-friction cost refresh workflow
 - supplier invoice intake should improve cost freshness without turning the product into an accounting system
+
+V3 direction:
+
+- supplier API integrations and broader external data-sync adapters can come later after the upload, review, and confirm workflow is stable
 
 ## Security and Access
 

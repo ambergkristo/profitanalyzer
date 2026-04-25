@@ -73,6 +73,12 @@ Invoice Scan / Supplier Cost Intake is a core strengthening direction because:
 
 The value is not document OCR itself. The value is converting supplier invoices into confirmed ingredient cost changes and affected-dish alerts.
 
+## Product Evolution
+
+- MVP: manual cost and margin decision engine
+- V2: invoice scan cost intake and price-change alerts using upload, review, and confirm workflow
+- V3: POS and supplier API integrations after the mocked and reviewed cost-intake workflow is stable
+
 ## Monetization
 
 Initial pricing hypothesis:
@@ -118,6 +124,10 @@ The product will not win on raw feature novelty alone. Current tools already cov
 - Narrow ICP before multi-location expansion
 - Root-cause clarity over vanity dashboards
 - Build the commercial demo before the full product
+
+Current sequencing rule:
+
+- do not build real OCR or supplier integrations before the core calculation engine, dashboard, dish detail, simulator, and review-confirm cost intake workflow are stable
 
 ## Near-Term Goal
 
