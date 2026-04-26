@@ -65,7 +65,7 @@ describe("status rendering", () => {
 
     expect(screen.getByText("Beef Burger")).toBeInTheDocument();
     expect(screen.getAllByText("Warning")).toHaveLength(2);
-    expect(screen.getByText("Protect Beef Burger before volume hides the margin leak")).toBeInTheDocument();
+    expect(screen.getByText("Beef Burger sells often but margin is thin.")).toBeInTheDocument();
     expect(screen.getByText(/13\.90/)).toBeInTheDocument();
   });
 });

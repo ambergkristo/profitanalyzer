@@ -44,6 +44,10 @@ describe("synthetic validation", () => {
       name: "Bad Dataset",
       description: "Broken validation fixture",
       profile: "mixed",
+      ownerDiagnosis: "Broken scenario.",
+      expectedBehavior: "Fail validation.",
+      demoNarrative: "Fixture only.",
+      validationStatus: "pass",
       data: {
         ingredients: [{ id: "ing", name: "Ingredient", costPerUnitCents: 10, unit: "g" }],
         recipes: [{ id: "recipe", name: "Recipe", yield: 1, ingredients: [{ ingredientId: "ing", quantity: 10, unit: "g" }] }],
@@ -84,5 +88,14 @@ describe("synthetic validation", () => {
     );
 
     expect(firstRun).toEqual(secondRun);
+  });
+
+  it("keeps scenario metadata populated for each canonical dataset", () => {
+    for (const dataset of canonicalDemoDatasets) {
+      expect(dataset.ownerDiagnosis.length).toBeGreaterThan(0);
+      expect(dataset.expectedBehavior.length).toBeGreaterThan(0);
+      expect(dataset.demoNarrative.length).toBeGreaterThan(0);
+      expect(dataset.validationStatus).toBe("pass");
+    }
   });
 });

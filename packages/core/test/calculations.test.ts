@@ -94,6 +94,7 @@ describe("ingredient breakdown", () => {
 
     expect(insight?.ingredientId).toBe("beef-patty");
     expect(insight?.isDominant).toBe(true);
+    expect(insight?.message).toContain("62.1%");
   });
 });
 

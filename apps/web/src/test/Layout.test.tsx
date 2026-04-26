@@ -29,18 +29,26 @@ describe("Layout", () => {
         id: "mixed-restaurant",
         name: "Mixed Casual Restaurant",
         description: "Balanced casual dining scenario.",
-        profile: "mixed"
+        profile: "mixed",
+        ownerDiagnosis: "Mixed performance. Fix leaks while protecting top contributors.",
+        expectedBehavior: "Balanced action stack.",
+        demoNarrative: "Show the full decision loop.",
+        validationStatus: "pass"
       },
       {
         id: "low-margin-kitchen",
         name: "Low Margin Kitchen",
         description: "Volume-heavy kitchen under pricing pressure.",
-        profile: "low-margin"
+        profile: "low-margin",
+        ownerDiagnosis: "Margin pressure detected. Start with high-sales dishes below 50% margin.",
+        expectedBehavior: "Critical repairs should dominate.",
+        demoNarrative: "Use this scenario first in a demo.",
+        validationStatus: "pass"
       }
     ]);
   });
 
-  it("renders the scenario selector and updates the dataset query param", async () => {
+  it("renders the scenario selector metadata and updates the dataset query param", async () => {
     render(
       <MemoryRouter
         future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
@@ -55,10 +63,13 @@ describe("Layout", () => {
     );
 
     expect(await screen.findByText("Dataset / Scenario")).toBeInTheDocument();
+    expect((await screen.findAllByText("Show the full decision loop.")).length).toBeGreaterThan(0);
+
     fireEvent.change(screen.getByDisplayValue("Mixed Casual Restaurant"), {
       target: { value: "low-margin-kitchen" }
     });
 
     expect(await screen.findByText("?dataset=low-margin-kitchen")).toBeInTheDocument();
+    expect((await screen.findAllByText("Use this scenario first in a demo.")).length).toBeGreaterThan(0);
   });
 });

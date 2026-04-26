@@ -9,9 +9,6 @@ Implemented:
 - RM3: Dish Detail + Cost Breakdown
 - RM4: Price Simulator
 - RM5: Synthetic Restaurant Validation
-
-In progress:
-
 - RM6: Premium decision-first UX polish
 
 Not started:
@@ -55,6 +52,24 @@ The validation runner writes deterministic outputs to:
 - Operational behavior under live integrations
 
 Synthetic validation proves logic quality. It does not prove commercial demand or deployment readiness.
+
+## Sprint 4 Demo-Readiness Note
+
+Sprint 4 closes the demo-readiness gate for the synthetic product demo:
+
+- scenario switching is stable and URL-driven
+- dashboard, dishes, and dish detail share a more consistent premium visual system
+- cost-driver and simulator outputs are legible without operator coaching
+- demo narrative metadata is exposed from the dataset layer into the UI
+
+This is enough to run a credible synthetic-data product demo.
+
+It is still not evidence of:
+
+- real invoice ingestion quality
+- customer onboarding speed
+- retention
+- live commercial adoption
 
 ## Pass Criteria
 

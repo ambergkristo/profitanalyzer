@@ -3,7 +3,8 @@ import { NavLink, Outlet, useSearchParams } from "react-router-dom";
 
 import { apiClient } from "../api/client.js";
 import { useAsyncData } from "../hooks.js";
-import { buildDatasetSearch } from "../utils/scenario.js";
+import { buildDatasetSearch, getScenarioMeta } from "../utils/scenario.js";
+import { Panel } from "./Panel.js";
 import { ScenarioSelector } from "./ScenarioSelector.js";
 
 const linkClass = ({ isActive }: { isActive: boolean }) =>
@@ -25,7 +26,7 @@ export function Layout() {
     }
   }, [datasetId, datasets.data, searchParams, setSearchParams]);
 
-  const selectedDataset = datasets.data?.find((dataset) => dataset.id === datasetId) ?? datasets.data?.[0];
+  const selectedDataset = datasets.data ? getScenarioMeta(datasets.data, datasetId) : undefined;
 
   function handleDatasetChange(nextDatasetId: string) {
     const nextParams = new URLSearchParams(searchParams);
@@ -57,7 +58,7 @@ export function Layout() {
             </div>
 
             <div className="grid gap-4 xl:grid-cols-[1fr_auto] xl:items-end">
-              <div className="rounded-[1.75rem] border border-white/8 bg-black/20 px-4 py-4">
+              <Panel className="rounded-tile border-white/8 bg-black/20 px-4 py-4" tone="subtle">
                 <p className="text-[11px] uppercase tracking-[0.2em] text-muted">Active demo profile</p>
                 <div className="mt-2 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
                   <div>
@@ -65,8 +66,11 @@ export function Layout() {
                       {selectedDataset?.name ?? "Loading scenario"}
                     </p>
                     <p className="mt-2 text-sm leading-6 text-muted">
-                      {selectedDataset?.description ?? "Loading scenario metadata..."}
+                      {selectedDataset?.ownerDiagnosis ?? "Loading scenario metadata..."}
                     </p>
+                    {selectedDataset ? (
+                      <p className="mt-2 text-sm leading-6 text-muted">{selectedDataset.description}</p>
+                    ) : null}
                   </div>
                   <nav className="flex flex-wrap gap-2">
                     <NavLink
@@ -83,7 +87,7 @@ export function Layout() {
                     </NavLink>
                   </nav>
                 </div>
-              </div>
+              </Panel>
             </div>
           </div>
         </header>

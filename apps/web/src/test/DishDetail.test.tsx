@@ -108,7 +108,7 @@ describe("DishDetailPage", () => {
     });
   });
 
-  it("renders the simulator panel and target-margin controls", async () => {
+  it("renders the cost driver section and simulator target-margin controls", async () => {
     render(
       <MemoryRouter
         future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
@@ -120,8 +120,28 @@ describe("DishDetailPage", () => {
       </MemoryRouter>
     );
 
-    expect(await screen.findByText("Price simulator")).toBeInTheDocument();
+    expect(await screen.findByText("What makes it expensive")).toBeInTheDocument();
     expect(await screen.findByText("Reach 50% margin")).toBeInTheDocument();
-    expect(await screen.findByText("Practical next move")).toBeInTheDocument();
+    expect(await screen.findByText("Primary next move")).toBeInTheDocument();
+  });
+
+  it("renders a clear not-found state for invalid scenario dish combinations", async () => {
+    vi.mocked(apiClient.getDishDetail).mockRejectedValueOnce(
+      new Error("Request failed for /api/analytics/dish/dish-burger?dataset=ghost with 404")
+    );
+
+    render(
+      <MemoryRouter
+        future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
+        initialEntries={["/dishes/dish-burger?dataset=ghost"]}
+      >
+        <Routes>
+          <Route element={<DishDetailPage />} path="/dishes/:dishId" />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    expect(await screen.findByText("Dish not available in this scenario")).toBeInTheDocument();
+    expect(await screen.findByText("Back to dishes")).toBeInTheDocument();
   });
 });

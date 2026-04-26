@@ -23,7 +23,7 @@ const roundCurrency = (value: number) => Math.round(value);
 const roundPercent = (value: number) => Number(value.toFixed(2));
 
 function formatCurrencyLabel(cents: number): string {
-  return `€${(cents / 100).toFixed(2)}`;
+  return `\u20AC${(cents / 100).toFixed(2)}`;
 }
 
 export function calculateCostRatio(priceCents: number, costCents: number): number {
@@ -368,10 +368,7 @@ export function simulateDishPriceChange(
     newMetrics.estimatedPeriodProfitCents - oldMetrics.estimatedPeriodProfitCents;
   const grossProfitPerSaleDeltaCents =
     newMetrics.grossProfitPerSaleCents - oldMetrics.grossProfitPerSaleCents;
-  const statusShift =
-    oldMetrics.status === newMetrics.status
-      ? `${oldMetrics.status} to ${newMetrics.status}`
-      : `${oldMetrics.status} to ${newMetrics.status}`;
+  const statusShift = `${oldMetrics.status} to ${newMetrics.status}`;
 
   const message =
     profitDeltaCents > 0

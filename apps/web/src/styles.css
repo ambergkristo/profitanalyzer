@@ -11,6 +11,7 @@
   --surface-0: #0b0b0f;
   --surface-1: #16161c;
   --surface-2: #1d1f27;
+  --surface-3: #232632;
   --line: #24242d;
   --profit: #00ff7b;
   --warning: #ffd400;
@@ -18,6 +19,8 @@
   --accent: #38d9ff;
   --text: #eaeaf0;
   --muted: #9aa0a6;
+  --panel-radius: 2rem;
+  --tile-radius: 1.5rem;
 }
 
 body {
@@ -29,6 +32,10 @@ body {
     radial-gradient(circle at 50% 100%, rgba(255, 46, 46, 0.08), transparent 32%),
     linear-gradient(180deg, rgba(255, 255, 255, 0.02), transparent 18%),
     #0b0b0f;
+  color: var(--text);
+  font-family: "IBM Plex Sans", system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 body::before {
@@ -57,4 +64,21 @@ select {
 
 * {
   box-sizing: border-box;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+.rounded-panel {
+  border-radius: var(--panel-radius);
+}
+
+.rounded-tile {
+  border-radius: var(--tile-radius);
+}
+
+::selection {
+  background: rgba(0, 255, 123, 0.25);
+  color: var(--text);
 }

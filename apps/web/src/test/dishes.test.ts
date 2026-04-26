@@ -91,5 +91,10 @@ describe("dish utilities", () => {
     const actionMap = mapPrimaryActionByDish(actions);
 
     expect(actionMap.get("loss")?.id).toBe("a-1");
+    expect(filterAndSortDishes(dishes, "all", "riskPriority", actionMap).map((dish) => dish.dishId)).toEqual([
+      "loss",
+      "profit",
+      "warning"
+    ]);
   });
 });

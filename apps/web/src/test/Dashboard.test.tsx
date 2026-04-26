@@ -24,7 +24,11 @@ describe("DashboardPage", () => {
         id: "low-margin-kitchen",
         name: "Low Margin Kitchen",
         description: "Volume-heavy kitchen under pricing pressure.",
-        profile: "low-margin"
+        profile: "low-margin",
+        ownerDiagnosis: "Margin pressure detected. Start with high-sales dishes below 50% margin.",
+        expectedBehavior: "Critical repairs should dominate.",
+        demoNarrative: "Use this scenario first in a demo.",
+        validationStatus: "pass"
       }
     ]);
 
@@ -138,7 +142,7 @@ describe("DashboardPage", () => {
     ]);
   });
 
-  it("renders scenario-aware KPI cards and loads data with dataset id", async () => {
+  it("renders scenario-aware diagnostics and loads data with dataset id", async () => {
     render(
       <MemoryRouter
         future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
@@ -148,10 +152,31 @@ describe("DashboardPage", () => {
       </MemoryRouter>
     );
 
-    expect(await screen.findByText("Low Margin Kitchen")).toBeInTheDocument();
-    expect(await screen.findByText("Margin pressure detected. Prioritize high-sales low-margin repairs.")).toBeInTheDocument();
+    expect(await screen.findByText("Margin pressure detected. Start with high-sales dishes below 50% margin.")).toBeInTheDocument();
+    expect(await screen.findByText("Use this scenario first in a demo.")).toBeInTheDocument();
     expect(await screen.findByText("Weighted Margin")).toBeInTheDocument();
+    expect(await screen.findByText("What to fix first")).toBeInTheDocument();
     expect(vi.mocked(apiClient.getOverview)).toHaveBeenCalledWith("low-margin-kitchen");
     expect(vi.mocked(apiClient.getDishes)).toHaveBeenCalledWith("low-margin-kitchen");
+  });
+
+  it("renders a clear invalid-scenario state when the dataset query is unknown", async () => {
+    vi.mocked(apiClient.getOverview).mockRejectedValueOnce(
+      new Error("Request failed for /api/analytics/overview?dataset=ghost with 404")
+    );
+    vi.mocked(apiClient.getDishes).mockRejectedValueOnce(
+      new Error("Request failed for /api/analytics/dishes?dataset=ghost with 404")
+    );
+
+    render(
+      <MemoryRouter
+        future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
+        initialEntries={["/?dataset=ghost"]}
+      >
+        <DashboardPage />
+      </MemoryRouter>
+    );
+
+    expect(await screen.findByText("Scenario unavailable")).toBeInTheDocument();
   });
 });

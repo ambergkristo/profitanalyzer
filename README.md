@@ -1,23 +1,26 @@
 # Menu Profit Optimizer
 
-Menu Profit Optimizer is a restaurant profit decision engine for owners and managers. Sprint 3 turns the working feature set into a stronger demo product: scenario switching, synthetic validation, and a more polished decision-first cockpit sit on top of the deterministic pricing and margin engine.
+Menu Profit Optimizer is a restaurant profit decision engine for owners and managers. Sprint 4 closes the premium demo-readiness gate: the app now supports scenario switching, deterministic synthetic validation, stronger decision-first UI, and a clearer demo narrative without introducing invoice-scan functionality yet.
 
-## Sprint 3 Scope
+## Sprint 4 Scope
 
-MAX SPRINT 3 implements:
+MAX SPRINT 4 delivers:
 
-- canonical synthetic restaurant scenarios
-- dataset-aware API responses without introducing a database
-- scenario selector in the frontend using URL query params
-- repeatable `npm run validate:synthetic` reports
-- premium dashboard, dishes, detail, and simulator polish
-- target-margin simulator quick actions and stronger cost-driver detail
-- expanded RM5 and RM6 test coverage
+- RM6 closeout with a stronger shared visual system
+- scenario-aware dashboard, dishes page, and dish detail flow
+- hardened scenario switching with URL query param support
+- richer scenario metadata for demo storytelling
+- improved cost-driver presentation and simulator hierarchy
+- deterministic `npm run validate:synthetic`
+- lightweight `npm run validate:demo`
+- demo-readiness and RM7 preflight documentation
 
-Current non-goals remain:
+Current non-goals remain explicit:
 
 - no invoice scan
 - no OCR or vision adapter
+- no supplier invoice parsing
+- no real invoice upload
 - no POS integration
 - no accounting workflows
 - no inventory management
@@ -39,6 +42,7 @@ npm test
 npm run lint
 npm run typecheck
 npm run validate:synthetic
+npm run validate:demo
 npm audit
 ```
 
@@ -59,8 +63,9 @@ apps/
   web/    React + Vite + TypeScript frontend
 packages/
   core/   shared domain types, calculations, seed data, decision engine
-docs/     product and roadmap documentation
-tasks/    local sprint tracking notes
+docs/     product, demo, and roadmap documentation
+reports/  deterministic synthetic validation outputs
+scripts/  validation runners
 ```
 
 ## API Endpoints
@@ -76,6 +81,22 @@ tasks/    local sprint tracking notes
 - `GET /api/analytics/dish/:id`
 - `POST /api/simulate/price`
 
+All analytics and simulation endpoints support demo scenario selection through `?dataset=...`.
+
+## Demo Flow
+
+Recommended flow:
+
+1. Open the dashboard.
+2. Show the scenario selector.
+3. Start with `Low Margin Kitchen`.
+4. Open the top action.
+5. Show the dish cost driver.
+6. Run the price simulator.
+7. Return to the dashboard and switch to `High Margin Bistro`.
+
+See [docs/DEMO_READINESS.md](docs/DEMO_READINESS.md) for the concise demo walkthrough.
+
 ## Product Notes
 
 - Shared decision logic lives in `packages/core`.
@@ -83,4 +104,5 @@ tasks/    local sprint tracking notes
 - Overview responses include weighted margin, total revenue, total cost, contributors, risks, and top actions.
 - Scenario selection is demo-mode only and flows through `?dataset=...`.
 - Synthetic validation reports live in `reports/`.
+- RM7 readiness is documented in [docs/RM7_PREFLIGHT.md](docs/RM7_PREFLIGHT.md).
 - No invoice/OCR/POS/accounting/inventory/auth/persistent database scope has been added.

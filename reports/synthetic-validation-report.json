@@ -1,4 +1,30 @@
 {
+  "datasets": [
+    {
+      "id": "mixed-restaurant",
+      "name": "Mixed Casual Restaurant",
+      "profile": "mixed",
+      "ownerDiagnosis": "Mixed performance. Fix leaks while protecting top contributors.",
+      "expectedBehavior": "A balanced action stack with profitable dishes, warning dishes, and at least one clear data-quality or margin-repair action.",
+      "demoNarrative": "Use this scenario to show the full decision loop: a realistic menu with winners, leaks, and one missing-input warning."
+    },
+    {
+      "id": "low-margin-kitchen",
+      "name": "Low Margin Kitchen",
+      "profile": "low-margin",
+      "ownerDiagnosis": "Margin pressure detected. Start with high-sales dishes below 50% margin.",
+      "expectedBehavior": "High and critical actions should dominate, with bestseller margin repair and pricing review at the top.",
+      "demoNarrative": "Show this scenario first in a demo when you want the product to surface urgent action immediately."
+    },
+    {
+      "id": "high-margin-bistro",
+      "name": "High Margin Bistro",
+      "profile": "high-margin",
+      "ownerDiagnosis": "Menu is mostly healthy. Protect winners and grow high-margin dishes.",
+      "expectedBehavior": "Mostly profitable dishes, few urgent fixes, and some promotion or growth actions instead of repair-heavy output.",
+      "demoNarrative": "Use this scenario to prove the engine does not invent panic when the menu is already healthy."
+    }
+  ],
   "reports": [
     {
       "datasetId": "mixed-restaurant",

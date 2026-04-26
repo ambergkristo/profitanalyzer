@@ -6,6 +6,7 @@ export default {
       colors: {
         bg: "#0b0b0f",
         panel: "#16161c",
+        elevated: "#1d1f27",
         border: "#24242d",
         profit: "#00ff7b",
         warning: "#ffd400",
@@ -15,7 +16,7 @@ export default {
         accent: "#38d9ff"
       },
       boxShadow: {
-        telemetry: "0 0 0 1px rgba(36,36,45,0.88), 0 24px 60px rgba(0,0,0,0.4)"
+        telemetry: "0 0 0 1px rgba(36,36,45,0.88), 0 26px 64px rgba(0,0,0,0.42)"
       },
       fontFamily: {
         display: ["Oxanium", "IBM Plex Sans", "system-ui", "sans-serif"],

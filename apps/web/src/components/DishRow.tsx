@@ -14,14 +14,14 @@ interface DishRowProps {
 export function DishRow({ dish, actionHint, datasetId }: DishRowProps) {
   const shellTone =
     dish.status === "loss"
-      ? "border-danger/30"
+      ? "border-danger/30 bg-danger/[0.04]"
       : dish.status === "warning"
-        ? "border-warning/25"
-        : "border-profit/20";
+        ? "border-warning/25 bg-warning/[0.03]"
+        : "border-profit/20 bg-profit/[0.03]";
 
   return (
     <Link
-      className={`grid gap-4 rounded-[1.75rem] border bg-panel p-5 shadow-telemetry transition hover:border-accent/40 hover:bg-white/[0.02] xl:grid-cols-[1.6fr_repeat(5,minmax(0,1fr))] ${shellTone}`}
+      className={`grid gap-4 rounded-tile border p-5 shadow-telemetry transition hover:border-accent/40 hover:bg-white/[0.02] xl:grid-cols-[1.6fr_repeat(5,minmax(0,1fr))] ${shellTone}`}
       to={`/dishes/${dish.dishId}${datasetId ? `?dataset=${encodeURIComponent(datasetId)}` : ""}`}
     >
       <div>
@@ -35,7 +35,7 @@ export function DishRow({ dish, actionHint, datasetId }: DishRowProps) {
         {actionHint ? (
           <div className="mt-4 flex flex-wrap items-center gap-3">
             <SeverityBadge severity={actionHint.severity} />
-            <p className="text-sm leading-6 text-muted">{actionHint.title}</p>
+            <p className="text-sm leading-6 text-muted">{actionHint.message}</p>
           </div>
         ) : (
           <p className="mt-4 text-sm leading-6 text-muted">

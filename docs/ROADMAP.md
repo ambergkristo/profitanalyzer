@@ -136,7 +136,7 @@ Manual check: run all three restaurant datasets through the engine, verify actio
 
 ## RM6 - UX Polish + Decision-First Interface
 
-Status: in progress in MAX SPRINT 3.
+Status: completed in MAX SPRINT 4.
 
 ### Goal
 
@@ -164,6 +164,8 @@ Make the product feel premium, fast, and decision-first.
 Manual check: complete the main dashboard-to-dish-detail-to-simulator flow on desktop and mobile without relying on spreadsheet-like layouts.
 
 ## RM7 - Invoice Scan Cost Intake
+
+Status: not started. Preflight only documented in MAX SPRINT 4.
 
 ### Goal
 

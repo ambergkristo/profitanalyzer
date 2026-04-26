@@ -7,7 +7,7 @@ import type {
   PriceSimulationResponse
 } from "../types.js";
 
-function buildPath(path: string, datasetId?: string): string {
+export function buildDatasetPath(path: string, datasetId?: string): string {
   if (!datasetId) {
     return path;
   }
@@ -44,15 +44,15 @@ async function postJson<T>(path: string, body: unknown): Promise<T> {
 export const apiClient = {
   getDemoDatasets: () => getJson<DemoDatasetSummary[]>("/api/demo/datasets"),
   getOverview: (datasetId?: string) =>
-    getJson<OverviewResponse>(buildPath("/api/analytics/overview", datasetId)),
+    getJson<OverviewResponse>(buildDatasetPath("/api/analytics/overview", datasetId)),
   getDishes: (datasetId?: string) =>
-    getJson<CalculatedDish[]>(buildPath("/api/analytics/dishes", datasetId)),
+    getJson<CalculatedDish[]>(buildDatasetPath("/api/analytics/dishes", datasetId)),
   getActions: (datasetId?: string) =>
-    getJson<DishAction[]>(buildPath("/api/analytics/actions", datasetId)),
+    getJson<DishAction[]>(buildDatasetPath("/api/analytics/actions", datasetId)),
   getDishDetail: (dishId: string, datasetId?: string) =>
-    getJson<DishDetailResponse>(buildPath(`/api/analytics/dish/${dishId}`, datasetId)),
+    getJson<DishDetailResponse>(buildDatasetPath(`/api/analytics/dish/${dishId}`, datasetId)),
   simulatePrice: (dishId: string, newPriceCents: number, datasetId?: string) =>
-    postJson<PriceSimulationResponse>(buildPath("/api/simulate/price", datasetId), {
+    postJson<PriceSimulationResponse>(buildDatasetPath("/api/simulate/price", datasetId), {
       dishId,
       newPriceCents
     })

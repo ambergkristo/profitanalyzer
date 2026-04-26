@@ -177,12 +177,17 @@ export interface SampleRestaurantData {
 }
 
 export type DemoDatasetProfile = "high-margin" | "low-margin" | "mixed";
+export type DatasetValidationStatus = "pass";
 
 export interface DemoDatasetSummary {
   id: string;
   name: string;
   description: string;
   profile: DemoDatasetProfile;
+  ownerDiagnosis: string;
+  expectedBehavior: string;
+  demoNarrative: string;
+  validationStatus: DatasetValidationStatus;
 }
 
 export interface DemoDatasetDefinition extends DemoDatasetSummary {

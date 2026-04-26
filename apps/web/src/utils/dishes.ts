@@ -1,9 +1,17 @@
 import type { CalculatedDish, DishAction, DishFilter, DishSortKey } from "../types.js";
 
+const severityPriority = {
+  critical: 4,
+  high: 3,
+  medium: 2,
+  low: 1
+} as const;
+
 export function filterAndSortDishes(
   dishes: CalculatedDish[],
   filter: DishFilter,
-  sortKey: DishSortKey
+  sortKey: DishSortKey,
+  primaryActions = new Map<string, DishAction>()
 ): CalculatedDish[] {
   const filtered = filter === "all" ? dishes : dishes.filter((dish) => dish.status === filter);
 
@@ -29,6 +37,25 @@ export function filterAndSortDishes(
           return right.costCents - left.costCents;
         }
         break;
+      case "riskPriority": {
+        const leftAction = primaryActions.get(left.dishId);
+        const rightAction = primaryActions.get(right.dishId);
+        const leftSeverity = leftAction ? severityPriority[leftAction.severity] : 0;
+        const rightSeverity = rightAction ? severityPriority[rightAction.severity] : 0;
+
+        if (rightSeverity !== leftSeverity) {
+          return rightSeverity - leftSeverity;
+        }
+
+        if ((rightAction?.estimatedImpactCents ?? 0) !== (leftAction?.estimatedImpactCents ?? 0)) {
+          return (rightAction?.estimatedImpactCents ?? 0) - (leftAction?.estimatedImpactCents ?? 0);
+        }
+
+        if (right.salesVolume !== left.salesVolume) {
+          return right.salesVolume - left.salesVolume;
+        }
+        break;
+      }
     }
 
     return left.name.localeCompare(right.name);

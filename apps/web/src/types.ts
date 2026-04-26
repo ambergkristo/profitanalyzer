@@ -37,4 +37,4 @@ export type DishDetailResponse = DishDetailAnalytics;
 export type PriceSimulationResponse = PriceSimulationResult;
 
 export type DishFilter = "all" | DishStatus;
-export type DishSortKey = "margin" | "estimatedProfit" | "salesVolume" | "cost";
+export type DishSortKey = "margin" | "estimatedProfit" | "salesVolume" | "cost" | "riskPriority";

@@ -2,6 +2,8 @@ import { Link } from "react-router-dom";
 
 import type { DishAction } from "../types.js";
 import { formatEuro, formatPercent } from "../utils/format.js";
+import { Panel } from "./Panel.js";
+import { ReasonCodeBadge } from "./ReasonCodeBadge.js";
 import { SeverityBadge } from "./SeverityBadge.js";
 
 const severityStyles = {
@@ -19,7 +21,7 @@ interface ActionCardProps {
 
 export function ActionCard({ action, dishName, datasetId }: ActionCardProps) {
   return (
-    <div className={`rounded-[1.75rem] border p-5 shadow-telemetry ${severityStyles[action.severity]}`}>
+    <Panel className={`${severityStyles[action.severity]} p-5`}>
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div className="space-y-3">
           <div className="flex flex-wrap items-center gap-3">
@@ -32,7 +34,7 @@ export function ActionCard({ action, dishName, datasetId }: ActionCardProps) {
           </div>
         </div>
 
-        <div className="grid min-w-[200px] gap-3 rounded-[1.5rem] border border-white/10 bg-black/20 p-4">
+        <div className="grid min-w-[220px] gap-3 rounded-tile border border-white/10 bg-black/20 p-4">
           <Metric label="Estimated impact" value={formatEuro(action.estimatedImpactCents)} />
           <Metric label="Confidence" value={action.confidence} />
           {typeof action.currentMarginPercent === "number" ? (
@@ -43,12 +45,7 @@ export function ActionCard({ action, dishName, datasetId }: ActionCardProps) {
 
       <div className="mt-4 flex flex-wrap gap-2">
         {action.reasonCodes.map((reasonCode) => (
-          <span
-            key={reasonCode}
-            className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-[11px] uppercase tracking-[0.16em] text-muted"
-          >
-            {reasonCode.replaceAll("_", " ")}
-          </span>
+          <ReasonCodeBadge key={reasonCode} reasonCode={reasonCode} />
         ))}
       </div>
 
@@ -65,7 +62,7 @@ export function ActionCard({ action, dishName, datasetId }: ActionCardProps) {
           View dish
         </Link>
       </div>
-    </div>
+    </Panel>
   );
 }
 

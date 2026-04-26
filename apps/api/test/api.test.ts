@@ -31,6 +31,8 @@ describe("api", () => {
       "low-margin-kitchen",
       "high-margin-bistro"
     ]);
+    expect(body[0]).toHaveProperty("ownerDiagnosis");
+    expect(body[0]).toHaveProperty("demoNarrative");
   });
 
   it("returns upgraded analytics overview for the selected dataset", async () => {
@@ -92,6 +94,16 @@ describe("api", () => {
     expect(body.costDriverInsight).toHaveProperty("message");
   });
 
+  it("returns 404 when a dish does not exist in the selected dataset", async () => {
+    const response = await request(app).get(
+      "/api/analytics/dish/dish-ghost?dataset=mixed-restaurant"
+    );
+    const body = response.body as { message: string };
+
+    expect(response.status).toBe(404);
+    expect(body.message).toContain("Dish not found");
+  });
+
   it("returns all ranked actions for the selected dataset", async () => {
     const response = await request(app).get("/api/analytics/actions?dataset=low-margin-kitchen");
     const body = response.body as DishAction[];
@@ -129,7 +141,9 @@ describe("api", () => {
 
   it("returns 404 for unknown datasets", async () => {
     const response = await request(app).get("/api/analytics/overview?dataset=ghost-dataset");
+    const body = response.body as { message: string };
 
     expect(response.status).toBe(404);
+    expect(body.message).toContain('Unknown dataset "ghost-dataset"');
   });
 });

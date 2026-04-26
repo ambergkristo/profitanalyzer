@@ -2,7 +2,7 @@ import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { validateCanonicalDatasets } from "../packages/core/src/index.js";
+import { canonicalDemoDatasets, validateCanonicalDatasets } from "../packages/core/src/index.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -14,17 +14,34 @@ function formatImpact(cents: number) {
 
 function renderMarkdownReport() {
   const reports = validateCanonicalDatasets();
+  const datasetMeta = new Map(canonicalDemoDatasets.map((dataset) => [dataset.id, dataset]));
   const lines: string[] = [
     "# Synthetic Validation Report",
     "",
     "Deterministic validation summary for the three canonical restaurant demo scenarios.",
-    ""
+    "",
+    "| Scenario | Profile | Result | Weighted Margin | Actions | Diagnosis |",
+    "| --- | --- | --- | --- | --- | --- |"
   ];
 
   for (const report of reports) {
+    const dataset = datasetMeta.get(report.datasetId);
+    const actionCount = Object.values(report.actionTypeCounts).reduce((sum, count) => sum + (count ?? 0), 0);
+
+    lines.push(
+      `| ${report.datasetName} | ${dataset?.profile ?? "unknown"} | ${report.pass ? "PASS" : "FAIL"} | ${report.weightedAverageMarginPercent.toFixed(2)}% | ${actionCount} | ${dataset?.ownerDiagnosis ?? "n/a"} |`
+    );
+  }
+
+  lines.push("");
+
+  for (const report of reports) {
+    const dataset = datasetMeta.get(report.datasetId);
+
     lines.push(`## ${report.datasetName}`);
     lines.push("");
     lines.push(`- Dataset ID: \`${report.datasetId}\``);
+    lines.push(`- Profile: \`${dataset?.profile ?? "unknown"}\``);
     lines.push(`- Result: ${report.pass ? "PASS" : "FAIL"}`);
     lines.push(`- Dishes: ${report.totalDishes}`);
     lines.push(
@@ -32,6 +49,8 @@ function renderMarkdownReport() {
     );
     lines.push(`- Weighted margin: ${report.weightedAverageMarginPercent.toFixed(2)}%`);
     lines.push(`- Estimated period profit: ${formatImpact(report.estimatedPeriodProfitCents)}`);
+    lines.push(`- Owner diagnosis: ${dataset?.ownerDiagnosis ?? "n/a"}`);
+    lines.push(`- Expected behavior: ${dataset?.expectedBehavior ?? "n/a"}`);
     lines.push(
       `- Action severity: critical ${report.severityCounts.critical}, high ${report.severityCounts.high}, medium ${report.severityCounts.medium}, low ${report.severityCounts.low}`
     );
@@ -68,6 +87,14 @@ function renderMarkdownReport() {
 async function main() {
   const reports = validateCanonicalDatasets();
   const reportBundle = {
+    datasets: canonicalDemoDatasets.map((dataset) => ({
+      id: dataset.id,
+      name: dataset.name,
+      profile: dataset.profile,
+      ownerDiagnosis: dataset.ownerDiagnosis,
+      expectedBehavior: dataset.expectedBehavior,
+      demoNarrative: dataset.demoNarrative
+    })),
     reports
   };
 

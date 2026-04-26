@@ -158,6 +158,12 @@ export const canonicalDemoDatasets = [
     description:
       "Balanced casual dining scenario with a few strong winners, a couple of leaks, and one recipe-data warning to prove graceful handling.",
     profile: "mixed",
+    ownerDiagnosis: "Mixed performance. Fix leaks while protecting top contributors.",
+    expectedBehavior:
+      "A balanced action stack with profitable dishes, warning dishes, and at least one clear data-quality or margin-repair action.",
+    demoNarrative:
+      "Use this scenario to show the full decision loop: a realistic menu with winners, leaks, and one missing-input warning.",
+    validationStatus: "pass",
     data: createRestaurantData(
       [
         { id: "dish-caesar", name: "Caesar Salad", recipeId: "recipe-caesar", priceCents: 1450, salesVolume: 170 },
@@ -178,6 +184,12 @@ export const canonicalDemoDatasets = [
     description:
       "Volume-heavy kitchen under pricing pressure where repair actions should dominate the first screen.",
     profile: "low-margin",
+    ownerDiagnosis: "Margin pressure detected. Start with high-sales dishes below 50% margin.",
+    expectedBehavior:
+      "High and critical actions should dominate, with bestseller margin repair and pricing review at the top.",
+    demoNarrative:
+      "Show this scenario first in a demo when you want the product to surface urgent action immediately.",
+    validationStatus: "pass",
     data: createRestaurantData([
       { id: "dish-caesar", name: "Caesar Salad", recipeId: "recipe-caesar", priceCents: 1190, salesVolume: 220 },
       { id: "dish-burger", name: "Beef Burger", recipeId: "recipe-burger", priceCents: 1090, salesVolume: 360 },
@@ -195,6 +207,12 @@ export const canonicalDemoDatasets = [
     description:
       "Healthy premium bistro where most dishes are profitable and the engine should emphasize growth and protection of winners.",
     profile: "high-margin",
+    ownerDiagnosis: "Menu is mostly healthy. Protect winners and grow high-margin dishes.",
+    expectedBehavior:
+      "Mostly profitable dishes, few urgent fixes, and some promotion or growth actions instead of repair-heavy output.",
+    demoNarrative:
+      "Use this scenario to prove the engine does not invent panic when the menu is already healthy.",
+    validationStatus: "pass",
     data: createRestaurantData([
       { id: "dish-caesar", name: "Caesar Salad", recipeId: "recipe-caesar", priceCents: 1890, salesVolume: 120 },
       { id: "dish-burger", name: "Beef Burger", recipeId: "recipe-burger", priceCents: 1790, salesVolume: 165 },
@@ -223,7 +241,11 @@ export function listDemoDatasets(): DemoDatasetSummary[] {
     id: dataset.id,
     name: dataset.name,
     description: dataset.description,
-    profile: dataset.profile
+    profile: dataset.profile,
+    ownerDiagnosis: dataset.ownerDiagnosis,
+    expectedBehavior: dataset.expectedBehavior,
+    demoNarrative: dataset.demoNarrative,
+    validationStatus: dataset.validationStatus
   }));
 }
 
