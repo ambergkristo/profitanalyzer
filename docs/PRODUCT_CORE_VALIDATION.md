@@ -10,10 +10,10 @@ Implemented:
 - RM4: Price Simulator
 - RM5: Synthetic Restaurant Validation
 - RM6: Premium decision-first UX polish
+- RM7 first slice: mock invoice cost intake, review-confirm, cost history, and price alerts
 
 Not started:
 
-- RM7 invoice scan cost intake
 - RM8 OCR or vision adapter
 - RM9 pilot packaging
 
@@ -97,12 +97,32 @@ It is still not evidence of:
 - Price recommendations remain heuristic and do not account for local market pricing psychology.
 - `npm audit` still reports 5 moderate vulnerabilities in the transitive Vite/Vitest/esbuild chain; safe remediation requires a breaking forced upgrade.
 
-## Next Readiness Gate Before RM7
+## Sprint 5 Invoice Note
 
-Before invoice scan intake starts:
+Sprint 5 adds the safe RM7 foundation:
+
+- mock invoice parsing is deterministic
+- invoice lines are reviewed before any current ingredient cost changes
+- confirmed lines create `IngredientCostHistory`
+- supplier price changes create alerts and affected-dish impact
+- dashboard and invoice UI can surface those alerts in demo mode
+
+This is enough to prove review-confirm logic quality on synthetic data.
+
+It is still not evidence of:
+
+- OCR quality
+- supplier document variance at scale
+- real onboarding speed
+- accounting or inventory interoperability
+
+## Next Readiness Gate Before RM8
+
+Before OCR or image ingestion starts:
 
 - RM5 must keep passing in CI or local validation.
 - RM6 needs to remain demo-ready across dashboard, dishes, detail, and simulator flow.
+- RM7 review-confirm flow must remain stable across sample invoices.
 - Product copy should clearly explain actions without operator coaching.
 - Error states should remain owner-friendly.
 - The deterministic engine should remain the single source of truth for price and margin outcomes.

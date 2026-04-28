@@ -10,6 +10,7 @@ vi.mock("../api/client.js", () => ({
     getOverview: vi.fn(),
     getDishes: vi.fn(),
     getActions: vi.fn(),
+    getPriceChangeAlerts: vi.fn(),
     getDishDetail: vi.fn(),
     simulatePrice: vi.fn()
   }
@@ -140,6 +141,8 @@ describe("DashboardPage", () => {
         warnings: []
       }
     ]);
+
+    vi.mocked(apiClient.getPriceChangeAlerts).mockResolvedValue([]);
   });
 
   it("renders scenario-aware diagnostics and loads data with dataset id", async () => {
@@ -156,8 +159,11 @@ describe("DashboardPage", () => {
     expect(await screen.findByText("Use this scenario first in a demo.")).toBeInTheDocument();
     expect(await screen.findByText("Weighted Margin")).toBeInTheDocument();
     expect(await screen.findByText("What to fix first")).toBeInTheDocument();
+    expect(await screen.findByText("What changed since the last cost intake")).toBeInTheDocument();
+    expect(await screen.findByText("No supplier price alerts yet.")).toBeInTheDocument();
     expect(vi.mocked(apiClient.getOverview)).toHaveBeenCalledWith("low-margin-kitchen");
     expect(vi.mocked(apiClient.getDishes)).toHaveBeenCalledWith("low-margin-kitchen");
+    expect(vi.mocked(apiClient.getPriceChangeAlerts)).toHaveBeenCalledWith("low-margin-kitchen");
   });
 
   it("renders a clear invalid-scenario state when the dataset query is unknown", async () => {
@@ -178,5 +184,44 @@ describe("DashboardPage", () => {
     );
 
     expect(await screen.findByText("Scenario unavailable")).toBeInTheDocument();
+  });
+
+  it("renders supplier price alerts when invoice-driven changes exist", async () => {
+    vi.mocked(apiClient.getPriceChangeAlerts).mockResolvedValueOnce([
+      {
+        id: "alert-1",
+        type: "dish_margin_at_risk_due_to_cost_change",
+        severity: "high",
+        ingredientId: "beef-patty",
+        supplierId: "supplier-prime-butchery",
+        invoiceId: "invoice-1",
+        invoiceLineId: "line-1",
+        previousCostPerUnitCents: 3,
+        newCostPerUnitCents: 4,
+        deltaPercent: 33.3,
+        affectedDishIds: ["dish-burger"],
+        estimatedMarginImpactCents: 34800,
+        message: "Beef Patty increased 33.3%. Beef Burger is the largest affected dish.",
+        recommendedAction: "Review affected dishes and test margin repair on the highest-volume items.",
+        createdAt: "2026-04-20T10:00:00.000Z",
+        status: "open"
+      }
+    ]);
+
+    render(
+      <MemoryRouter
+        future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
+        initialEntries={["/?dataset=low-margin-kitchen"]}
+      >
+        <DashboardPage />
+      </MemoryRouter>
+    );
+
+    expect(
+      await screen.findByText("Beef Patty increased 33.3%. Beef Burger is the largest affected dish.")
+    ).toBeInTheDocument();
+    expect(
+      await screen.findByText("Review affected dishes and test margin repair on the highest-volume items.")
+    ).toBeInTheDocument();
   });
 });

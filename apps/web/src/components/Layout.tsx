@@ -85,6 +85,12 @@ export function Layout() {
                     >
                       Dishes
                     </NavLink>
+                    <NavLink
+                      className={linkClass}
+                      to={{ pathname: "/invoices", search: buildDatasetSearch(selectedDataset?.id) }}
+                    >
+                      Cost Intake
+                    </NavLink>
                   </nav>
                 </div>
               </Panel>

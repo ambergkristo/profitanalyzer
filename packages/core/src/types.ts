@@ -1,4 +1,5 @@
 export type IngredientUnit = "g" | "ml" | "piece";
+export type InvoiceUnit = IngredientUnit | "kg" | "l" | "pcs" | "pack";
 
 export interface Ingredient {
   id: string;
@@ -174,6 +175,210 @@ export interface SampleRestaurantData {
   ingredients: Ingredient[];
   recipes: Recipe[];
   dishes: Dish[];
+}
+
+export interface Supplier {
+  id: string;
+  restaurantId: string;
+  name: string;
+  normalizedName: string;
+  contactLabel?: string;
+  createdAt?: string;
+}
+
+export type PurchaseInvoiceSourceType = "mock" | "manual" | "ocr_future";
+export type PurchaseInvoiceParseStatus = "draft" | "needs_review" | "reviewed" | "confirmed";
+
+export interface PurchaseInvoice {
+  id: string;
+  restaurantId: string;
+  supplierId: string;
+  invoiceNumber?: string;
+  invoiceDate: string;
+  sourceType: PurchaseInvoiceSourceType;
+  sourceImageUrl?: string;
+  parseStatus: PurchaseInvoiceParseStatus;
+  totalAmountCents?: number;
+  createdAt: string;
+}
+
+export type InvoiceMatchConfidence = "high" | "medium" | "low" | "none";
+export type InvoiceReviewStatus = "needs_review" | "ready" | "confirmed" | "ignored";
+
+export interface PurchaseInvoiceLine {
+  id: string;
+  invoiceId: string;
+  rawProductName: string;
+  parsedQuantity: number;
+  parsedUnit: InvoiceUnit;
+  parsedUnitPriceCents?: number;
+  parsedLineTotalCents?: number;
+  matchedIngredientId?: string;
+  matchConfidence: InvoiceMatchConfidence;
+  reviewStatus: InvoiceReviewStatus;
+  previousCostPerUnitCents?: number;
+  newCostPerUnitCents?: number;
+  priceDeltaPercent?: number;
+  warnings: string[];
+}
+
+export interface IngredientCostHistory {
+  id: string;
+  ingredientId: string;
+  supplierId: string;
+  invoiceLineId: string;
+  previousCostPerUnitCents?: number;
+  newCostPerUnitCents: number;
+  unit: IngredientUnit;
+  effectiveDate: string;
+  createdAt: string;
+}
+
+export interface SupplierProductMatch {
+  id: string;
+  restaurantId: string;
+  supplierId: string;
+  rawProductName: string;
+  normalizedProductName: string;
+  ingredientId: string;
+  confidence: InvoiceMatchConfidence;
+  lastConfirmedAt: string;
+}
+
+export type PriceChangeAlertType =
+  | "ingredient_price_up"
+  | "ingredient_price_down"
+  | "dish_margin_at_risk_due_to_cost_change";
+
+export type PriceChangeAlertStatus = "open" | "reviewed" | "dismissed";
+
+export interface PriceChangeAlert {
+  id: string;
+  type: PriceChangeAlertType;
+  severity: DishActionSeverity;
+  ingredientId: string;
+  supplierId?: string;
+  invoiceId?: string;
+  invoiceLineId?: string;
+  previousCostPerUnitCents?: number;
+  newCostPerUnitCents: number;
+  deltaPercent?: number;
+  affectedDishIds: string[];
+  estimatedMarginImpactCents?: number;
+  message: string;
+  recommendedAction: string;
+  createdAt: string;
+  status: PriceChangeAlertStatus;
+}
+
+export interface MockInvoiceLineInput {
+  rawProductName: string;
+  quantity: number;
+  unit: InvoiceUnit;
+  unitPriceCents?: number;
+  lineTotalCents?: number;
+}
+
+export interface MockInvoiceInput {
+  id: string;
+  name: string;
+  supplierName: string;
+  invoiceNumber?: string;
+  invoiceDate: string;
+  totalAmountCents?: number;
+  description: string;
+  expectedImpact: string;
+  lines: MockInvoiceLineInput[];
+}
+
+export interface MockInvoiceSampleSummary {
+  id: string;
+  name: string;
+  supplierName: string;
+  invoiceDate: string;
+  description: string;
+  expectedImpact: string;
+}
+
+export interface SupplierSuggestion {
+  supplierId?: string;
+  supplierName: string;
+  confidence: InvoiceMatchConfidence;
+}
+
+export interface InvoiceDraftSummary {
+  totalLines: number;
+  readyLineCount: number;
+  needsReviewLineCount: number;
+  ignoredLineCount: number;
+  highConfidenceCount: number;
+  lowConfidenceCount: number;
+}
+
+export interface ParsedInvoiceDraft {
+  invoiceDraft: PurchaseInvoice;
+  supplierSuggestion: SupplierSuggestion;
+  lines: PurchaseInvoiceLine[];
+  summary: InvoiceDraftSummary;
+}
+
+export interface ReviewedInvoiceLineInput {
+  lineId: string;
+  reviewStatus: "confirmed" | "ignored";
+  matchedIngredientId?: string;
+  parsedQuantity: number;
+  parsedUnit: InvoiceUnit;
+  parsedUnitPriceCents: number;
+  parsedLineTotalCents?: number;
+}
+
+export interface AffectedDishImpact {
+  dishId: string;
+  name: string;
+  oldCostCents: number;
+  newCostCents: number;
+  oldMarginPercent: number;
+  newMarginPercent: number;
+  oldStatus: DishStatus;
+  newStatus: DishStatus;
+  costDeltaPerSaleCents: number;
+  periodProfitImpactCents: number;
+  salesVolume: number;
+}
+
+export interface InvoiceConfirmationSummary {
+  invoiceId: string;
+  supplierName: string;
+  confirmedLineCount: number;
+  ignoredLineCount: number;
+  updatedIngredientCount: number;
+  priceIncreaseCount: number;
+  priceDecreaseCount: number;
+  unchangedCount: number;
+  alertCount: number;
+  affectedDishCount: number;
+  topAffectedDishes: AffectedDishImpact[];
+}
+
+export interface InvoiceConfirmationResult {
+  confirmedInvoice: PurchaseInvoice;
+  confirmedLines: PurchaseInvoiceLine[];
+  updatedIngredients: Ingredient[];
+  costHistory: IngredientCostHistory[];
+  supplierProductMatches: SupplierProductMatch[];
+  alerts: PriceChangeAlert[];
+  affectedDishes: AffectedDishImpact[];
+  confirmationSummary: InvoiceConfirmationSummary;
+}
+
+export interface StoredInvoiceView {
+  invoice: PurchaseInvoice;
+  supplierSuggestion: SupplierSuggestion;
+  lines: PurchaseInvoiceLine[];
+  summary: InvoiceDraftSummary;
+  confirmationSummary?: InvoiceConfirmationSummary;
+  affectedDishes?: AffectedDishImpact[];
+  alerts?: PriceChangeAlert[];
 }
 
 export type DemoDatasetProfile = "high-margin" | "low-margin" | "mixed";

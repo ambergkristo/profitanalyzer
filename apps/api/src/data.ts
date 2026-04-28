@@ -2,46 +2,72 @@ import {
   calculateCalculatedDishes,
   calculateOverview,
   calculateRecipeCost,
+  confirmInvoiceReview,
+  createDefaultSupplierProductMatches,
+  createDefaultSuppliers,
   explainDishPerformance,
   getCostDriverInsight,
   getDemoDataset,
+  getMockInvoiceSamples,
   listDemoDatasets,
+  listMockInvoiceSampleSummaries,
+  parseMockInvoice,
   rankDishActions,
   sampleRestaurantData,
   suggestPriceForTargetMargin,
+  type AffectedDishImpact,
   type CalculatedDish,
   type DemoDatasetDefinition,
   type DemoDatasetSummary,
   type DishAction,
   type DishDetailAnalytics,
-  type SimulationTargetAction
+  type Ingredient,
+  type IngredientCostHistory,
+  type MockInvoiceSampleSummary,
+  type ParsedInvoiceDraft,
+  type PriceChangeAlert,
+  type PurchaseInvoice,
+  type PurchaseInvoiceLine,
+  type ReviewedInvoiceLineInput,
+  type SimulationTargetAction,
+  type StoredInvoiceView,
+  type Supplier,
+  type SupplierProductMatch
 } from "../../../packages/core/src/index.js";
 
-export const restaurantData = sampleRestaurantData;
-
-export function getResolvedDataset(datasetId?: string): DemoDatasetDefinition | null {
-  return getDemoDataset(datasetId) ?? null;
+interface StoredInvoiceRecord {
+  draft: ParsedInvoiceDraft;
+  confirmedInvoice?: PurchaseInvoice;
+  confirmedLines?: PurchaseInvoiceLine[];
+  confirmationSummary?: StoredInvoiceView["confirmationSummary"];
+  affectedDishes?: AffectedDishImpact[];
+  alerts?: PriceChangeAlert[];
 }
 
-export function getDemoDatasets(): DemoDatasetSummary[] {
-  return listDemoDatasets();
+interface DatasetSession {
+  dataset: DemoDatasetDefinition;
+  ingredients: Ingredient[];
+  recipes: DemoDatasetDefinition["data"]["recipes"];
+  dishes: DemoDatasetDefinition["data"]["dishes"];
+  suppliers: Supplier[];
+  supplierProductMatches: SupplierProductMatch[];
+  costHistory: IngredientCostHistory[];
+  alerts: PriceChangeAlert[];
+  invoices: Map<string, StoredInvoiceRecord>;
+  invoiceCounter: number;
 }
 
-function getAnalyticsSnapshot(datasetId?: string) {
-  const dataset = getResolvedDataset(datasetId);
-
-  if (!dataset) {
-    return null;
-  }
-
-  const calculatedDishes = calculateCalculatedDishes(dataset.data);
-  const actions = rankDishActions(calculatedDishes);
-
+function cloneDatasetDefinition(dataset: DemoDatasetDefinition): DemoDatasetDefinition {
   return {
-    dataset,
-    calculatedDishes,
-    actions,
-    overview: calculateOverview(calculatedDishes)
+    ...dataset,
+    data: {
+      ingredients: dataset.data.ingredients.map((ingredient) => ({ ...ingredient })),
+      recipes: dataset.data.recipes.map((recipe) => ({
+        ...recipe,
+        ingredients: recipe.ingredients.map((ingredient) => ({ ...ingredient }))
+      })),
+      dishes: dataset.data.dishes.map((dish) => ({ ...dish }))
+    }
   };
 }
 
@@ -68,65 +94,306 @@ function buildTargetMarginActions(
   return targets;
 }
 
-export function getCalculatedDishes(datasetId?: string): CalculatedDish[] | null {
-  return getAnalyticsSnapshot(datasetId)?.calculatedDishes ?? null;
-}
+function createDatasetSession(datasetId?: string): DatasetSession | null {
+  const baseDataset = getDemoDataset(datasetId);
 
-export function getAllActions(datasetId?: string): DishAction[] | null {
-  return getAnalyticsSnapshot(datasetId)?.actions ?? null;
-}
-
-export function getOverview(datasetId?: string) {
-  return getAnalyticsSnapshot(datasetId)?.overview ?? null;
-}
-
-export function getDishDetail(dishId: string, datasetId?: string): DishDetailAnalytics | null {
-  const snapshot = getAnalyticsSnapshot(datasetId);
-
-  if (!snapshot) {
+  if (!baseDataset) {
     return null;
   }
 
-  const dish = snapshot.dataset.data.dishes.find((item) => item.id === dishId);
-  if (!dish) {
-    return null;
-  }
-
-  const recipe = snapshot.dataset.data.recipes.find((item) => item.id === dish.recipeId);
-  if (!recipe) {
-    return null;
-  }
-
-  const metrics = snapshot.calculatedDishes.find((item) => item.dishId === dishId);
-
-  if (!metrics) {
-    return null;
-  }
-
-  const recipeCost = calculateRecipeCost(recipe, snapshot.dataset.data.ingredients);
-  const recommendedActionsForDish = snapshot.actions.filter((action) => action.dishId === dishId);
-  const simulationAction = recommendedActionsForDish.find(
-    (action) => action.recommendedPriceCents !== undefined
-  );
-  const costDriverInsight = getCostDriverInsight(recipeCost.breakdown);
+  const dataset = cloneDatasetDefinition(baseDataset);
+  const restaurantId = dataset.id;
 
   return {
-    dish,
-    recipe,
-    metrics,
-    ingredientBreakdown: recipeCost.breakdown,
-    costDriverInsight,
-    explanation: explainDishPerformance(metrics),
-    recommendedActionsForDish,
-    simulationHints: {
-      currentPriceCents: dish.priceCents,
-      quickAdjustmentsCents: [50, 100, 200],
-      targetMarginActions: buildTargetMarginActions(dish.priceCents, metrics.costCents),
-      recommendedPriceCents: simulationAction?.recommendedPriceCents,
-      recommendedTargetMarginPercent: simulationAction?.targetMarginPercent,
-      note: simulationAction?.recommendedPriceCents
-        ? `Use the suggested price as a decision test, then compare the new margin before touching the live menu.`
-        : "Start with a small price move and compare the simulated status change before updating the live menu."
+    dataset,
+    ingredients: dataset.data.ingredients,
+    recipes: dataset.data.recipes,
+    dishes: dataset.data.dishes,
+    suppliers: createDefaultSuppliers(restaurantId),
+    supplierProductMatches: createDefaultSupplierProductMatches(restaurantId),
+    costHistory: [],
+    alerts: [],
+    invoices: new Map<string, StoredInvoiceRecord>(),
+    invoiceCounter: 0
+  };
+}
+
+export function createDataStore() {
+  const sessions = new Map<string, DatasetSession>();
+  const sampleInvoices = getMockInvoiceSamples();
+
+  function getSession(datasetId?: string) {
+    const resolvedId = datasetId ?? getDemoDataset()?.id;
+
+    if (!resolvedId) {
+      return null;
+    }
+
+    if (!sessions.has(resolvedId)) {
+      const session = createDatasetSession(resolvedId);
+
+      if (!session) {
+        return null;
+      }
+
+      sessions.set(resolvedId, session);
+    }
+
+    return sessions.get(resolvedId) ?? null;
+  }
+
+  function getAnalyticsSnapshot(datasetId?: string) {
+    const session = getSession(datasetId);
+
+    if (!session) {
+      return null;
+    }
+
+    const calculatedDishes = calculateCalculatedDishes({
+      ingredients: session.ingredients,
+      recipes: session.recipes,
+      dishes: session.dishes
+    });
+    const actions = rankDishActions(calculatedDishes);
+
+    return {
+      session,
+      calculatedDishes,
+      actions,
+      overview: calculateOverview(calculatedDishes)
+    };
+  }
+
+  return {
+    restaurantData: sampleRestaurantData,
+    getResolvedDataset(datasetId?: string): DemoDatasetDefinition | null {
+      return getSession(datasetId)?.dataset ?? null;
+    },
+    getDemoDatasets(): DemoDatasetSummary[] {
+      return listDemoDatasets();
+    },
+    getMockInvoiceSampleSummaries(): MockInvoiceSampleSummary[] {
+      return listMockInvoiceSampleSummaries();
+    },
+    getIngredients(datasetId?: string) {
+      return getSession(datasetId)?.ingredients ?? null;
+    },
+    getRecipes(datasetId?: string) {
+      return getSession(datasetId)?.recipes ?? null;
+    },
+    getDishes(datasetId?: string) {
+      return getSession(datasetId)?.dishes ?? null;
+    },
+    getSuppliers(datasetId?: string) {
+      return getSession(datasetId)?.suppliers ?? null;
+    },
+    getCalculatedDishes(datasetId?: string): CalculatedDish[] | null {
+      return getAnalyticsSnapshot(datasetId)?.calculatedDishes ?? null;
+    },
+    getAllActions(datasetId?: string): DishAction[] | null {
+      return getAnalyticsSnapshot(datasetId)?.actions ?? null;
+    },
+    getOverview(datasetId?: string) {
+      return getAnalyticsSnapshot(datasetId)?.overview ?? null;
+    },
+    getPriceChangeAlerts(datasetId?: string) {
+      const session = getSession(datasetId);
+
+      if (!session) {
+        return null;
+      }
+
+      return [...session.alerts].sort((left, right) => right.createdAt.localeCompare(left.createdAt));
+    },
+    getIngredientCostHistory(ingredientId: string, datasetId?: string) {
+      const session = getSession(datasetId);
+
+      if (!session) {
+        return null;
+      }
+
+      return session.costHistory.filter((history) => history.ingredientId === ingredientId);
+    },
+    getDishDetail(dishId: string, datasetId?: string): DishDetailAnalytics | null {
+      const snapshot = getAnalyticsSnapshot(datasetId);
+
+      if (!snapshot) {
+        return null;
+      }
+
+      const dish = snapshot.session.dishes.find((item) => item.id === dishId);
+      if (!dish) {
+        return null;
+      }
+
+      const recipe = snapshot.session.recipes.find((item) => item.id === dish.recipeId);
+      if (!recipe) {
+        return null;
+      }
+
+      const metrics = snapshot.calculatedDishes.find((item) => item.dishId === dishId);
+
+      if (!metrics) {
+        return null;
+      }
+
+      const recipeCost = calculateRecipeCost(recipe, snapshot.session.ingredients);
+      const recommendedActionsForDish = snapshot.actions.filter((action) => action.dishId === dishId);
+      const simulationAction = recommendedActionsForDish.find(
+        (action) => action.recommendedPriceCents !== undefined
+      );
+      const costDriverInsight = getCostDriverInsight(recipeCost.breakdown);
+
+      return {
+        dish,
+        recipe,
+        metrics,
+        ingredientBreakdown: recipeCost.breakdown,
+        costDriverInsight,
+        explanation: explainDishPerformance(metrics),
+        recommendedActionsForDish,
+        simulationHints: {
+          currentPriceCents: dish.priceCents,
+          quickAdjustmentsCents: [50, 100, 200],
+          targetMarginActions: buildTargetMarginActions(dish.priceCents, metrics.costCents),
+          recommendedPriceCents: simulationAction?.recommendedPriceCents,
+          recommendedTargetMarginPercent: simulationAction?.targetMarginPercent,
+          note: simulationAction?.recommendedPriceCents
+            ? "Use the suggested price as a decision test, then compare the new margin before touching the live menu."
+            : "Start with a small price move and compare the simulated status change before updating the live menu."
+        }
+      };
+    },
+    parseMockInvoice(sampleInvoiceId: string, datasetId?: string) {
+      const session = getSession(datasetId);
+
+      if (!session) {
+        return null;
+      }
+
+      const sampleInvoice = sampleInvoices.find((candidate) => candidate.id === sampleInvoiceId);
+
+      if (!sampleInvoice) {
+        return undefined;
+      }
+
+      session.invoiceCounter += 1;
+      const draft = parseMockInvoice(
+        sampleInvoice,
+        session.suppliers,
+        session.ingredients,
+        session.supplierProductMatches,
+        {
+          restaurantId: session.dataset.id,
+          invoiceId: `${sampleInvoice.id}-${session.invoiceCounter.toString().padStart(2, "0")}`
+        }
+      );
+
+      session.invoices.set(draft.invoiceDraft.id, { draft });
+
+      return draft;
+    },
+    getInvoice(invoiceId: string, datasetId?: string): StoredInvoiceView | null {
+      const session = getSession(datasetId);
+
+      if (!session) {
+        return null;
+      }
+
+      const record = session.invoices.get(invoiceId);
+
+      if (!record) {
+        return null;
+      }
+
+      return {
+        invoice: record.confirmedInvoice ?? record.draft.invoiceDraft,
+        supplierSuggestion: record.draft.supplierSuggestion,
+        lines: record.confirmedLines ?? record.draft.lines,
+        summary: record.draft.summary,
+        confirmationSummary: record.confirmationSummary,
+        affectedDishes: record.affectedDishes,
+        alerts: record.alerts
+      };
+    },
+    confirmInvoice(
+      invoiceId: string,
+      datasetId: string | undefined,
+      input: {
+        supplierId?: string;
+        invoiceDate?: string;
+        invoiceNumber?: string;
+        lines: ReviewedInvoiceLineInput[];
+      }
+    ) {
+      const session = getSession(datasetId);
+
+      if (!session) {
+        return null;
+      }
+
+      const record = session.invoices.get(invoiceId);
+
+      if (!record) {
+        return undefined;
+      }
+
+      if (record.confirmedInvoice) {
+        throw new Error("Invoice has already been confirmed.");
+      }
+
+      const result = confirmInvoiceReview({
+        invoiceDraft: record.draft,
+        reviewedInvoice: {
+          supplierId: input.supplierId,
+          invoiceDate: input.invoiceDate,
+          invoiceNumber: input.invoiceNumber
+        },
+        reviewedLines: input.lines,
+        ingredients: session.ingredients,
+        recipes: session.recipes,
+        dishes: session.dishes,
+        suppliers: session.suppliers,
+        existingCostHistory: session.costHistory,
+        existingAlerts: session.alerts,
+        existingSupplierProductMatches: session.supplierProductMatches
+      });
+
+      session.ingredients = result.updatedIngredients.map((ingredient) => ({ ...ingredient }));
+      session.dataset = {
+        ...session.dataset,
+        data: {
+          ingredients: session.ingredients,
+          recipes: session.recipes,
+          dishes: session.dishes
+        }
+      };
+      session.costHistory = [...session.costHistory, ...result.costHistory];
+      session.alerts = [...session.alerts, ...result.alerts];
+
+      for (const match of result.supplierProductMatches) {
+        const existingIndex = session.supplierProductMatches.findIndex(
+          (candidate) =>
+            candidate.supplierId === match.supplierId &&
+            candidate.normalizedProductName === match.normalizedProductName
+        );
+
+        if (existingIndex >= 0) {
+          session.supplierProductMatches[existingIndex] = match;
+        } else {
+          session.supplierProductMatches.push(match);
+        }
+      }
+
+      record.confirmedInvoice = result.confirmedInvoice;
+      record.confirmedLines = result.confirmedLines;
+      record.confirmationSummary = result.confirmationSummary;
+      record.affectedDishes = result.affectedDishes;
+      record.alerts = result.alerts;
+
+      return result;
     }
   };
 }
+
+export const dataStore = createDataStore();

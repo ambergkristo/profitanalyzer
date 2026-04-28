@@ -165,7 +165,7 @@ Manual check: complete the main dashboard-to-dish-detail-to-simulator flow on de
 
 ## RM7 - Invoice Scan Cost Intake
 
-Status: not started. Preflight only documented in MAX SPRINT 4.
+Status: partial in MAX SPRINT 5.
 
 ### Goal
 
@@ -173,7 +173,7 @@ Turn supplier invoice data into confirmed ingredient cost updates and price-chan
 
 Important:
 
-This milestone must first use a mocked or structured parser. Real OCR or vision integration does not belong here.
+This milestone starts with a mocked or structured parser. Real OCR or vision integration still does not belong here.
 
 ### Scope
 
@@ -183,7 +183,7 @@ This milestone must first use a mocked or structured parser. Real OCR or vision 
 - IngredientCostHistory model
 - SupplierProductMatch or IngredientAlias model
 - Mock parsed invoice input
-- Upload, review, and confirm workflow
+- Review and confirm workflow
 - Ingredient matching suggestions
 - Confirm screen
 - Cost update service
@@ -192,7 +192,7 @@ This milestone must first use a mocked or structured parser. Real OCR or vision 
 
 ### Required Workflow
 
-1. User uploads or submits a sample invoice or mocked parsed invoice.
+1. User submits a sample invoice or mocked parsed invoice.
 2. System creates a structured invoice draft.
 3. System shows invoice review screen.
 4. User confirms supplier, date, invoice lines, quantities, units, prices, and ingredient matches.
@@ -214,6 +214,25 @@ This milestone must first use a mocked or structured parser. Real OCR or vision 
 ### Validation Check
 
 Manual check: load a mocked invoice, correct low-confidence lines, confirm the draft, verify cost history creation, and confirm the dashboard surfaces invoice-driven actions.
+
+### Current Sprint 5 Result
+
+Built now:
+
+- sample invoice selection through `/invoices`
+- mock invoice parsing endpoint and review screen
+- confirmation workflow that updates current ingredient cost only after review
+- `IngredientCostHistory` records
+- supplier product match creation and refresh
+- supplier price-change alerts
+- affected dish impact summary and dashboard alert section
+
+Still remaining inside RM7:
+
+- manual invoice entry beyond canned samples
+- richer line-edit ergonomics for fast operator review
+- deeper invoice-alert integration into the ranked dashboard action stack
+- any real OCR, image upload, or supplier ingestion work
 
 ## RM8 - Real OCR/Vision Adapter
 

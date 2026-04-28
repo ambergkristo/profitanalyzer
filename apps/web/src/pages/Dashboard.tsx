@@ -9,6 +9,7 @@ import { MenuHealthBar } from "../components/MenuHealthBar.js";
 import { PageHeader } from "../components/PageHeader.js";
 import { Panel } from "../components/Panel.js";
 import { SectionHeader } from "../components/SectionHeader.js";
+import { SeverityBadge } from "../components/SeverityBadge.js";
 import { StatePanel } from "../components/StatePanel.js";
 import { useAsyncData } from "../hooks.js";
 import { formatEuro, formatPercent, getStatusLabel } from "../utils/format.js";
@@ -18,13 +19,14 @@ export function DashboardPage() {
   const [searchParams] = useSearchParams();
   const datasetId = searchParams.get("dataset") ?? undefined;
   const loadDashboard = useCallback(async () => {
-    const [overview, dishes, datasets] = await Promise.all([
+    const [overview, dishes, datasets, alerts] = await Promise.all([
       apiClient.getOverview(datasetId),
       apiClient.getDishes(datasetId),
-      apiClient.getDemoDatasets()
+      apiClient.getDemoDatasets(),
+      apiClient.getPriceChangeAlerts(datasetId)
     ]);
 
-    return { overview, dishes, datasets };
+    return { overview, dishes, datasets, alerts };
   }, [datasetId]);
   const dashboard = useAsyncData(loadDashboard);
 
@@ -65,7 +67,7 @@ export function DashboardPage() {
     );
   }
 
-  const { overview, dishes, datasets } = dashboard.data;
+  const { overview, dishes, datasets, alerts } = dashboard.data;
   const selectedDataset = getScenarioMeta(datasets, datasetId);
 
   if (!selectedDataset) {
@@ -253,6 +255,43 @@ export function DashboardPage() {
           </div>
         </Panel>
 
+        <Panel>
+          <SectionHeader
+            description="Confirmed invoice cost moves show up here with the first dishes likely to feel the change."
+            eyebrow="Latest supplier price alerts"
+            title="What changed since the last cost intake"
+          />
+          <div className="mt-6 space-y-3">
+            {alerts.length === 0 ? (
+              <StatePanel
+                message="No supplier price alerts yet. Confirm a sample invoice to see cost-change impact."
+                title="No supplier price alerts yet."
+                tone="empty"
+              />
+            ) : (
+              alerts.slice(0, 4).map((alert) => (
+                <div key={alert.id} className="rounded-tile border border-border bg-white/[0.02] p-4">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <SeverityBadge severity={alert.severity} />
+                    <span className="text-xs uppercase tracking-[0.16em] text-muted">
+                      {alert.type.replaceAll("_", " ")}
+                    </span>
+                  </div>
+                  <p className="mt-3 text-sm leading-6 text-text">{alert.message}</p>
+                  <p className="mt-2 text-sm leading-6 text-muted">{alert.recommendedAction}</p>
+                  {typeof alert.estimatedMarginImpactCents === "number" ? (
+                    <p className="mt-3 text-sm leading-6 text-warning">
+                      Estimated period impact {formatEuro(alert.estimatedMarginImpactCents)}
+                    </p>
+                  ) : null}
+                </div>
+              ))
+            )}
+          </div>
+        </Panel>
+      </section>
+
+      <section className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
         <Panel>
           <SectionHeader
             description="Open any dish to inspect its cost driver, review the recommendation, and run the live simulator."

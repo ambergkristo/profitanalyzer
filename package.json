@@ -13,7 +13,8 @@
     "lint": "npm run lint -w @profit-analyzer/core && npm run lint -w @profit-analyzer/api && npm run lint -w @profit-analyzer/web",
     "typecheck": "npm run typecheck -w @profit-analyzer/core && npm run typecheck -w @profit-analyzer/api && npm run typecheck -w @profit-analyzer/web",
     "validate:synthetic": "tsx scripts/validateSynthetic.ts",
-    "validate:demo": "tsx scripts/validateDemo.ts"
+    "validate:demo": "tsx scripts/validateDemo.ts",
+    "validate:invoice": "tsx scripts/validateInvoice.ts"
   },
   "devDependencies": {
     "@eslint/js": "^9.18.0",

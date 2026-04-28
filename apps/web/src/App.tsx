@@ -4,6 +4,7 @@ import { Layout } from "./components/Layout.js";
 import { DashboardPage } from "./pages/Dashboard.js";
 import { DishDetailPage } from "./pages/DishDetail.js";
 import { DishesPage } from "./pages/Dishes.js";
+import { InvoicesPage } from "./pages/Invoices.js";
 
 const router = createBrowserRouter([
   {
@@ -12,7 +13,8 @@ const router = createBrowserRouter([
     children: [
       { index: true, element: <DashboardPage /> },
       { path: "dishes", element: <DishesPage /> },
-      { path: "dishes/:dishId", element: <DishDetailPage /> }
+      { path: "dishes/:dishId", element: <DishDetailPage /> },
+      { path: "invoices", element: <InvoicesPage /> }
     ]
   }
 ]);
