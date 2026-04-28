@@ -71,7 +71,7 @@ Sprint 8 closes RM8 without changing the trust model:
 - photo or PDF upload is accepted only as OCR draft intake
 - fixture OCR remains the default provider path
 - provider selection is backend-controlled through the OCR provider registry
-- external provider support exists only as an env-driven seam and stays disabled when unconfigured
+- external provider support now exists as an env-driven pilot and stays disabled when unconfigured
 - fixture or external OCR output is normalized into the same `ParsedInvoiceDraft` shape used by sample and manual drafts
 - OCR quality is evaluated before the draft reaches review
 - low-confidence OCR lines become `needs_review`

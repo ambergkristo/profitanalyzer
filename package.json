@@ -15,7 +15,8 @@
     "validate:synthetic": "tsx scripts/validateSynthetic.ts",
     "validate:demo": "tsx scripts/validateDemo.ts",
     "validate:invoice": "tsx scripts/validateInvoice.ts",
-    "validate:ocr": "tsx scripts/validateOcr.ts"
+    "validate:ocr": "tsx scripts/validateOcr.ts",
+    "validate:ocr:provider": "tsx scripts/validateOcrProvider.ts"
   },
   "devDependencies": {
     "@eslint/js": "^9.18.0",

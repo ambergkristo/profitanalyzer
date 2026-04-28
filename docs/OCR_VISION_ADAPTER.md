@@ -2,7 +2,7 @@
 
 ## Goal
 
-Close RM8 without breaking the RM7 safety boundary.
+Close RM8 at the provider-pilot level without breaking the RM7 trust boundary.
 
 The product flow stays:
 
@@ -31,6 +31,7 @@ Each provider exposes:
 - `displayName`
 - `isConfigured`
 - `isDefault`
+- `modelConfigured`
 - `supportsMimeTypes`
 - `maxFileSizeBytes`
 - `mode`
@@ -38,7 +39,7 @@ Each provider exposes:
 Current behavior:
 
 - `fixture` is always configured and is the default in local development.
-- `external_env` is only configured when the required environment variables are present.
+- `external_env` is only configured when server-side env variables are present.
 - `disabled` exists as a safe non-runnable provider state.
 
 Provider metadata is exposed through:
@@ -56,26 +57,69 @@ The fixture adapter is deterministic and filename-driven:
 
 This is explicitly development adapter mode. It is not presented as real OCR accuracy.
 
-## External Provider Seam
+## External Provider Pilot
 
-The external seam exists, but it is safely disabled unless configured by environment variables.
+The external seam is now implemented behind env configuration in:
 
-Supported environment names:
+- `apps/api/src/ocr/externalProvider.ts`
 
-- `OCR_PROVIDER`
+It is server-side only and currently targets an OpenAI-compatible Responses API shape through `fetch`.
+
+Required env names:
+
+- `OCR_PROVIDER=external_env`
 - `OCR_PROVIDER_API_KEY`
-- `OCR_PROVIDER_ENDPOINT`
 - `OCR_PROVIDER_MODEL`
+
+Optional env names:
+
+- `OCR_PROVIDER_ENDPOINT`
+- `OCR_PROVIDER_TIMEOUT_MS`
+- `OCR_PROVIDER_MAX_RETRIES`
 
 Current behavior:
 
-- startup does not fail when these are missing
-- requests for an unconfigured external provider return a safe error
-- no secrets are exposed in API responses
+- startup does not fail when env is missing
+- requests for an unconfigured external provider return a safe `503`
+- no provider secrets are exposed in API responses
 - no provider secrets are read from the frontend
 - no real provider credentials are committed in the repository
 
-The external adapter is production-shaped but intentionally not wired to a paid provider yet.
+The external adapter is a controlled pilot, not a claim of production OCR readiness.
+
+## Provider Response Schema
+
+The external provider is asked to return strict JSON in this shape:
+
+```json
+{
+  "supplierName": "string|null",
+  "invoiceNumber": "string|null",
+  "invoiceDate": "YYYY-MM-DD|null",
+  "totalAmountCents": 12345,
+  "confidence": "high|medium|low|none",
+  "warnings": ["string"],
+  "lines": [
+    {
+      "rawProductName": "string",
+      "quantity": 1,
+      "unit": "kg|g|l|ml|pcs|pack|null",
+      "unitPriceCents": 100,
+      "lineTotalCents": 1000,
+      "confidence": "high|medium|low|none",
+      "warnings": ["string"]
+    }
+  ]
+}
+```
+
+The parser does not trust the provider blindly:
+
+- invalid JSON fails safely
+- unsupported units become warnings
+- negative money values are ignored
+- unknown confidence values are downgraded to low
+- missing or invalid line arrays degrade into manual-review quality states
 
 ## Upload Validation
 
@@ -94,7 +138,7 @@ Current validation:
 - failed OCR parses create failed jobs instead of crashing the server
 - files are processed in memory only
 
-Accepted fixture mime types:
+Accepted mime types:
 
 - `image/jpeg`
 - `image/png`
@@ -183,26 +227,40 @@ Safety rules:
 - repeated confirmation is blocked
 - pre-confirm analytics and cost history remain unchanged
 
-## How To Add A Real Provider Later
+## Live-Skip Validation
 
-When a live provider is added later, it should plug into the registry rather than bypassing it.
+Deterministic fixture validation:
 
-Implementation path:
+- `npm run validate:ocr`
 
-1. Add a provider adapter that returns `OcrParsedInvoiceResult`
-2. Normalize provider output into the existing OCR quality and draft helpers
-3. Register provider config in the API registry
-4. Keep upload validation and job state unchanged
-5. Reuse the same invoice draft review-confirm path
-6. Extend `validate:ocr` with deterministic provider-contract tests where possible
+Provider pilot validation:
 
-## Current Limitations
+- `npm run validate:ocr:provider`
 
-- fixture OCR is still the only active provider
-- the external provider path is an architectural seam, not a validated live integration
-- no camera capture
-- no mobile-native photo workflow
-- no persistent OCR job or file storage
-- no production document retention model
-- no validation yet for real supplier invoice variety
-- no validation yet for live provider cost, latency, or accuracy
+Behavior:
+
+- if env is missing, provider validation exits `0` and reports `SKIPPED_EXTERNAL_PROVIDER`
+- if env is present, the script runs one controlled live extraction against a local private synthetic sample
+- benchmark output is written to:
+  - `reports/ocr-provider-benchmark-report.json`
+  - `reports/ocr-provider-benchmark-report.md`
+
+## Benchmark Fixture Process
+
+Committed benchmark expectations live in:
+
+- `benchmarks/ocr/expected/`
+
+Private local sample files belong in:
+
+- `benchmarks/ocr/private-samples/`
+
+Do not commit real supplier invoices or sensitive commercial documents.
+
+## What Real Provider Integration Still Does Not Prove
+
+- real invoice OCR accuracy at scale
+- broad supplier invoice-format coverage
+- provider cost or latency under production load
+- production file retention and storage strategy
+- camera UX

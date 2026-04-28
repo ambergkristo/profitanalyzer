@@ -319,6 +319,31 @@ Still out of scope after Sprint 8:
 - supplier API sync
 - blind auto-import
 
+### Current Sprint 9 Result
+
+Built now:
+
+- real `external_env` provider adapter behind the existing provider registry
+- server-side env configuration for OpenAI-compatible Responses API calls
+- provider response parser and schema normalization into the existing OCR draft shape
+- deterministic offline provider tests with mocked responses
+- `validate:ocr:provider` live-skip validation
+- OCR provider benchmark scaffolding and deterministic skip reporting when env is missing
+- fixture OCR remaining the default path even with the external provider pilot in place
+
+Important note:
+
+RM8 is complete at the adapter and provider-pilot level. It still does not prove production OCR accuracy.
+
+Still out of scope after Sprint 9:
+
+- real invoice OCR accuracy at scale
+- provider cost and latency benchmarking under production load
+- camera capture
+- production file storage and retention
+- supplier API sync
+- blind auto-import
+
 ## RM9 - First Customer Ready / Pilot Package
 
 ### Goal

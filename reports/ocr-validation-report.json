@@ -1,8 +1,8 @@
 {
   "providerRegistry": "Providers loaded: fixture:configured, external_env:not-configured, disabled:not-configured.",
-  "cleanFixture": "Clean fixture used Fixture OCR Adapter, returned 7 lines, and quality gate marked quick_review.",
+  "cleanFixture": "Clean fixture used Development fixture OCR, returned 7 lines, and quality gate marked quick_review.",
   "blurryFixture": "Blurry fixture returned 5 unresolved lines and confirmation returned HTTP 400.",
   "croppedFixture": "Cropped fixture returned 5 quality warnings and mode careful_review.",
   "safetyGate": "Pre-confirm analytics stayed unchanged, then post-confirm created 4 cost-history records and 6 alerts with supplier-price reason codes present.",
-  "failedJob": "External provider defaulted to unconfigured, returned HTTP 503, and produced 1 failed OCR job entries without mutating analytics."
+  "failedJob": "Disabled provider returned HTTP 503, and produced 1 failed OCR job entries without mutating analytics."
 }

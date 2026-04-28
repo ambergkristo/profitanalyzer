@@ -1,0 +1,10 @@
+{
+  "fixtureId": "messy-invoice",
+  "supplierName": "KitchenHub Cash & Carry",
+  "invoiceDate": "2026-04-14",
+  "lineCount": 6,
+  "notes": [
+    "Expected to produce unresolved lines.",
+    "Expected to require careful review or manual entry."
+  ]
+}

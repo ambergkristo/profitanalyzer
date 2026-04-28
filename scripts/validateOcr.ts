@@ -58,11 +58,6 @@ async function main() {
   assertCondition(Boolean(fixtureProvider?.isConfigured), "Fixture provider should be configured.", failures);
   assertCondition(Boolean(fixtureProvider?.isDefault), "Fixture provider should be default.", failures);
   assertCondition(Boolean(externalProvider), "External provider seam should be listed.", failures);
-  assertCondition(
-    externalProvider?.isConfigured === false,
-    "External provider seam should remain unconfigured by default.",
-    failures
-  );
 
   const invalidProviderResponse = await request(app)
     .post("/api/ocr/invoices/upload?dataset=mixed-restaurant&provider=ghost")
@@ -263,7 +258,7 @@ async function main() {
   );
 
   const failedProviderResponse = await request(app)
-    .post("/api/ocr/invoices/upload?dataset=mixed-restaurant&provider=external_env")
+    .post("/api/ocr/invoices/upload?dataset=mixed-restaurant&provider=disabled")
     .attach("file", Buffer.from("fixture"), {
       filename: "clean-invoice-photo.jpg",
       contentType: "image/jpeg"
@@ -278,7 +273,7 @@ async function main() {
 
   assertCondition(
     failedProviderResponse.status === 503,
-    "Unconfigured external OCR provider should return a safe error.",
+    "Disabled OCR provider should return a safe error.",
     failures
   );
   assertCondition(
@@ -298,7 +293,7 @@ async function main() {
     blurryFixture: `Blurry fixture returned ${blurryDraft.summary.needsReviewLineCount} unresolved lines and confirmation returned HTTP ${blurryConfirmResponse.status}.`,
     croppedFixture: `Cropped fixture returned ${croppedDraft.qualityReport.warnings.length} quality warnings and mode ${croppedDraft.qualityReport.recommendedReviewMode}.`,
     safetyGate: `Pre-confirm analytics stayed unchanged, then post-confirm created ${cleanConfirmation.costHistory.length} cost-history records and ${cleanConfirmation.alerts.length} alerts with supplier-price reason codes present.`,
-    failedJob: `External provider defaulted to unconfigured, returned HTTP ${failedProviderResponse.status}, and produced ${failedJobs.filter((job) => job.status === "failed").length} failed OCR job entries without mutating analytics.`
+    failedJob: `Disabled provider returned HTTP ${failedProviderResponse.status}, and produced ${failedJobs.filter((job) => job.status === "failed").length} failed OCR job entries without mutating analytics.`
   };
 
   const reportsDir = ensureReportsDirectory();

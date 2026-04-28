@@ -344,6 +344,7 @@ export interface OcrProviderConfig {
   displayName: string;
   isConfigured: boolean;
   isDefault: boolean;
+  modelConfigured?: boolean;
   supportsMimeTypes: string[];
   maxFileSizeBytes: number;
   mode: OcrProviderMode;

@@ -4,6 +4,16 @@ import {
   type OcrProvider,
   type OcrProviderConfig
 } from "../../../../packages/core/src/index.js";
+import {
+  buildExternalProviderConfig,
+  createExternalOcrProviderAdapter,
+  type CreateExternalOcrProviderOptions
+} from "./externalProvider.js";
+import {
+  OcrProviderExecutionError,
+  OcrProviderNotConfiguredError,
+  type OcrUploadPayload
+} from "./shared.js";
 
 const supportedMimeTypes = [
   "image/jpeg",
@@ -14,61 +24,17 @@ const supportedMimeTypes = [
 
 const maxFileSizeBytes = 10 * 1024 * 1024;
 
-export class OcrProviderNotConfiguredError extends Error {
-  constructor(providerId: OcrProvider) {
-    super(`OCR provider "${providerId}" is not configured.`);
-    this.name = "OcrProviderNotConfiguredError";
-  }
-}
-
-export class OcrProviderExecutionError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = "OcrProviderExecutionError";
-  }
-}
-
-export interface OcrUploadPayload {
-  fileName: string;
-  mimeType: string;
-  fileSizeBytes: number;
-  buffer: Buffer;
-}
-
-interface OcrProviderHandler {
-  config: OcrProviderConfig;
-  parse(input: OcrUploadPayload): Promise<OcrParsedInvoiceResult>;
-}
-
 export function sanitizeUploadedFileName(fileName: string) {
   return fileName.replace(/[^\w.-]+/g, "-").replace(/-+/g, "-").slice(0, 120) || "upload";
-}
-
-function buildExternalConfig(): OcrProviderConfig {
-  const isConfigured = Boolean(
-    process.env.OCR_PROVIDER === "external_env" &&
-      process.env.OCR_PROVIDER_API_KEY &&
-      process.env.OCR_PROVIDER_ENDPOINT &&
-      process.env.OCR_PROVIDER_MODEL
-  );
-
-  return {
-    id: "external_env",
-    displayName: "External OCR Provider",
-    isConfigured,
-    isDefault: false,
-    supportsMimeTypes: [...supportedMimeTypes],
-    maxFileSizeBytes,
-    mode: "external"
-  };
 }
 
 function buildFixtureConfig(): OcrProviderConfig {
   return {
     id: "fixture",
-    displayName: "Fixture OCR Adapter",
+    displayName: "Development fixture OCR",
     isConfigured: true,
     isDefault: true,
+    modelConfigured: false,
     supportsMimeTypes: [...supportedMimeTypes],
     maxFileSizeBytes,
     mode: "development"
@@ -81,8 +47,9 @@ function buildDisabledConfig(): OcrProviderConfig {
     displayName: "Disabled OCR Provider",
     isConfigured: false,
     isDefault: false,
-    supportsMimeTypes: [],
-    maxFileSizeBytes: 0,
+    modelConfigured: false,
+    supportsMimeTypes: [...supportedMimeTypes],
+    maxFileSizeBytes,
     mode: "disabled"
   };
 }
@@ -91,31 +58,37 @@ function parseWithFixture(input: OcrUploadPayload): Promise<OcrParsedInvoiceResu
   return Promise.resolve(resolveFixtureOcrResult(sanitizeUploadedFileName(input.fileName)));
 }
 
-function parseWithExternalEnv(): Promise<OcrParsedInvoiceResult> {
-  if (
-    !process.env.OCR_PROVIDER_API_KEY ||
-    !process.env.OCR_PROVIDER_ENDPOINT ||
-    !process.env.OCR_PROVIDER_MODEL
-  ) {
-    throw new OcrProviderNotConfiguredError("external_env");
-  }
-
-  return Promise.reject(
-    new OcrProviderExecutionError(
-      "External OCR provider seam is configured architecturally but not implemented in this repo yet."
-    )
-  );
+export interface OcrProviderHandler {
+  config: OcrProviderConfig;
+  parse(input: OcrUploadPayload): Promise<OcrParsedInvoiceResult>;
 }
 
-export function createOcrProviderRegistry() {
+export interface OcrProviderRegistry {
+  getProviders(): OcrProviderConfig[];
+  getDefaultProvider(): OcrProviderConfig;
+  getProvider(providerId?: string): OcrProviderHandler | null;
+  parse(
+    providerId: OcrProvider,
+    input: OcrUploadPayload
+  ): Promise<{ provider: OcrProviderConfig; result: OcrParsedInvoiceResult }>;
+}
+
+export function createOcrProviderRegistry(
+  options: CreateExternalOcrProviderOptions = {}
+): OcrProviderRegistry {
+  const externalProviderAdapter = createExternalOcrProviderAdapter(options);
   const providers: Record<OcrProvider, OcrProviderHandler> = {
     fixture: {
       config: buildFixtureConfig(),
       parse: parseWithFixture
     },
     external_env: {
-      config: buildExternalConfig(),
-      parse: parseWithExternalEnv
+      config: {
+        ...buildExternalProviderConfig(options.env),
+        supportsMimeTypes: [...supportedMimeTypes],
+        maxFileSizeBytes
+      },
+      parse: (input) => externalProviderAdapter.parse(input)
     },
     disabled: {
       config: buildDisabledConfig(),

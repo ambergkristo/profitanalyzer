@@ -807,7 +807,11 @@ export function InvoicesPage() {
                     value={selectedOcrProvider?.id ?? "fixture"}
                   >
                     {pageData.ocrProviders.map((provider) => (
-                      <option key={provider.id} value={provider.id}>
+                      <option
+                        disabled={provider.id === "external_env" && !provider.isConfigured}
+                        key={provider.id}
+                        value={provider.id}
+                      >
                         {provider.displayName}
                         {provider.isConfigured ? "" : " (not configured)"}
                       </option>
@@ -841,6 +845,13 @@ export function InvoicesPage() {
                     <p className="mt-2 text-sm leading-6 text-muted">
                       Max file size {Math.round(selectedOcrProvider.maxFileSizeBytes / (1024 * 1024))}MB.
                     </p>
+                    <p className="mt-2 text-sm leading-6 text-muted">
+                      {selectedOcrProvider.id === "fixture"
+                        ? "Development fixture OCR stays local and deterministic for demo-safe draft creation."
+                        : selectedOcrProvider.isConfigured
+                          ? "Creates review drafts only. Confirmation still required before ingredient costs change."
+                          : "Configure OCR_PROVIDER_API_KEY and OCR_PROVIDER_MODEL on the API server to enable."}
+                    </p>
                   </div>
                 ) : null}
                 <label className="mt-5 block text-sm text-muted">
@@ -863,7 +874,9 @@ export function InvoicesPage() {
                   <p className="text-sm leading-6 text-muted">
                     {selectedOcrProvider?.id === "fixture"
                       ? "Use `clean-invoice-photo.jpg`, `blurry-invoice-photo.jpg`, or `cropped-invoice-photo.jpg` to drive the fixture adapter."
-                      : "External OCR stays disabled until environment configuration is present."}
+                      : selectedOcrProvider?.isConfigured
+                        ? "External OCR still creates review drafts only. Ingredient costs update only after review-confirm."
+                        : "External OCR stays disabled until environment configuration is present."}
                   </p>
                 </div>
                 {ocrFile ? (

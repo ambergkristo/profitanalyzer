@@ -1,0 +1,14 @@
+{
+  "providerConfigured": false,
+  "liveRunExecuted": false,
+  "fixtureCount": 2,
+  "parsedLineAccuracy": null,
+  "supplierDetected": null,
+  "dateDetected": null,
+  "lineCountDetected": 0,
+  "warnings": [
+    "SKIPPED_EXTERNAL_PROVIDER: OCR_PROVIDER=external_env, OCR_PROVIDER_API_KEY, and OCR_PROVIDER_MODEL are required to run live provider validation.",
+    "Fixture provider remained available and created a review draft successfully."
+  ],
+  "safetyStatus": "draft_only_preserved"
+}

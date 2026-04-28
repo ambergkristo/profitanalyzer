@@ -66,18 +66,20 @@ describe("InvoicesPage", () => {
     vi.mocked(apiClient.getOcrProviders).mockResolvedValue([
       {
         id: "fixture",
-        displayName: "Fixture OCR Adapter",
+        displayName: "Development fixture OCR",
         isConfigured: true,
         isDefault: true,
+        modelConfigured: false,
         mode: "development",
         supportsMimeTypes: ["image/jpeg", "image/png", "image/webp", "application/pdf"],
         maxFileSizeBytes: 10485760
       },
       {
         id: "external_env",
-        displayName: "External OCR Provider",
+        displayName: "External OCR provider",
         isConfigured: false,
         isDefault: false,
+        modelConfigured: false,
         mode: "external",
         supportsMimeTypes: ["image/jpeg", "image/png", "image/webp", "application/pdf"],
         maxFileSizeBytes: 10485760
@@ -89,7 +91,7 @@ describe("InvoicesPage", () => {
         id: "ocr-job-previous",
         datasetId: "low-margin-kitchen",
         provider: "fixture",
-        providerDisplayName: "Fixture OCR Adapter",
+        providerDisplayName: "Development fixture OCR",
         status: "failed",
         originalFileName: "failed-upload.jpg",
         mimeType: "image/jpeg",
@@ -205,7 +207,7 @@ describe("InvoicesPage", () => {
         id: "ocr-job-1",
         datasetId: "low-margin-kitchen",
         provider: "fixture",
-        providerDisplayName: "Fixture OCR Adapter",
+        providerDisplayName: "Development fixture OCR",
         status: "needs_review",
         originalFileName: "blurry-invoice-photo.jpg",
         mimeType: "image/jpeg",
@@ -267,9 +269,10 @@ describe("InvoicesPage", () => {
       },
       providerConfig: {
         id: "fixture",
-        displayName: "Fixture OCR Adapter",
+        displayName: "Development fixture OCR",
         isConfigured: true,
         isDefault: true,
+        modelConfigured: false,
         mode: "development",
         supportsMimeTypes: ["image/jpeg", "image/png", "image/webp", "application/pdf"],
         maxFileSizeBytes: 10485760
@@ -606,9 +609,14 @@ describe("InvoicesPage", () => {
     fireEvent.click(await screen.findByRole("button", { name: "Photo/OCR Upload" }));
 
     expect(await screen.findByLabelText("OCR provider")).toHaveValue("fixture");
-    expect(screen.getByRole("option", { name: "Fixture OCR Adapter" })).toBeInTheDocument();
-    expect(screen.getByRole("option", { name: "External OCR Provider (not configured)" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "Development fixture OCR" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "External OCR provider (not configured)" })).toBeDisabled();
     expect(await screen.findByText("Configured")).toBeInTheDocument();
+    expect(
+      await screen.findByText(
+        "Development fixture OCR stays local and deterministic for demo-safe draft creation."
+      )
+    ).toBeInTheDocument();
     expect(await screen.findByText("Use `clean-invoice-photo.jpg`, `blurry-invoice-photo.jpg`, or `cropped-invoice-photo.jpg` to drive the fixture adapter.")).toBeInTheDocument();
     expect(await screen.findByText("Latest OCR jobs")).toBeInTheDocument();
     expect(await screen.findByText("failed-upload.jpg")).toBeInTheDocument();

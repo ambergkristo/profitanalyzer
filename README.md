@@ -1,24 +1,27 @@
 # Menu Profit Optimizer
 
-Menu Profit Optimizer is a restaurant profit decision engine for owners and managers. Sprint 8 closes RM8 safely with a provider-neutral OCR registry, fixture-first OCR upload intake, deterministic quality gating, observable OCR jobs, and the same review-confirm workflow RM7 already uses for cost history, alerts, and dish impact.
+Menu Profit Optimizer is a restaurant profit decision engine for owners and managers. Sprint 9 extends RM8 with the first real external OCR provider pilot behind the existing adapter boundary, while keeping fixture OCR as the default and preserving the same review-confirm safety model.
 
-## Sprint 8 Scope
+## Sprint 9 Scope
 
-MAX SPRINT 8 delivers:
+MAX SPRINT 9 delivers:
 
-- RM8 provider registry with fixture default and external env seam
+- real `external_env` provider adapter behind server-side env config
+- fixture OCR still default and deterministic
+- provider registry with fixture default and external env seam
 - OCR quality gate with quick-review, careful-review, and manual-entry guidance
-- fixture OCR adapter with clean, blurry, cropped, and generic outputs
 - in-memory photo/PDF upload endpoint that creates invoice review drafts only
 - observable OCR job state with provider, quality, and failure metadata
-- `/invoices` Photo/OCR Upload mode in the frontend
-- OCR drafts reusing the existing RM7 review-confirm boundary
+- `/invoices` Photo/OCR Upload mode with provider status in the frontend
+- OCR drafts still reusing the existing RM7 review-confirm boundary
 - `GET /api/ocr/providers` provider discovery endpoint
 - deterministic `npm run validate:ocr`
+- live-skip `npm run validate:ocr:provider`
+- OCR benchmark scaffolding in `benchmarks/ocr`
 - deterministic `npm run validate:synthetic`
 - lightweight `npm run validate:demo`
 - `npm run validate:invoice` still passing
-- updated OCR adapter, invoice, demo, and validation documentation
+- updated OCR adapter, provider setup, invoice, demo, and validation documentation
 
 Current non-goals remain explicit:
 
@@ -40,6 +43,8 @@ Current non-goals remain explicit:
 npm install
 ```
 
+Copy `.env.example` to `.env` only if you want to enable the external OCR provider pilot. Leaving `.env` absent keeps the system on fixture OCR.
+
 ## Local Run Commands
 
 ```bash
@@ -52,8 +57,24 @@ npm run validate:synthetic
 npm run validate:demo
 npm run validate:invoice
 npm run validate:ocr
+npm run validate:ocr:provider
 npm audit
 ```
+
+## OCR Provider Env
+
+Server-only OCR provider configuration lives in `.env`:
+
+```bash
+OCR_PROVIDER=fixture
+OCR_PROVIDER_API_KEY=
+OCR_PROVIDER_MODEL=
+OCR_PROVIDER_ENDPOINT=
+OCR_PROVIDER_TIMEOUT_MS=30000
+OCR_PROVIDER_MAX_RETRIES=1
+```
+
+To enable the external provider pilot, set `OCR_PROVIDER=external_env` and provide `OCR_PROVIDER_API_KEY` plus `OCR_PROVIDER_MODEL`. Provider output still creates drafts only. Ingredient costs update only after review-confirm.
 
 ## Local URLs
 
@@ -136,14 +157,17 @@ See [docs/DEMO_READINESS.md](docs/DEMO_READINESS.md) for the concise demo walkth
 - Manual, sample, and OCR-created drafts all route through the same review-confirm boundary.
 - OCR provider selection stays backend-controlled. The frontend never reads provider secrets.
 - Fixture OCR remains the default adapter unless an external provider is configured through environment variables.
+- The external provider pilot is optional and does not run during normal test/build/lint when env is missing.
 - OCR quality reports and job history are visible in the upload flow before confirmation.
 - Confirmed supplier-cost alerts now feed back into ranked dashboard actions.
 - Scenario selection is demo-mode only and flows through `?dataset=...`.
 - Synthetic validation reports live in `reports/`.
 - Invoice validation reports live in `reports/invoice-validation-report.json` and `reports/invoice-validation-report.md`.
 - OCR validation reports live in `reports/ocr-validation-report.json` and `reports/ocr-validation-report.md`.
+- OCR provider benchmark reports live in `reports/ocr-provider-benchmark-report.json` and `reports/ocr-provider-benchmark-report.md`.
 - RM7 implementation details live in [docs/INVOICE_COST_INTAKE_IMPLEMENTATION.md](docs/INVOICE_COST_INTAKE_IMPLEMENTATION.md).
 - OCR adapter details live in [docs/OCR_VISION_ADAPTER.md](docs/OCR_VISION_ADAPTER.md).
+- OCR provider setup details live in [docs/OCR_PROVIDER_SETUP.md](docs/OCR_PROVIDER_SETUP.md).
 - RM7 readiness and remaining gaps live in [docs/RM7_PREFLIGHT.md](docs/RM7_PREFLIGHT.md).
-- OCR upload is fixture-backed and review-first. No real provider has been hardcoded yet.
+- OCR upload is review-first. The fixture provider stays default, and the external provider pilot remains env-gated.
 - No accounting/inventory/POS/auth/persistent database scope has been added.

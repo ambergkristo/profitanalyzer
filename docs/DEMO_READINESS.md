@@ -40,6 +40,14 @@ Reason:
 14. Use `cropped-invoice-photo.jpg` to show partial parsing with warnings and careful review mode.
 15. Switch to `High Margin Bistro` to prove the engine does not invent false urgency.
 
+Optional provider pilot demo:
+
+1. Configure API-only env variables from `.env.example`.
+2. Restart the API server.
+3. Return to `Photo/OCR Upload`.
+4. Show that `External OCR provider` becomes selectable.
+5. Explain that live provider output still creates a draft only and must pass through the same review-confirm flow.
+
 ## Current Strengths
 
 - Scenario-aware dashboard with owner-facing diagnosis.
@@ -58,11 +66,12 @@ Reason:
 - Price recommendations are heuristic.
 - Scenario mode is for demo and validation only, not tenancy.
 - OCR mode is fixture-backed by default and does not prove real provider accuracy.
-- External provider support is an env-driven seam, not a validated live integration.
+- External provider support is an env-driven pilot and may be skipped entirely in local demos.
 
 ## What Not To Claim Yet
 
 - Do not claim live external OCR provider support yet.
+- Do not claim the external provider demo path works unless API env is configured locally.
 - Do not claim OCR accuracy from the fixture adapter.
 - Do not claim the external provider seam has been benchmarked in production.
 - Do not claim POS or accounting integrations.

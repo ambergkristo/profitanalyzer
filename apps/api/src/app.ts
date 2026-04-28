@@ -10,10 +10,13 @@ import { createDataStore } from "./data.js";
 import {
   createOcrProviderRegistry,
   isAllowedMimeType,
-  OcrProviderExecutionError,
-  OcrProviderNotConfiguredError,
+  type OcrProviderRegistry,
   sanitizeUploadedFileName
 } from "./ocr/providerRegistry.js";
+import {
+  OcrProviderExecutionError,
+  OcrProviderNotConfiguredError
+} from "./ocr/shared.js";
 
 function isPositivePrice(value: unknown): value is number {
   return typeof value === "number" && Number.isFinite(value) && value > 0;
@@ -42,10 +45,14 @@ function isInvoiceUnit(value: unknown): value is InvoiceUnit {
   return typeof value === "string" && ["g", "ml", "piece", "kg", "l", "pcs", "pack"].includes(value);
 }
 
-export function createApp() {
+export interface CreateAppOptions {
+  ocrRegistry?: OcrProviderRegistry;
+}
+
+export function createApp(options: CreateAppOptions = {}) {
   const app = express();
   const dataStore = createDataStore();
-  const ocrRegistry = createOcrProviderRegistry();
+  const ocrRegistry = options.ocrRegistry ?? createOcrProviderRegistry();
   const defaultOcrProvider = ocrRegistry.getDefaultProvider();
   const upload = multer({
     storage: multer.memoryStorage(),

@@ -13,8 +13,9 @@ import type {
   StoredInvoiceView
 } from "../../../packages/core/src/index.js";
 import { createApp } from "../src/app.js";
+import { createOcrProviderRegistry } from "../src/ocr/providerRegistry.js";
 
-const buildApp = () => createApp();
+const buildApp = (options?: Parameters<typeof createApp>[0]) => createApp(options);
 
 describe("api", () => {
   it("returns health response", async () => {
@@ -166,16 +167,128 @@ describe("api", () => {
     const response = await request(buildApp()).get("/api/ocr/providers");
     const body = response.body as Array<{
       id: string;
+      displayName: string;
       isConfigured: boolean;
       isDefault: boolean;
+      modelConfigured?: boolean;
       mode: string;
     }>;
 
     expect(response.status).toBe(200);
     expect(body[0]?.id).toBe("fixture");
+    expect(body[0]?.displayName).toBe("Development fixture OCR");
     expect(body[0]?.isConfigured).toBe(true);
     expect(body[0]?.isDefault).toBe(true);
     expect(body.some((provider) => provider.id === "external_env")).toBe(true);
+    expect(body.find((provider) => provider.id === "external_env")?.modelConfigured).toBe(false);
+  });
+
+  it("creates an OCR draft from a mocked external provider response", async () => {
+    const fetchMock: typeof fetch = () =>
+      Promise.resolve(
+        new Response(
+        JSON.stringify({
+          output_text: JSON.stringify({
+            supplierName: "Metro Fresh Wholesale",
+            invoiceNumber: "EXT-4100",
+            invoiceDate: "2026-04-18",
+            totalAmountCents: 16420,
+            confidence: "medium",
+            warnings: [],
+            lines: [
+              {
+                rawProductName: "Parmesan Grated",
+                quantity: 500,
+                unit: "g",
+                unitPriceCents: 700,
+                lineTotalCents: 350000,
+                confidence: "high",
+                warnings: []
+              }
+            ]
+          })
+        }),
+        {
+          status: 200,
+          headers: {
+            "Content-Type": "application/json"
+          }
+        }
+        )
+      );
+
+    const app = buildApp({
+      ocrRegistry: createOcrProviderRegistry({
+        env: {
+          OCR_PROVIDER: "external_env",
+          OCR_PROVIDER_API_KEY: "test-key",
+          OCR_PROVIDER_MODEL: "gpt-4.1-mini"
+        },
+        fetchImpl: fetchMock
+      })
+    });
+
+    const response = await request(app)
+      .post("/api/ocr/invoices/upload?dataset=mixed-restaurant&provider=external_env")
+      .attach("file", Buffer.from("fixture"), {
+        filename: "provider-invoice.jpg",
+        contentType: "image/jpeg"
+      });
+
+    const body = response.body as {
+      providerConfig: { id: string };
+      invoiceDraft: { sourceType: string };
+      qualityReport: { lineCount: number };
+    };
+
+    expect(response.status).toBe(200);
+    expect(body.providerConfig.id).toBe("external_env");
+    expect(body.invoiceDraft.sourceType).toBe("ocr_future");
+    expect(body.qualityReport.lineCount).toBe(1);
+  });
+
+  it("fails safely when a mocked external provider returns invalid JSON", async () => {
+    const fetchMock: typeof fetch = () =>
+      Promise.resolve(
+        new Response(
+          JSON.stringify({
+            output_text: "{bad-json}"
+          }),
+          {
+            status: 200,
+            headers: {
+              "Content-Type": "application/json"
+            }
+          }
+        )
+      );
+
+    const app = buildApp({
+      ocrRegistry: createOcrProviderRegistry({
+        env: {
+          OCR_PROVIDER: "external_env",
+          OCR_PROVIDER_API_KEY: "test-key",
+          OCR_PROVIDER_MODEL: "gpt-4.1-mini"
+        },
+        fetchImpl: fetchMock
+      })
+    });
+
+    const response = await request(app)
+      .post("/api/ocr/invoices/upload?dataset=mixed-restaurant&provider=external_env")
+      .attach("file", Buffer.from("fixture"), {
+        filename: "provider-invoice.jpg",
+        contentType: "image/jpeg"
+      });
+    const body = response.body as {
+      message: string;
+      ocrJob?: { status: string };
+    };
+
+    expect(response.status).toBe(422);
+    expect(body.message).toContain("invalid JSON");
+    expect(body.message).not.toContain("test-key");
+    expect(body.ocrJob?.status).toBe("failed");
   });
 
   it("parses a mock invoice draft for the selected dataset", async () => {

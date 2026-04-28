@@ -12,6 +12,7 @@ Implemented:
 - RM6: Premium decision-first UX polish
 - RM7: structured invoice cost intake, review-confirm, cost history, supplier alerts, and invoice-driven actions
 - RM8: OCR adapter boundary, fixture upload intake, and validation safety gate
+- RM8 provider pilot: env-gated external OCR provider seam, benchmark harness, and live-skip validation
 
 Not started:
 
@@ -176,6 +177,31 @@ It still does not prove:
 - real supplier invoice-format variance at scale
 - provider latency, uptime, or cost
 - production storage or retention behavior
+- camera UX
+
+## Sprint 9 RM8 Provider Pilot Note
+
+Sprint 9 adds the first real provider implementation path without weakening the trust boundary:
+
+- fixture OCR remains the default provider
+- `external_env` is implemented server-side only and stays disabled unless env is configured
+- provider output is parsed into the same OCR draft shape used by fixture OCR
+- invalid provider JSON, unit, money, and timeout scenarios fail safely
+- `npm run validate:ocr` stays deterministic and fixture-based
+- `npm run validate:ocr:provider` skips cleanly when env is missing and runs a controlled benchmark only when env is present
+
+This proves:
+
+- workflow safety is validated
+- provider integration path is implemented
+- live provider validation is optional and operationally isolated
+
+It still does not prove:
+
+- real OCR accuracy at scale
+- broad supplier-format coverage
+- provider cost or latency under load
+- production storage behavior
 - camera UX
 
 ## Next Readiness Gate Before RM9

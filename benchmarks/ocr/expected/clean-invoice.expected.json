@@ -1,0 +1,15 @@
+{
+  "fixtureId": "clean-invoice",
+  "supplierName": "Metro Fresh Wholesale",
+  "invoiceDate": "2026-04-08",
+  "lineCount": 7,
+  "lineNames": [
+    "Romaine Lettuce Hearts",
+    "Parmesan Grated",
+    "Avocado Halves",
+    "Mozzarella Fior di Latte",
+    "Tomato Sauce Base",
+    "Citrus Dressing House",
+    "Butter Lettuce Baby"
+  ]
+}

@@ -3,3 +3,7 @@ dist/
 coverage/
 .vite/
 *.log
+.env
+.env.*
+!.env.example
+benchmarks/ocr/private-samples/
