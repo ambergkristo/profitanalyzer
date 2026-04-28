@@ -162,6 +162,22 @@ describe("api", () => {
     expect(body[0]).toHaveProperty("expectedImpact");
   });
 
+  it("returns OCR provider registry metadata with fixture as the default", async () => {
+    const response = await request(buildApp()).get("/api/ocr/providers");
+    const body = response.body as Array<{
+      id: string;
+      isConfigured: boolean;
+      isDefault: boolean;
+      mode: string;
+    }>;
+
+    expect(response.status).toBe(200);
+    expect(body[0]?.id).toBe("fixture");
+    expect(body[0]?.isConfigured).toBe(true);
+    expect(body[0]?.isDefault).toBe(true);
+    expect(body.some((provider) => provider.id === "external_env")).toBe(true);
+  });
+
   it("parses a mock invoice draft for the selected dataset", async () => {
     const response = await request(buildApp())
       .post("/api/invoices/parse-mock?dataset=mixed-restaurant")
@@ -537,10 +553,32 @@ describe("api", () => {
     );
     const jobBody = jobResponse.body as {
       ocrJob: { invoiceDraftId?: string };
+      qualityReport: { recommendedReviewMode: string };
     };
 
     expect(jobResponse.status).toBe(200);
     expect(jobBody.ocrJob.invoiceDraftId).toBe(uploadBody.invoiceDraft.id);
+    expect(jobBody.qualityReport.recommendedReviewMode).toBe("quick_review");
+  });
+
+  it("lists OCR jobs with quality summaries", async () => {
+    const app = buildApp();
+    await request(app)
+      .post("/api/ocr/invoices/upload?dataset=mixed-restaurant")
+      .attach("file", Buffer.from("fixture"), {
+        filename: "cropped-invoice-photo.jpg",
+        contentType: "image/jpeg"
+      });
+
+    const response = await request(app).get("/api/ocr/jobs?dataset=mixed-restaurant");
+    const body = response.body as Array<{
+      id: string;
+      qualityReport?: { recommendedReviewMode: string };
+    }>;
+
+    expect(response.status).toBe(200);
+    expect(body.length).toBeGreaterThan(0);
+    expect(body[0]?.qualityReport?.recommendedReviewMode).toBeTruthy();
   });
 
   it("rejects unsupported OCR upload file types", async () => {
@@ -552,6 +590,51 @@ describe("api", () => {
       });
 
     expect(response.status).toBe(415);
+  });
+
+  it("rejects unknown OCR provider ids", async () => {
+    const response = await request(buildApp())
+      .post("/api/ocr/invoices/upload?dataset=mixed-restaurant&provider=ghost")
+      .attach("file", Buffer.from("fixture"), {
+        filename: "clean-invoice-photo.jpg",
+        contentType: "image/jpeg"
+      });
+
+    expect(response.status).toBe(400);
+  });
+
+  it("returns a safe external-provider-not-configured error and stores a failed OCR job", async () => {
+    const app = buildApp();
+    const uploadResponse = await request(app)
+      .post("/api/ocr/invoices/upload?dataset=mixed-restaurant&provider=external_env")
+      .attach("file", Buffer.from("fixture"), {
+        filename: "clean-invoice-photo.jpg",
+        contentType: "image/jpeg"
+      });
+    const uploadBody = uploadResponse.body as {
+      message: string;
+      ocrJob: { status: string };
+    };
+
+    expect(uploadResponse.status).toBe(503);
+    expect(uploadBody.message).toContain("not configured");
+    expect(uploadBody.ocrJob.status).toBe("failed");
+
+    const jobsResponse = await request(app).get("/api/ocr/jobs?dataset=mixed-restaurant");
+    const jobs = jobsResponse.body as Array<{ status: string }>;
+
+    expect(jobs.some((job) => job.status === "failed")).toBe(true);
+  });
+
+  it("rejects oversized OCR uploads", async () => {
+    const response = await request(buildApp())
+      .post("/api/ocr/invoices/upload?dataset=mixed-restaurant")
+      .attach("file", Buffer.alloc(11 * 1024 * 1024, "a"), {
+        filename: "clean-invoice-photo.jpg",
+        contentType: "image/jpeg"
+      });
+
+    expect(response.status).toBe(413);
   });
 
   it("blocks OCR confirmation while low-confidence lines remain unresolved", async () => {
@@ -597,6 +680,8 @@ describe("api", () => {
 
   it("confirms OCR drafts through the existing review-confirm flow and updates actions", async () => {
     const app = buildApp();
+    const beforeOverviewResponse = await request(app).get("/api/analytics/overview?dataset=mixed-restaurant");
+    const beforeOverview = beforeOverviewResponse.body as OverviewMetrics;
     const uploadResponse = await request(app)
       .post("/api/ocr/invoices/upload?dataset=mixed-restaurant")
       .attach("file", Buffer.from("fixture"), {
@@ -643,7 +728,30 @@ describe("api", () => {
 
     const actionsResponse = await request(app).get("/api/analytics/actions?dataset=mixed-restaurant");
     const actions = actionsResponse.body as DishAction[];
+    const afterOverviewResponse = await request(app).get("/api/analytics/overview?dataset=mixed-restaurant");
+    const afterOverview = afterOverviewResponse.body as OverviewMetrics;
 
+    expect(afterOverview.estimatedPeriodProfitCents).toBeLessThanOrEqual(beforeOverview.estimatedPeriodProfitCents);
+    expect(afterOverview.supplierAlertCount).toBeGreaterThan(0);
     expect(actions.some((action) => action.reasonCodes.includes("SUPPLIER_PRICE_INCREASE"))).toBe(true);
+  });
+
+  it("failed OCR jobs do not mutate analytics", async () => {
+    const app = buildApp();
+    const beforeResponse = await request(app).get("/api/analytics/overview?dataset=mixed-restaurant");
+    const before = beforeResponse.body as OverviewMetrics;
+
+    const failedUploadResponse = await request(app)
+      .post("/api/ocr/invoices/upload?dataset=mixed-restaurant&provider=external_env")
+      .attach("file", Buffer.from("fixture"), {
+        filename: "clean-invoice-photo.jpg",
+        contentType: "image/jpeg"
+      });
+    const afterResponse = await request(app).get("/api/analytics/overview?dataset=mixed-restaurant");
+    const after = afterResponse.body as OverviewMetrics;
+
+    expect(failedUploadResponse.status).toBe(503);
+    expect(after.supplierAlertCount).toBe(before.supplierAlertCount);
+    expect(after.estimatedPeriodProfitCents).toBe(before.estimatedPeriodProfitCents);
   });
 });

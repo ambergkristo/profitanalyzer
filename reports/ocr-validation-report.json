@@ -1,6 +1,8 @@
 {
-  "cleanFixture": "Clean fixture uploaded with 7 lines and confirmed into 4 cost-history records.",
-  "blurryFixture": "Blurry fixture uploaded with 5 unresolved lines and confirmation returned HTTP 400.",
-  "croppedFixture": "Cropped fixture uploaded safely with 2 OCR warnings and invoice number missing.",
-  "safetyGate": "Pre-confirm cost history remained 0; post-confirm alerts reached 6 and supplier-price actions were present."
+  "providerRegistry": "Providers loaded: fixture:configured, external_env:not-configured, disabled:not-configured.",
+  "cleanFixture": "Clean fixture used Fixture OCR Adapter, returned 7 lines, and quality gate marked quick_review.",
+  "blurryFixture": "Blurry fixture returned 5 unresolved lines and confirmation returned HTTP 400.",
+  "croppedFixture": "Cropped fixture returned 5 quality warnings and mode careful_review.",
+  "safetyGate": "Pre-confirm analytics stayed unchanged, then post-confirm created 4 cost-history records and 6 alerts with supplier-price reason codes present.",
+  "failedJob": "External provider defaulted to unconfigured, returned HTTP 503, and produced 1 failed OCR job entries without mutating analytics."
 }

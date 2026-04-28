@@ -156,13 +156,36 @@ It does not prove:
 - real document upload behavior in production
 - real onboarding friction
 
-## Next Readiness Gate Before RM8
+## Sprint 8 RM8 Closeout Note
 
-Before OCR or image ingestion starts:
+Sprint 8 closes RM8 at the architecture and workflow-safety level:
+
+- provider registry keeps fixture OCR as the default path
+- external provider readiness exists as an env-driven seam and stays disabled when unconfigured
+- OCR quality reports are evaluated before draft review
+- upload validation is enforced for provider, dataset, mime type, and file size
+- OCR jobs are observable through API and UI
+- `npm run validate:ocr` proves pre-confirm OCR does not mutate current ingredient costs
+- post-confirm OCR drafts still create cost history, alerts, and invoice-driven actions through the same RM7 confirmation boundary
+
+This proves workflow safety and adapter readiness.
+
+It still does not prove:
+
+- real external OCR provider accuracy
+- real supplier invoice-format variance at scale
+- provider latency, uptime, or cost
+- production storage or retention behavior
+- camera UX
+
+## Next Readiness Gate Before RM9
+
+Before pilot packaging starts:
 
 - RM5 must keep passing in CI or local validation.
-- RM6 needs to remain demo-ready across dashboard, dishes, detail, and simulator flow.
-- RM7 review-confirm flow must remain stable across sample invoices.
-- Product copy should clearly explain actions without operator coaching.
+- RM6 must remain demo-ready across dashboard, dishes, detail, simulator, and invoice flow.
+- RM7 review-confirm flow must remain stable across sample, manual, and OCR drafts.
+- RM8 provider registry and quality gate must keep OCR on the draft-only side of the safety boundary.
+- Product copy should clearly explain OCR as a starting point rather than a source of truth.
 - Error states should remain owner-friendly.
 - The deterministic engine should remain the single source of truth for price and margin outcomes.

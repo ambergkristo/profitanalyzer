@@ -14,7 +14,9 @@ import type {
   InvoiceConfirmResponse,
   InvoiceDraftResponse,
   InvoiceUnit,
-  OcrInvoiceDraftResponse
+  OcrInvoiceDraftResponse,
+  OcrInvoiceJob,
+  OcrProviderConfig
 } from "../types.js";
 import { formatEuro } from "../utils/format.js";
 import {
@@ -55,6 +57,20 @@ const reviewStatusTone = {
   confirmed: "border-profit/35 bg-profit/12 text-profit",
   ignored: "border-white/10 bg-white/[0.04] text-muted",
   needs_review: "border-warning/30 bg-warning/10 text-warning"
+} as const;
+
+const ocrJobTone = {
+  uploaded: "border-white/10 bg-white/[0.04] text-muted",
+  processing: "border-accent/30 bg-accent/10 text-accent",
+  parsed: "border-profit/30 bg-profit/10 text-profit",
+  needs_review: "border-warning/30 bg-warning/10 text-warning",
+  failed: "border-danger/30 bg-danger/12 text-danger"
+} as const;
+
+const reviewModeLabel = {
+  quick_review: "Quick review",
+  careful_review: "Careful review",
+  manual_entry_recommended: "Manual entry recommended"
 } as const;
 
 function centsFromEuroInput(value: string) {
@@ -151,14 +167,16 @@ export function InvoicesPage() {
   const datasetId = searchParams.get("dataset") ?? undefined;
   const previousDatasetId = useRef(datasetId);
   const loadInvoicePage = useCallback(async () => {
-    const [datasets, samples, ingredients, suppliers] = await Promise.all([
+    const [datasets, samples, ingredients, suppliers, ocrProviders, ocrJobs] = await Promise.all([
       apiClient.getDemoDatasets(),
       apiClient.getInvoiceSamples(),
       apiClient.getIngredients(datasetId),
-      apiClient.getSuppliers(datasetId)
+      apiClient.getSuppliers(datasetId),
+      apiClient.getOcrProviders(),
+      apiClient.getOcrJobs(datasetId)
     ]);
 
-    return { datasets, samples, ingredients, suppliers };
+    return { datasets, samples, ingredients, suppliers, ocrProviders, ocrJobs };
   }, [datasetId]);
   const page = useAsyncData(loadInvoicePage);
   const [entryMode, setEntryMode] = useState<(typeof entryModes)[number]["id"]>("sample");
@@ -173,6 +191,8 @@ export function InvoicesPage() {
   const [invoiceDate, setInvoiceDate] = useState("");
   const [invoiceNumber, setInvoiceNumber] = useState("");
   const [ocrFile, setOcrFile] = useState<File | null>(null);
+  const [selectedOcrProviderId, setSelectedOcrProviderId] = useState<OcrProviderConfig["id"]>("fixture");
+  const [ocrJobs, setOcrJobs] = useState<OcrInvoiceJob[]>([]);
   const [latestConfirmation, setLatestConfirmation] = useState<InvoiceConfirmResponse | null>(null);
   const [parseError, setParseError] = useState<string | null>(null);
   const [confirmError, setConfirmError] = useState<string | null>(null);
@@ -191,6 +211,20 @@ export function InvoicesPage() {
   }, [page.data?.samples, selectedSampleId]);
 
   useEffect(() => {
+    if (!page.data) {
+      return;
+    }
+
+    setOcrJobs(page.data.ocrJobs);
+    const defaultProvider =
+      page.data.ocrProviders.find((provider) => provider.isDefault) ?? page.data.ocrProviders[0];
+
+    if (defaultProvider) {
+      setSelectedOcrProviderId(defaultProvider.id);
+    }
+  }, [page.data]);
+
+  useEffect(() => {
     if (previousDatasetId.current !== datasetId) {
       if (draft || latestConfirmation) {
         setDraft(null);
@@ -201,6 +235,7 @@ export function InvoicesPage() {
         setManualError(null);
         setOcrError(null);
         setOcrFile(null);
+        setOcrJobs([]);
         setDatasetResetNotice(
           "Scenario changed. The current invoice draft was cleared so cost updates stay isolated to one restaurant profile."
         );
@@ -256,6 +291,9 @@ export function InvoicesPage() {
   }
 
   const pageData = page.data;
+  const selectedOcrProvider =
+    pageData.ocrProviders.find((provider) => provider.id === selectedOcrProviderId) ??
+    pageData.ocrProviders[0];
 
   function loadDraft(parsed: InvoiceDraftResponse | OcrInvoiceDraftResponse) {
     setDraft(parsed);
@@ -264,6 +302,40 @@ export function InvoicesPage() {
     setInvoiceDate(parsed.invoiceDraft.invoiceDate);
     setInvoiceNumber(parsed.invoiceDraft.invoiceNumber ?? "");
     setLatestConfirmation(null);
+  }
+
+  async function handleOpenStoredInvoice(invoiceId: string) {
+    setParseError(null);
+    setManualError(null);
+    setOcrError(null);
+
+    try {
+      const invoice = await apiClient.getInvoice(invoiceId, datasetId);
+      if (invoice.ocrJob && invoice.ocrResult && invoice.qualityReport) {
+        loadDraft({
+          invoiceDraft: invoice.invoice,
+          supplierSuggestion: invoice.supplierSuggestion,
+          lines: invoice.lines,
+          summary: invoice.summary,
+          ocrJob: invoice.ocrJob,
+          ocrResult: invoice.ocrResult,
+          qualityReport: invoice.qualityReport,
+          providerConfig:
+            pageData.ocrProviders.find((provider) => provider.id === invoice.ocrJob?.provider) ??
+            selectedOcrProvider
+        } satisfies OcrInvoiceDraftResponse);
+        return;
+      }
+
+      loadDraft({
+        invoiceDraft: invoice.invoice,
+        supplierSuggestion: invoice.supplierSuggestion,
+        lines: invoice.lines,
+        summary: invoice.summary
+      } satisfies InvoiceDraftResponse);
+    } catch (reason) {
+      setOcrError(reason instanceof Error ? reason.message : "Failed to open OCR draft.");
+    }
   }
 
   async function handleParseInvoice() {
@@ -359,13 +431,24 @@ export function InvoicesPage() {
     setDatasetResetNotice(null);
 
     try {
-      const parsed = await apiClient.uploadOcrInvoice(ocrFile, datasetId);
+      const parsed = await apiClient.uploadOcrInvoice(
+        ocrFile,
+        datasetId,
+        selectedOcrProvider?.id
+      );
       loadDraft(parsed);
+      setOcrJobs((current) => [parsed.ocrJob, ...current.filter((job) => job.id !== parsed.ocrJob.id)]);
     } catch (reason) {
       setDraft(null);
       setReviewLines([]);
       setLatestConfirmation(null);
       setOcrError(reason instanceof Error ? reason.message : "Failed to create OCR review draft.");
+      try {
+        const refreshedJobs = await apiClient.getOcrJobs(datasetId);
+        setOcrJobs(refreshedJobs);
+      } catch {
+        // Preserve the original OCR error message if job refresh also fails.
+      }
     } finally {
       setIsUploadingOcr(false);
     }
@@ -710,7 +793,56 @@ export function InvoicesPage() {
                   <p className="text-sm leading-6 text-text">
                     OCR is only a draft. Review is required before ingredient costs change.
                   </p>
+                  <p className="mt-2 text-sm leading-6 text-muted">
+                    Treat OCR as a starting point, not a source of truth.
+                  </p>
                 </div>
+                <label className="mt-5 block text-sm text-muted">
+                  OCR provider
+                  <select
+                    className="mt-2 w-full rounded-tile border border-border bg-black/20 px-4 py-3 text-text outline-none transition focus:border-accent/40"
+                    onChange={(event) =>
+                      setSelectedOcrProviderId(event.target.value as OcrProviderConfig["id"])
+                    }
+                    value={selectedOcrProvider?.id ?? "fixture"}
+                  >
+                    {pageData.ocrProviders.map((provider) => (
+                      <option key={provider.id} value={provider.id}>
+                        {provider.displayName}
+                        {provider.isConfigured ? "" : " (not configured)"}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                {selectedOcrProvider ? (
+                  <div className="mt-4 rounded-tile border border-white/8 bg-white/[0.02] p-4">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="rounded-full border border-white/10 px-3 py-1 text-[11px] uppercase tracking-[0.16em] text-muted">
+                        {selectedOcrProvider.mode}
+                      </span>
+                      <span
+                        className={`rounded-full border px-3 py-1 text-[11px] uppercase tracking-[0.16em] ${
+                          selectedOcrProvider.isConfigured
+                            ? "border-profit/30 bg-profit/10 text-profit"
+                            : "border-warning/30 bg-warning/10 text-warning"
+                        }`}
+                      >
+                        {selectedOcrProvider.isConfigured ? "Configured" : "Not configured"}
+                      </span>
+                      {selectedOcrProvider.isDefault ? (
+                        <span className="rounded-full border border-accent/30 bg-accent/10 px-3 py-1 text-[11px] uppercase tracking-[0.16em] text-accent">
+                          Default
+                        </span>
+                      ) : null}
+                    </div>
+                    <p className="mt-3 text-sm leading-6 text-text">
+                      Allowed files: {selectedOcrProvider.supportsMimeTypes.join(", ")}
+                    </p>
+                    <p className="mt-2 text-sm leading-6 text-muted">
+                      Max file size {Math.round(selectedOcrProvider.maxFileSizeBytes / (1024 * 1024))}MB.
+                    </p>
+                  </div>
+                ) : null}
                 <label className="mt-5 block text-sm text-muted">
                   Choose file
                   <input
@@ -722,14 +854,16 @@ export function InvoicesPage() {
                 </label>
                 <div className="mt-5 flex flex-wrap items-center gap-3">
                   <ActionButton
-                    disabled={!ocrFile || isUploadingOcr}
+                    disabled={!ocrFile || isUploadingOcr || !selectedOcrProvider?.isConfigured}
                     onClick={() => void handleUploadOcrDraft()}
                     variant="primary"
                   >
                     {isUploadingOcr ? "Creating OCR review draft..." : "Create review draft"}
                   </ActionButton>
                   <p className="text-sm leading-6 text-muted">
-                    Use `clean-invoice-photo.jpg`, `blurry-invoice-photo.jpg`, or `cropped-invoice-photo.jpg` to drive the fixture adapter.
+                    {selectedOcrProvider?.id === "fixture"
+                      ? "Use `clean-invoice-photo.jpg`, `blurry-invoice-photo.jpg`, or `cropped-invoice-photo.jpg` to drive the fixture adapter."
+                      : "External OCR stays disabled until environment configuration is present."}
                   </p>
                 </div>
                 {ocrFile ? (
@@ -741,12 +875,53 @@ export function InvoicesPage() {
               </Panel>
 
               <Panel className="rounded-panel border border-white/8 bg-white/[0.02] p-5">
-                <p className="text-[11px] uppercase tracking-[0.18em] text-muted">Fixture behavior</p>
+                <p className="text-[11px] uppercase tracking-[0.18em] text-muted">Latest OCR jobs</p>
                 <div className="mt-5 space-y-4">
+                  {ocrJobs.length === 0 ? (
+                    <StatePanel
+                      message="No OCR jobs yet. Upload a fixture file to create a draft and inspect the quality gate."
+                      title="No OCR jobs yet"
+                      tone="empty"
+                    />
+                  ) : (
+                    ocrJobs.slice(0, 4).map((job) => (
+                      <div key={job.id} className="rounded-tile border border-white/10 bg-black/20 p-4">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className={`rounded-full border px-3 py-1 text-[11px] uppercase tracking-[0.16em] ${ocrJobTone[job.status]}`}>
+                            {job.status.replaceAll("_", " ")}
+                          </span>
+                          <span className="rounded-full border border-white/10 px-3 py-1 text-[11px] uppercase tracking-[0.16em] text-muted">
+                            {job.providerDisplayName ?? job.provider}
+                          </span>
+                          {job.qualityReport ? (
+                            <span className="rounded-full border border-accent/30 bg-accent/10 px-3 py-1 text-[11px] uppercase tracking-[0.16em] text-accent">
+                              {reviewModeLabel[job.qualityReport.recommendedReviewMode]}
+                            </span>
+                          ) : null}
+                        </div>
+                        <p className="mt-3 text-sm leading-6 text-text">{job.originalFileName}</p>
+                        {job.failureReason ? (
+                          <p className="mt-2 text-sm leading-6 text-danger">{job.failureReason}</p>
+                        ) : null}
+                        {job.invoiceDraftId ? (
+                          <button
+                            className="mt-3 inline-flex text-sm font-medium text-accent"
+                            onClick={() => void handleOpenStoredInvoice(job.invoiceDraftId!)}
+                            type="button"
+                          >
+                            Open draft {job.invoiceDraftId}
+                          </button>
+                        ) : null}
+                      </div>
+                    ))
+                  )}
+                </div>
+                <p className="mt-6 text-[11px] uppercase tracking-[0.18em] text-muted">Fixture behavior</p>
+                <div className="mt-4 space-y-4">
                   <div className="rounded-tile border border-profit/20 bg-profit/10 p-4">
                     <p className="font-medium text-text">Clean fixture</p>
                     <p className="mt-2 text-sm leading-6 text-muted">
-                      Mostly high-confidence lines. Draft should open ready for a fast review-confirm pass.
+                      Mostly high-confidence lines. Quality gate should mark this as quick review.
                     </p>
                   </div>
                   <div className="rounded-tile border border-warning/20 bg-warning/10 p-4">
@@ -758,7 +933,7 @@ export function InvoicesPage() {
                   <div className="rounded-tile border border-white/10 bg-black/20 p-4">
                     <p className="font-medium text-text">Cropped fixture</p>
                     <p className="mt-2 text-sm leading-6 text-muted">
-                      Header data is incomplete, but the adapter still creates a safe draft with warnings.
+                      Header data is incomplete, but the adapter still creates a safe draft with warnings and careful review mode.
                     </p>
                   </div>
                 </div>
@@ -834,13 +1009,16 @@ export function InvoicesPage() {
                   <p className="text-[11px] uppercase tracking-[0.18em] text-muted">OCR job</p>
                   <div className="mt-3 flex flex-wrap gap-2">
                     <span className="rounded-full border border-accent/30 bg-accent/10 px-3 py-1 text-[11px] uppercase tracking-[0.16em] text-accent">
-                      {ocrDraft.ocrJob.provider}
+                      {ocrDraft.providerConfig.displayName}
                     </span>
-                    <span className="rounded-full border border-white/10 px-3 py-1 text-[11px] uppercase tracking-[0.16em] text-muted">
+                    <span className={`rounded-full border px-3 py-1 text-[11px] uppercase tracking-[0.16em] ${ocrJobTone[ocrDraft.ocrJob.status]}`}>
                       {ocrDraft.ocrJob.status.replaceAll("_", " ")}
                     </span>
                     <span className={`rounded-full border px-3 py-1 text-[11px] uppercase tracking-[0.16em] ${confidenceTone[ocrDraft.ocrResult.confidence]}`}>
                       {confidenceLabel[ocrDraft.ocrResult.confidence]}
+                    </span>
+                    <span className="rounded-full border border-white/10 px-3 py-1 text-[11px] uppercase tracking-[0.16em] text-muted">
+                      {reviewModeLabel[ocrDraft.qualityReport.recommendedReviewMode]}
                     </span>
                   </div>
                   <p className="mt-3 text-sm leading-6 text-text">
@@ -849,11 +1027,23 @@ export function InvoicesPage() {
                   <p className="mt-2 text-sm leading-6 text-muted">
                     OCR is only a draft. No ingredient costs move until review-confirm succeeds.
                   </p>
+                  <p className="mt-2 text-sm leading-6 text-muted">
+                    Low-confidence rows need correction or ignore before saving.
+                  </p>
                 </Panel>
                 <Panel className="rounded-tile p-4" tone="subtle">
-                  <p className="text-[11px] uppercase tracking-[0.18em] text-muted">OCR warnings</p>
+                  <p className="text-[11px] uppercase tracking-[0.18em] text-muted">OCR quality gate</p>
+                  <div className="mt-3 grid gap-3 md:grid-cols-2">
+                    <Stat label="Lines" value={`${ocrDraft.qualityReport.lineCount}`} />
+                    <Stat label="Needs review" value={`${ocrDraft.qualityReport.unresolvedLineCount}`} />
+                    <Stat label="Missing prices" value={`${ocrDraft.qualityReport.missingPricesCount}`} />
+                    <Stat label="Unknown products" value={`${ocrDraft.qualityReport.unknownProductCount}`} />
+                  </div>
+                  <p className="mt-4 text-sm leading-6 text-text">
+                    Recommended mode: {reviewModeLabel[ocrDraft.qualityReport.recommendedReviewMode]}.
+                  </p>
                   <div className="mt-3 space-y-2">
-                    {ocrDraft.ocrResult.warnings.map((warning: string) => (
+                    {ocrDraft.qualityReport.warnings.map((warning: string) => (
                       <p key={warning} className="text-sm leading-6 text-warning">
                         {warning}
                       </p>

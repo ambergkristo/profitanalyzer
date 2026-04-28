@@ -9,6 +9,8 @@ vi.mock("../api/client.js", () => ({
     getDemoDatasets: vi.fn(),
     getIngredients: vi.fn(),
     getSuppliers: vi.fn(),
+    getOcrProviders: vi.fn(),
+    getOcrJobs: vi.fn(),
     getInvoiceSamples: vi.fn(),
     parseMockInvoiceSample: vi.fn(),
     createManualInvoiceDraft: vi.fn(),
@@ -58,6 +60,42 @@ describe("InvoicesPage", () => {
         restaurantId: "low-margin-kitchen",
         name: "Prime Butchery Co",
         normalizedName: "prime butchery co"
+      }
+    ]);
+
+    vi.mocked(apiClient.getOcrProviders).mockResolvedValue([
+      {
+        id: "fixture",
+        displayName: "Fixture OCR Adapter",
+        isConfigured: true,
+        isDefault: true,
+        mode: "development",
+        supportsMimeTypes: ["image/jpeg", "image/png", "image/webp", "application/pdf"],
+        maxFileSizeBytes: 10485760
+      },
+      {
+        id: "external_env",
+        displayName: "External OCR Provider",
+        isConfigured: false,
+        isDefault: false,
+        mode: "external",
+        supportsMimeTypes: ["image/jpeg", "image/png", "image/webp", "application/pdf"],
+        maxFileSizeBytes: 10485760
+      }
+    ]);
+
+    vi.mocked(apiClient.getOcrJobs).mockResolvedValue([
+      {
+        id: "ocr-job-previous",
+        datasetId: "low-margin-kitchen",
+        provider: "fixture",
+        providerDisplayName: "Fixture OCR Adapter",
+        status: "failed",
+        originalFileName: "failed-upload.jpg",
+        mimeType: "image/jpeg",
+        fileSizeBytes: 2048,
+        createdAt: "2026-04-28T10:00:00.000Z",
+        failureReason: "OCR provider is unavailable."
       }
     ]);
 
@@ -167,13 +205,29 @@ describe("InvoicesPage", () => {
         id: "ocr-job-1",
         datasetId: "low-margin-kitchen",
         provider: "fixture",
+        providerDisplayName: "Fixture OCR Adapter",
         status: "needs_review",
         originalFileName: "blurry-invoice-photo.jpg",
         mimeType: "image/jpeg",
         fileSizeBytes: 2048,
         createdAt: "2026-04-28T11:00:00.000Z",
         parsedAt: "2026-04-28T11:00:00.000Z",
-        invoiceDraftId: "ocr-invoice-1"
+        invoiceDraftId: "ocr-invoice-1",
+        qualityReport: {
+          overallConfidence: "low",
+          lineCount: 2,
+          unresolvedLineCount: 1,
+          missingSupplier: false,
+          missingInvoiceDate: false,
+          missingPricesCount: 0,
+          unknownProductCount: 1,
+          unitWarningCount: 0,
+          warnings: [
+            "RM8 development adapter: fixture OCR result.",
+            "Photo was blurry. Review low-confidence lines before confirming."
+          ],
+          recommendedReviewMode: "careful_review"
+        }
       },
       ocrResult: {
         supplierName: "KitchenHub Cash & Carry",
@@ -210,6 +264,30 @@ describe("InvoicesPage", () => {
         supplierId: "supplier-prime-butchery",
         supplierName: "Prime Butchery Co",
         confidence: "high"
+      },
+      providerConfig: {
+        id: "fixture",
+        displayName: "Fixture OCR Adapter",
+        isConfigured: true,
+        isDefault: true,
+        mode: "development",
+        supportsMimeTypes: ["image/jpeg", "image/png", "image/webp", "application/pdf"],
+        maxFileSizeBytes: 10485760
+      },
+      qualityReport: {
+        overallConfidence: "low",
+        lineCount: 2,
+        unresolvedLineCount: 1,
+        missingSupplier: false,
+        missingInvoiceDate: false,
+        missingPricesCount: 0,
+        unknownProductCount: 1,
+        unitWarningCount: 0,
+        warnings: [
+          "RM8 development adapter: fixture OCR result.",
+          "Photo was blurry. Review low-confidence lines before confirming."
+        ],
+        recommendedReviewMode: "careful_review"
       },
       lines: [
         {
@@ -482,7 +560,8 @@ describe("InvoicesPage", () => {
     await waitFor(() => {
       expect(vi.mocked(apiClient.uploadOcrInvoice)).toHaveBeenCalledWith(
         expect.objectContaining({ name: "blurry-invoice-photo.jpg" }),
-        "low-margin-kitchen"
+        "low-margin-kitchen",
+        "fixture"
       );
     });
   });
@@ -504,12 +583,35 @@ describe("InvoicesPage", () => {
     });
     fireEvent.click(screen.getByRole("button", { name: "Create review draft" }));
 
-    expect(await screen.findByText("OCR warnings")).toBeInTheDocument();
+    expect(await screen.findByText("OCR quality gate")).toBeInTheDocument();
     expect(await screen.findByText("Photo was blurry. Review low-confidence lines before confirming.")).toBeInTheDocument();
     expect(await screen.findByText("OCR could not classify this line.")).toBeInTheDocument();
+    expect(await screen.findByText("Recommended mode: Careful review.")).toBeInTheDocument();
     expect(await screen.findByRole("button", { name: "Confirm cost updates" })).toBeDisabled();
     expect(
       (await screen.findAllByText("Resolve or ignore 1 OCR lines before confirming.")).length
     ).toBeGreaterThan(0);
+  });
+
+  it("renders OCR provider status and latest OCR jobs", async () => {
+    render(
+      <MemoryRouter
+        future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
+        initialEntries={["/invoices?dataset=low-margin-kitchen"]}
+      >
+        <InvoicesPage />
+      </MemoryRouter>
+    );
+
+    fireEvent.click(await screen.findByRole("button", { name: "Photo/OCR Upload" }));
+
+    expect(await screen.findByLabelText("OCR provider")).toHaveValue("fixture");
+    expect(screen.getByRole("option", { name: "Fixture OCR Adapter" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "External OCR Provider (not configured)" })).toBeInTheDocument();
+    expect(await screen.findByText("Configured")).toBeInTheDocument();
+    expect(await screen.findByText("Use `clean-invoice-photo.jpg`, `blurry-invoice-photo.jpg`, or `cropped-invoice-photo.jpg` to drive the fixture adapter.")).toBeInTheDocument();
+    expect(await screen.findByText("Latest OCR jobs")).toBeInTheDocument();
+    expect(await screen.findByText("failed-upload.jpg")).toBeInTheDocument();
+    expect(await screen.findByText("OCR provider is unavailable.")).toBeInTheDocument();
   });
 });

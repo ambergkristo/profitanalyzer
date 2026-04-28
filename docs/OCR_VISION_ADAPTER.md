@@ -2,78 +2,48 @@
 
 ## Goal
 
-Start RM8 without breaking the RM7 trust boundary.
+Close RM8 without breaking the RM7 safety boundary.
 
 The product flow stays:
 
 1. Upload image or PDF
-2. OCR adapter returns a draft
-3. User reviews the draft
-4. User confirms the invoice
-5. System writes cost history, alerts, and affected-dish impact
+2. OCR provider parses the file into a draft
+3. Quality gate evaluates the result
+4. User reviews the draft
+5. User confirms the invoice
+6. System writes cost history, alerts, and affected-dish impact
 
 OCR never updates ingredient cost directly.
 
-## Adapter Architecture
+## Provider Registry
 
-Core OCR code lives in `packages/core/src/ocr.ts`.
+API provider discovery lives in `apps/api/src/ocr/providerRegistry.ts`.
 
-It defines:
-
-- provider-neutral OCR types
-- fixture OCR results
-- OCR confidence mapping
-- OCR safety validation
-- OCR-to-structured-draft normalization
-- draft creation through the existing structured invoice parser
-
-The adapter output is intentionally the same `ParsedInvoiceDraft` shape already used by RM7.
-
-## Current Providers
-
-Implemented now:
+Supported provider ids:
 
 - `fixture`
+- `external_env`
+- `disabled`
 
-Reserved for later:
+Each provider exposes:
 
-- `manual_dev`
-- `external_future`
+- `id`
+- `displayName`
+- `isConfigured`
+- `isDefault`
+- `supportsMimeTypes`
+- `maxFileSizeBytes`
+- `mode`
 
-No external provider is hardcoded into the workflow.
+Current behavior:
 
-## Upload Endpoint
+- `fixture` is always configured and is the default in local development.
+- `external_env` is only configured when the required environment variables are present.
+- `disabled` exists as a safe non-runnable provider state.
 
-Current API endpoint:
+Provider metadata is exposed through:
 
-- `POST /api/ocr/invoices/upload?dataset=...`
-
-Accepted mime types:
-
-- `image/jpeg`
-- `image/png`
-- `image/webp`
-- `application/pdf`
-
-Files are handled in memory only. There is no persistent file storage and no cloud upload in this sprint.
-
-## OCR Confidence Model
-
-Supported confidence values:
-
-- `high`
-- `medium`
-- `low`
-- `none`
-
-Confidence is surfaced in the review UI and mapped into invoice line review state.
-
-Rules:
-
-- `low` and `none` confidence lines require review or ignore
-- missing price requires review unless unit price can be derived from line total and quantity
-- unknown products require ingredient selection or ignore
-- unit mismatch remains a review issue
+- `GET /api/ocr/providers`
 
 ## Fixture Adapter
 
@@ -84,9 +54,114 @@ The fixture adapter is deterministic and filename-driven:
 - filenames containing `cropped` or `rotated` return partial header data with warnings
 - any other filename returns a generic needs-review draft
 
-The UI must describe this clearly as development adapter mode, not live OCR.
+This is explicitly development adapter mode. It is not presented as real OCR accuracy.
 
-## Safety Model
+## External Provider Seam
+
+The external seam exists, but it is safely disabled unless configured by environment variables.
+
+Supported environment names:
+
+- `OCR_PROVIDER`
+- `OCR_PROVIDER_API_KEY`
+- `OCR_PROVIDER_ENDPOINT`
+- `OCR_PROVIDER_MODEL`
+
+Current behavior:
+
+- startup does not fail when these are missing
+- requests for an unconfigured external provider return a safe error
+- no secrets are exposed in API responses
+- no provider secrets are read from the frontend
+- no real provider credentials are committed in the repository
+
+The external adapter is production-shaped but intentionally not wired to a paid provider yet.
+
+## Upload Validation
+
+Upload endpoint:
+
+- `POST /api/ocr/invoices/upload?dataset=...`
+
+Current validation:
+
+- file is required
+- dataset is required and validated
+- provider id is validated
+- allowed mime types are enforced per provider
+- max file size is enforced per provider
+- original filenames are sanitized before response output
+- failed OCR parses create failed jobs instead of crashing the server
+- files are processed in memory only
+
+Accepted fixture mime types:
+
+- `image/jpeg`
+- `image/png`
+- `image/webp`
+- `application/pdf`
+
+## OCR Quality Gate
+
+Core quality evaluation lives in `packages/core/src/ocr.ts`.
+
+The quality report includes:
+
+- `overallConfidence`
+- `lineCount`
+- `unresolvedLineCount`
+- `missingSupplier`
+- `missingInvoiceDate`
+- `missingPricesCount`
+- `unknownProductCount`
+- `unitWarningCount`
+- `warnings`
+- `recommendedReviewMode`
+
+Supported review modes:
+
+- `quick_review`
+- `careful_review`
+- `manual_entry_recommended`
+
+Current expectations:
+
+- clean fixture => `quick_review`
+- blurry fixture => `careful_review` or `manual_entry_recommended`
+- cropped fixture => `careful_review`
+- no usable lines => `manual_entry_recommended`
+
+The quality gate informs the user. It does not bypass review-confirm or mutate cost by itself.
+
+## OCR Job Lifecycle
+
+Job states:
+
+- `uploaded`
+- `processing`
+- `parsed`
+- `needs_review`
+- `failed`
+
+Endpoints:
+
+- `GET /api/ocr/jobs`
+- `GET /api/ocr/jobs/:id`
+
+Jobs expose:
+
+- provider
+- provider display name
+- status
+- original file name
+- created and parsed timestamps
+- failure reason
+- linked invoice draft id
+- quality report summary
+
+The `/invoices` OCR tab surfaces recent jobs, status badges, quality mode, and failure reasons.
+
+## Review-Confirm Safety Model
 
 Key rule:
 
@@ -99,36 +174,35 @@ The following are still required before any ingredient cost changes:
 - ingredient match confirmation
 - explicit invoice confirmation through the existing RM7 endpoint
 
-Repeated confirmation is still blocked.
+Safety rules:
 
-## Why No Blind Import
+- low-confidence or unresolved OCR lines must be corrected or ignored
+- missing ingredient matches block confirmation
+- missing prices block confirmation unless safely derived
+- ignored lines never update costs
+- repeated confirmation is blocked
+- pre-confirm analytics and cost history remain unchanged
 
-Restaurant cost changes are sensitive because they affect:
+## How To Add A Real Provider Later
 
-- ingredient current cost
-- dish margin
-- ranked actions
-- dashboard urgency
+When a live provider is added later, it should plug into the registry rather than bypassing it.
 
-Blind OCR import would create false precision risk. The product is safer when OCR is treated as draft generation only.
+Implementation path:
 
-## What Real Provider Integration Needs Later
-
-Before a live provider is added, RM8 still needs:
-
-- secret management
-- provider request adapter
-- retry and timeout policy
-- raw OCR payload storage strategy
-- confidence normalization across providers
-- real invoice benchmark fixtures
-- acceptance criteria for OCR quality on restaurant supplier documents
+1. Add a provider adapter that returns `OcrParsedInvoiceResult`
+2. Normalize provider output into the existing OCR quality and draft helpers
+3. Register provider config in the API registry
+4. Keep upload validation and job state unchanged
+5. Reuse the same invoice draft review-confirm path
+6. Extend `validate:ocr` with deterministic provider-contract tests where possible
 
 ## Current Limitations
 
-- fixture OCR only
+- fixture OCR is still the only active provider
+- the external provider path is an architectural seam, not a validated live integration
 - no camera capture
-- no mobile-native photo flow
-- no external provider credentials
-- no persistent job storage
+- no mobile-native photo workflow
+- no persistent OCR job or file storage
 - no production document retention model
+- no validation yet for real supplier invoice variety
+- no validation yet for live provider cost, latency, or accuracy

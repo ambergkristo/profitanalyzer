@@ -320,9 +320,14 @@ export interface ManualInvoiceDraftInput {
   lines: ManualInvoiceLineInput[];
 }
 
-export type OcrProvider = "fixture" | "manual_dev" | "external_future";
+export type OcrProvider = "fixture" | "external_env" | "disabled";
 export type OcrJobStatus = "uploaded" | "processing" | "parsed" | "needs_review" | "failed";
 export type OcrConfidence = "high" | "medium" | "low" | "none";
+export type OcrProviderMode = "development" | "external" | "disabled";
+export type OcrRecommendedReviewMode =
+  | "quick_review"
+  | "careful_review"
+  | "manual_entry_recommended";
 
 export interface OcrParsedLine {
   rawProductName: string;
@@ -332,6 +337,16 @@ export interface OcrParsedLine {
   lineTotalCents?: number;
   confidence: OcrConfidence;
   warnings: string[];
+}
+
+export interface OcrProviderConfig {
+  id: OcrProvider;
+  displayName: string;
+  isConfigured: boolean;
+  isDefault: boolean;
+  supportsMimeTypes: string[];
+  maxFileSizeBytes: number;
+  mode: OcrProviderMode;
 }
 
 export interface OcrParsedInvoiceResult {
@@ -345,10 +360,24 @@ export interface OcrParsedInvoiceResult {
   warnings: string[];
 }
 
+export interface OcrQualityReport {
+  overallConfidence: OcrConfidence;
+  lineCount: number;
+  unresolvedLineCount: number;
+  missingSupplier: boolean;
+  missingInvoiceDate: boolean;
+  missingPricesCount: number;
+  unknownProductCount: number;
+  unitWarningCount: number;
+  warnings: string[];
+  recommendedReviewMode: OcrRecommendedReviewMode;
+}
+
 export interface OcrInvoiceJob {
   id: string;
   datasetId: string;
   provider: OcrProvider;
+  providerDisplayName?: string;
   status: OcrJobStatus;
   originalFileName: string;
   mimeType: string;
@@ -357,6 +386,7 @@ export interface OcrInvoiceJob {
   parsedAt?: string;
   failureReason?: string;
   invoiceDraftId?: string;
+  qualityReport?: OcrQualityReport;
 }
 
 export interface MockInvoiceSampleSummary {
@@ -393,6 +423,8 @@ export interface ParsedInvoiceDraft {
 export interface OcrDraftResponse extends ParsedInvoiceDraft {
   ocrJob: OcrInvoiceJob;
   ocrResult: OcrParsedInvoiceResult;
+  qualityReport: OcrQualityReport;
+  providerConfig: OcrProviderConfig;
 }
 
 export interface ReviewedInvoiceLineInput {
@@ -454,6 +486,7 @@ export interface StoredInvoiceView {
   alerts?: PriceChangeAlert[];
   ocrJob?: OcrInvoiceJob;
   ocrResult?: OcrParsedInvoiceResult;
+  qualityReport?: OcrQualityReport;
 }
 
 export interface IngredientCostHistoryEntryView {

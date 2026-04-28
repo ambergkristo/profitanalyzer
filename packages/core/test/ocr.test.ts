@@ -4,6 +4,7 @@ import {
   createDefaultSupplierProductMatches,
   createDefaultSuppliers,
   createInvoiceDraftFromOcrResult,
+  evaluateOcrQuality,
   getDemoDataset,
   mapOcrConfidenceToMatchConfidence,
   normalizeOcrResultToInvoiceInput,
@@ -30,6 +31,7 @@ describe("ocr adapter", () => {
 
   it("creates a ready draft from the clean fixture OCR result", () => {
     const result = resolveFixtureOcrResult("clean-invoice-photo.jpg");
+    const quality = evaluateOcrQuality(result);
     const draft = createInvoiceDraftFromOcrResult(
       result,
       suppliers,
@@ -45,12 +47,15 @@ describe("ocr adapter", () => {
     expect(draft.invoiceDraft.sourceType).toBe("ocr_future");
     expect(draft.invoiceDraft.id).toBe("ocr-clean-01");
     expect(draft.summary.totalLines).toBe(7);
+    expect(quality.recommendedReviewMode).toBe("quick_review");
+    expect(quality.missingPricesCount).toBe(0);
     expect(draft.summary.readyLineCount).toBeGreaterThanOrEqual(5);
     expect(draft.lines.some((line) => line.reviewStatus === "needs_review")).toBe(false);
   });
 
   it("forces blurry OCR lines into needs-review state until they are resolved or ignored", () => {
     const result = resolveFixtureOcrResult("blurry-invoice-photo.png");
+    const quality = evaluateOcrQuality(result);
     const draft = createInvoiceDraftFromOcrResult(
       result,
       suppliers,
@@ -66,6 +71,8 @@ describe("ocr adapter", () => {
     const unresolvedLines = draft.lines.filter((line) => line.reviewStatus === "needs_review");
 
     expect(draft.invoiceDraft.parseStatus).toBe("needs_review");
+    expect(quality.recommendedReviewMode).toBe("manual_entry_recommended");
+    expect(quality.missingPricesCount).toBeGreaterThan(0);
     expect(unresolvedLines.length).toBeGreaterThanOrEqual(3);
     expect(unresolvedLines.some((line) => line.matchConfidence === "none")).toBe(true);
   });
@@ -73,15 +80,69 @@ describe("ocr adapter", () => {
   it("keeps cropped OCR drafts safe even when invoice header fields are incomplete", () => {
     const result = resolveFixtureOcrResult("rotated-cropped-invoice.webp");
     const validation = validateOcrResultSafety(result);
+    const quality = evaluateOcrQuality(result);
     const normalized = normalizeOcrResultToInvoiceInput(result, {
       createdAt: "2026-04-28T10:00:00.000Z",
       invoiceKey: "ocr-cropped"
     });
 
     expect(validation.pass).toBe(true);
+    expect(quality.recommendedReviewMode).toBe("careful_review");
     expect(validation.warnings.some((warning) => warning.includes("rotated or cropped"))).toBe(true);
     expect(normalized.invoiceNumber).toBeUndefined();
     expect(normalized.lines.some((line) => line.reviewStatus === "needs_review")).toBe(true);
+  });
+
+  it("recommends manual entry for unusable OCR with no lines", () => {
+    const result = {
+      confidence: "none" as const,
+      warnings: ["OCR returned no usable lines."],
+      lines: []
+    };
+    const quality = evaluateOcrQuality(result);
+    const validation = validateOcrResultSafety(result);
+
+    expect(quality.recommendedReviewMode).toBe("manual_entry_recommended");
+    expect(validation.pass).toBe(false);
+    expect(validation.failures).toContain("OCR result did not contain any lines.");
+  });
+
+  it("recommends manual entry when many OCR rows have missing prices or unknown products", () => {
+    const result = {
+      supplierName: "Unknown Supplier",
+      invoiceDate: "2026-04-28",
+      confidence: "low" as const,
+      warnings: [],
+      lines: [
+        {
+          rawProductName: "Unknown A",
+          quantity: 1,
+          unit: "g" as const,
+          confidence: "none" as const,
+          warnings: ["Missing OCR product mapping."]
+        },
+        {
+          rawProductName: "Unknown B",
+          quantity: 1,
+          unit: "g" as const,
+          confidence: "low" as const,
+          warnings: []
+        },
+        {
+          rawProductName: "Unknown C",
+          quantity: 1,
+          unit: "g" as const,
+          lineTotalCents: 1200,
+          confidence: "none" as const,
+          warnings: []
+        }
+      ]
+    };
+    const quality = evaluateOcrQuality(result);
+
+    expect(quality.unknownProductCount).toBe(2);
+    expect(quality.missingPricesCount).toBe(2);
+    expect(quality.recommendedReviewMode).toBe("manual_entry_recommended");
   });
 
   it("does not mutate ingredient costs before OCR draft confirmation", () => {

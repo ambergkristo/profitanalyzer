@@ -66,15 +66,39 @@ Frontend visibility now exposes that history inside dish detail so a cost change
 
 ## OCR Adapter Boundary
 
-Sprint 7 starts RM8 without changing the trust model:
+Sprint 8 closes RM8 without changing the trust model:
 
 - photo or PDF upload is accepted only as OCR draft intake
-- fixture OCR output is normalized into the same `ParsedInvoiceDraft` shape used by sample and manual drafts
+- fixture OCR remains the default provider path
+- provider selection is backend-controlled through the OCR provider registry
+- external provider support exists only as an env-driven seam and stays disabled when unconfigured
+- fixture or external OCR output is normalized into the same `ParsedInvoiceDraft` shape used by sample and manual drafts
+- OCR quality is evaluated before the draft reaches review
 - low-confidence OCR lines become `needs_review`
 - OCR warnings stay visible in the shared review UI
+- OCR jobs expose provider, status, quality summary, and failure reason
 - confirmation still happens only through `POST /api/invoices/:id/review-confirm`
 
 This means OCR can plug into the product without inventing a second confirmation path.
+
+## OCR Quality Gate
+
+The quality gate classifies OCR drafts before review:
+
+- `quick_review`
+- `careful_review`
+- `manual_entry_recommended`
+
+The quality report checks:
+
+- overall confidence
+- unresolved lines
+- missing prices
+- unknown products
+- missing supplier or invoice date
+- unit warnings
+
+This report informs the user, but it does not confirm data automatically.
 
 ## Alert Thresholds
 
@@ -107,6 +131,7 @@ This keeps invoice cost intake connected to the same action layer the dashboard 
 ## Known Limitations
 
 - OCR upload currently uses a deterministic fixture adapter, not a live provider
+- External provider support is only a safe seam unless env configuration and a real adapter are added later
 - No camera capture yet
 - No persistence beyond in-memory demo state
 - No supplier API sync

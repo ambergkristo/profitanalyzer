@@ -7,6 +7,13 @@ import {
   type InvoiceUnit
 } from "../../../packages/core/src/index.js";
 import { createDataStore } from "./data.js";
+import {
+  createOcrProviderRegistry,
+  isAllowedMimeType,
+  OcrProviderExecutionError,
+  OcrProviderNotConfiguredError,
+  sanitizeUploadedFileName
+} from "./ocr/providerRegistry.js";
 
 function isPositivePrice(value: unknown): value is number {
   return typeof value === "number" && Number.isFinite(value) && value > 0;
@@ -35,20 +42,15 @@ function isInvoiceUnit(value: unknown): value is InvoiceUnit {
   return typeof value === "string" && ["g", "ml", "piece", "kg", "l", "pcs", "pack"].includes(value);
 }
 
-const allowedOcrMimeTypes = new Set([
-  "image/jpeg",
-  "image/png",
-  "image/webp",
-  "application/pdf"
-]);
-
 export function createApp() {
   const app = express();
   const dataStore = createDataStore();
+  const ocrRegistry = createOcrProviderRegistry();
+  const defaultOcrProvider = ocrRegistry.getDefaultProvider();
   const upload = multer({
     storage: multer.memoryStorage(),
     limits: {
-      fileSize: 10 * 1024 * 1024
+      fileSize: defaultOcrProvider.maxFileSizeBytes
     }
   });
 
@@ -61,6 +63,10 @@ export function createApp() {
 
   app.get("/api/demo/datasets", (_request, response) => {
     response.json(dataStore.getDemoDatasets());
+  });
+
+  app.get("/api/ocr/providers", (_request, response) => {
+    response.json(ocrRegistry.getProviders());
   });
 
   app.get("/api/ingredients", (request, response) => {
@@ -247,9 +253,22 @@ export function createApp() {
   });
 
   app.post("/api/ocr/invoices/upload", upload.single("file"), (request, response) => {
-    const body = request.body as { dataset?: unknown };
+    const body = request.body as { dataset?: unknown; provider?: unknown };
     const datasetId = parseDatasetId(request.query.dataset ?? body.dataset);
     if (!resolveDatasetOrRespond(datasetId, response, dataStore)) {
+      return;
+    }
+
+    const selectedProviderId =
+      typeof request.query.provider === "string"
+        ? request.query.provider
+        : typeof body.provider === "string"
+          ? body.provider
+          : undefined;
+    const provider = ocrRegistry.getProvider(selectedProviderId);
+
+    if (!provider) {
+      response.status(400).json({ message: `Unknown OCR provider "${selectedProviderId}".` });
       return;
     }
 
@@ -260,29 +279,76 @@ export function createApp() {
       return;
     }
 
-    if (!allowedOcrMimeTypes.has(file.mimetype)) {
+    if (!isAllowedMimeType(provider.config, file.mimetype)) {
       response.status(415).json({
-        message:
-          "Unsupported file type. Upload JPEG, PNG, WEBP, or PDF for the RM8 fixture OCR adapter."
+        message: `Unsupported file type for ${provider.config.displayName}.`
       });
       return;
     }
 
-    const result = dataStore.createFixtureOcrDraft(
-      {
-        fileName: file.originalname,
+    const sanitizedFileName = sanitizeUploadedFileName(file.originalname);
+
+    void ocrRegistry
+      .parse(provider.config.id, {
+        fileName: sanitizedFileName,
         mimeType: file.mimetype,
-        fileSizeBytes: file.size
-      },
-      datasetId
-    );
+        fileSizeBytes: file.size,
+        buffer: file.buffer
+      })
+      .then(({ provider: resolvedProvider, result }) => {
+        const draft = dataStore.createOcrDraft(
+          {
+            providerConfig: resolvedProvider,
+            parsedResult: result,
+            fileName: sanitizedFileName,
+            mimeType: file.mimetype,
+            fileSizeBytes: file.size
+          },
+          datasetId
+        );
 
-    if (!result) {
-      response.status(404).json({ message: `Unknown dataset "${datasetId}".` });
-      return;
-    }
+        if (!draft) {
+          response.status(404).json({ message: `Unknown dataset "${datasetId}".` });
+          return;
+        }
 
-    response.json(result);
+        response.json(draft);
+      })
+      .catch((error: unknown) => {
+        const failureReason =
+          error instanceof Error ? error.message : "OCR parse failed.";
+        const failedJob = dataStore.createFailedOcrJob(
+          {
+            providerConfig: provider.config,
+            fileName: sanitizedFileName,
+            mimeType: file.mimetype,
+            fileSizeBytes: file.size,
+            failureReason
+          },
+          datasetId
+        );
+
+        if (error instanceof OcrProviderNotConfiguredError) {
+          response.status(503).json({
+            message: failureReason,
+            ocrJob: failedJob
+          });
+          return;
+        }
+
+        if (error instanceof OcrProviderExecutionError) {
+          response.status(422).json({
+            message: failureReason,
+            ocrJob: failedJob
+          });
+          return;
+        }
+
+        response.status(500).json({
+          message: failureReason,
+          ocrJob: failedJob
+        });
+      });
   });
 
   app.get("/api/ocr/jobs", (request, response) => {

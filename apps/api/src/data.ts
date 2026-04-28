@@ -6,6 +6,7 @@ import {
   createDefaultSupplierProductMatches,
   createDefaultSuppliers,
   createInvoiceDraftFromOcrResult,
+  evaluateOcrQuality,
   explainDishPerformance,
   getCostDriverInsight,
   getDemoDataset,
@@ -16,7 +17,6 @@ import {
   parseManualInvoice,
   parseMockInvoice,
   rankCombinedActions,
-  resolveFixtureOcrResult,
   sampleRestaurantData,
   suggestPriceForTargetMargin,
   type AffectedDishImpact,
@@ -33,6 +33,8 @@ import {
   type OcrDraftResponse,
   type OcrInvoiceJob,
   type OcrParsedInvoiceResult,
+  type OcrProviderConfig,
+  type OcrQualityReport,
   type ParsedInvoiceDraft,
   type PriceChangeAlert,
   type PurchaseInvoice,
@@ -53,6 +55,7 @@ interface StoredInvoiceRecord {
   alerts?: PriceChangeAlert[];
   ocrJob?: OcrInvoiceJob;
   ocrResult?: OcrParsedInvoiceResult;
+  qualityReport?: OcrQualityReport;
 }
 
 interface StoredOcrJobRecord {
@@ -433,8 +436,10 @@ export function createDataStore() {
 
       return draft;
     },
-    createFixtureOcrDraft(
+    createOcrDraft(
       input: {
+        providerConfig: OcrProviderConfig;
+        parsedResult: OcrParsedInvoiceResult;
         fileName: string;
         mimeType: string;
         fileSizeBytes: number;
@@ -451,9 +456,9 @@ export function createDataStore() {
       session.invoiceCounter += 1;
       const jobId = `ocr-job-${session.ocrJobCounter.toString().padStart(2, "0")}`;
       const createdAt = `2026-04-28T10:${session.ocrJobCounter.toString().padStart(2, "0")}:00.000Z`;
-      const result = resolveFixtureOcrResult(input.fileName);
+      const qualityReport = evaluateOcrQuality(input.parsedResult);
       const draft = createInvoiceDraftFromOcrResult(
-        result,
+        input.parsedResult,
         session.suppliers,
         session.ingredients,
         session.supplierProductMatches,
@@ -469,32 +474,75 @@ export function createDataStore() {
       const ocrJob: OcrInvoiceJob = {
         id: jobId,
         datasetId: session.dataset.id,
-        provider: "fixture",
+        provider: input.providerConfig.id,
+        providerDisplayName: input.providerConfig.displayName,
         status,
         originalFileName: input.fileName,
         mimeType: input.mimeType,
         fileSizeBytes: input.fileSizeBytes,
         createdAt,
         parsedAt: createdAt,
-        invoiceDraftId: draft.invoiceDraft.id
+        invoiceDraftId: draft.invoiceDraft.id,
+        qualityReport
       };
 
       session.invoices.set(draft.invoiceDraft.id, {
         draft,
         ocrJob,
-        ocrResult: result
+        ocrResult: input.parsedResult,
+        qualityReport
       });
       session.ocrJobs.set(jobId, {
         job: ocrJob,
-        result,
+        result: input.parsedResult,
         invoiceDraftId: draft.invoiceDraft.id
       });
 
       return {
         ...draft,
         ocrJob,
-        ocrResult: result
+        ocrResult: input.parsedResult,
+        qualityReport,
+        providerConfig: input.providerConfig
       };
+    },
+    createFailedOcrJob(
+      input: {
+        providerConfig: OcrProviderConfig;
+        fileName: string;
+        mimeType: string;
+        fileSizeBytes: number;
+        failureReason: string;
+      },
+      datasetId?: string
+    ) {
+      const session = getSession(datasetId);
+
+      if (!session) {
+        return null;
+      }
+
+      session.ocrJobCounter += 1;
+      const jobId = `ocr-job-${session.ocrJobCounter.toString().padStart(2, "0")}`;
+      const createdAt = `2026-04-28T10:${session.ocrJobCounter.toString().padStart(2, "0")}:00.000Z`;
+      const ocrJob: OcrInvoiceJob = {
+        id: jobId,
+        datasetId: session.dataset.id,
+        provider: input.providerConfig.id,
+        providerDisplayName: input.providerConfig.displayName,
+        status: "failed",
+        originalFileName: input.fileName,
+        mimeType: input.mimeType,
+        fileSizeBytes: input.fileSizeBytes,
+        createdAt,
+        failureReason: input.failureReason
+      };
+
+      session.ocrJobs.set(jobId, {
+        job: ocrJob
+      });
+
+      return ocrJob;
     },
     getOcrJob(jobId: string, datasetId?: string) {
       const session = getSession(datasetId);
@@ -517,7 +565,8 @@ export function createDataStore() {
         ocrJob: record.job,
         ocrResult: record.result,
         invoiceDraft: draftRecord?.draft.invoiceDraft,
-        summary: draftRecord?.draft.summary
+        summary: draftRecord?.draft.summary,
+        qualityReport: record.job.qualityReport ?? draftRecord?.qualityReport
       };
     },
     listOcrJobs(datasetId?: string) {
@@ -553,7 +602,8 @@ export function createDataStore() {
         affectedDishes: record.affectedDishes,
         alerts: record.alerts,
         ocrJob: record.ocrJob,
-        ocrResult: record.ocrResult
+        ocrResult: record.ocrResult,
+        qualityReport: record.qualityReport
       };
     },
     confirmInvoice(

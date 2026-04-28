@@ -1,17 +1,19 @@
 # Menu Profit Optimizer
 
-Menu Profit Optimizer is a restaurant profit decision engine for owners and managers. Sprint 7 starts RM8 safely with a provider-neutral OCR adapter boundary, in-memory upload intake, deterministic OCR fixtures, and the same review-confirm workflow RM7 already uses for cost history, alerts, and dish impact.
+Menu Profit Optimizer is a restaurant profit decision engine for owners and managers. Sprint 8 closes RM8 safely with a provider-neutral OCR registry, fixture-first OCR upload intake, deterministic quality gating, observable OCR jobs, and the same review-confirm workflow RM7 already uses for cost history, alerts, and dish impact.
 
-## Sprint 7 Scope
+## Sprint 8 Scope
 
-MAX SPRINT 7 delivers:
+MAX SPRINT 8 delivers:
 
-- RM8 adapter-first OCR seam in `packages/core`
-- fixture OCR adapter with clean, blurry, and cropped invoice outputs
+- RM8 provider registry with fixture default and external env seam
+- OCR quality gate with quick-review, careful-review, and manual-entry guidance
+- fixture OCR adapter with clean, blurry, cropped, and generic outputs
 - in-memory photo/PDF upload endpoint that creates invoice review drafts only
-- OCR job state with confidence and warning metadata
+- observable OCR job state with provider, quality, and failure metadata
 - `/invoices` Photo/OCR Upload mode in the frontend
 - OCR drafts reusing the existing RM7 review-confirm boundary
+- `GET /api/ocr/providers` provider discovery endpoint
 - deterministic `npm run validate:ocr`
 - deterministic `npm run validate:synthetic`
 - lightweight `npm run validate:demo`
@@ -21,8 +23,9 @@ MAX SPRINT 7 delivers:
 Current non-goals remain explicit:
 
 - no blind OCR import
+- no direct OCR-driven cost mutation
 - no hardcoded paid OCR provider as the only implementation
-- no external OCR credentials in the repo
+- no external OCR credentials or secrets in the repo
 - no camera capture yet
 - no supplier API sync
 - no POS integration
@@ -62,6 +65,7 @@ npm audit
 - Demo datasets: `http://localhost:3001/api/demo/datasets`
 - Invoice samples: `http://localhost:3001/api/invoices/samples`
 - Manual invoice draft: `http://localhost:3001/api/invoices/manual-draft`
+- OCR providers: `http://localhost:3001/api/ocr/providers`
 - OCR invoice upload: `http://localhost:3001/api/ocr/invoices/upload`
 - Supplier price alerts: `http://localhost:3001/api/alerts/price-changes`
 
@@ -89,6 +93,7 @@ scripts/  validation runners
 - `GET /api/demo/datasets`
 - `GET /api/invoices/samples`
 - `GET /api/invoices/:id`
+- `GET /api/ocr/providers`
 - `GET /api/ocr/jobs`
 - `GET /api/ocr/jobs/:id`
 - `GET /api/alerts/price-changes`
@@ -113,11 +118,13 @@ Recommended flow:
 3. Start with `Low Margin Kitchen`.
 4. Open `Cost Intake`.
 5. Choose `Photo/OCR Upload` and use `clean-invoice-photo.jpg` for the safe adapter path, or switch to manual structured entry.
-6. Show that OCR creates a draft only, then review the parsed lines and confirm the cost update.
-7. Open `Supplier Alerts` and show the new supplier-cost pressure.
-8. Return to the dashboard and show the invoice-driven priority action.
-9. Open the affected dish, inspect cost history, and run the price simulator.
-10. Switch back to `Photo/OCR Upload` and use `blurry-invoice-photo.jpg` to demonstrate the safety gate.
+6. Show the provider selector and explain that fixture OCR is the safe default while the external provider stays disabled unless env configuration is present.
+7. Show that OCR creates a draft only, inspect the OCR quality gate, then review the parsed lines and confirm the cost update.
+8. Open `Supplier Alerts` and show the new supplier-cost pressure.
+9. Return to the dashboard and show the invoice-driven priority action.
+10. Open the affected dish, inspect cost history, and run the price simulator.
+11. Switch back to `Photo/OCR Upload` and use `blurry-invoice-photo.jpg` to demonstrate the safety gate.
+12. Use `cropped-invoice-photo.jpg` to show partial parsing with warnings and careful review mode.
 
 See [docs/DEMO_READINESS.md](docs/DEMO_READINESS.md) for the concise demo walkthrough.
 
@@ -127,6 +134,9 @@ See [docs/DEMO_READINESS.md](docs/DEMO_READINESS.md) for the concise demo walkth
 - The simulator UI only reads backend simulation results.
 - Invoice lines never update current ingredient costs before user confirmation.
 - Manual, sample, and OCR-created drafts all route through the same review-confirm boundary.
+- OCR provider selection stays backend-controlled. The frontend never reads provider secrets.
+- Fixture OCR remains the default adapter unless an external provider is configured through environment variables.
+- OCR quality reports and job history are visible in the upload flow before confirmation.
 - Confirmed supplier-cost alerts now feed back into ranked dashboard actions.
 - Scenario selection is demo-mode only and flows through `?dataset=...`.
 - Synthetic validation reports live in `reports/`.

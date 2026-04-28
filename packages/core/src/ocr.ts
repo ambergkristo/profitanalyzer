@@ -6,6 +6,8 @@ import type {
   Ingredient,
   InvoiceMatchConfidence,
   OcrConfidence,
+  OcrQualityReport,
+  OcrRecommendedReviewMode,
   OcrParsedInvoiceResult,
   ParsedInvoiceDraft,
   Supplier,
@@ -261,20 +263,115 @@ export function mapOcrWarningsToLineWarnings(warnings: string[]) {
   return [...new Set(warnings.filter((warning) => warning.trim().length > 0))];
 }
 
+function getConfidenceRank(confidence: OcrConfidence) {
+  return {
+    none: 0,
+    low: 1,
+    medium: 2,
+    high: 3
+  }[confidence];
+}
+
+function getLowestConfidence(confidences: OcrConfidence[]) {
+  return [...confidences].sort(
+    (left, right) => getConfidenceRank(left) - getConfidenceRank(right)
+  )[0] ?? "none";
+}
+
+function getRecommendedReviewMode(report: OcrQualityReport): OcrRecommendedReviewMode {
+  if (report.lineCount === 0) {
+    return "manual_entry_recommended";
+  }
+
+  if (
+    report.unresolvedLineCount >= Math.ceil(report.lineCount * 0.5) ||
+    report.missingPricesCount >= Math.ceil(report.lineCount * 0.4) ||
+    report.unknownProductCount >= Math.ceil(report.lineCount * 0.4)
+  ) {
+    return "manual_entry_recommended";
+  }
+
+  if (
+    report.overallConfidence === "low" ||
+    report.overallConfidence === "none" ||
+    report.missingSupplier ||
+    report.missingInvoiceDate ||
+    report.unresolvedLineCount > 0 ||
+    report.unitWarningCount > 0
+  ) {
+    return "careful_review";
+  }
+
+  return "quick_review";
+}
+
+export function evaluateOcrQuality(result: OcrParsedInvoiceResult): OcrQualityReport {
+  const lineWarnings = result.lines.flatMap((line) => line.warnings);
+  const missingPricesCount = result.lines.filter(
+    (line) => line.unitPriceCents === undefined && line.lineTotalCents === undefined
+  ).length;
+  const unknownProductCount = result.lines.filter(
+    (line) => line.confidence === "none"
+  ).length;
+  const unresolvedLineCount = result.lines.filter(
+    (line) =>
+      line.confidence === "low" ||
+      line.confidence === "none" ||
+      line.unitPriceCents === undefined && line.lineTotalCents === undefined ||
+      line.quantity === undefined ||
+      line.unit === undefined ||
+      line.warnings.length > 0
+  ).length;
+  const unitWarningCount = lineWarnings.filter((warning) =>
+    warning.toLowerCase().includes("unit")
+  ).length;
+  const qualityWarnings = [...new Set([
+    ...result.warnings,
+    ...lineWarnings,
+    !result.supplierName ? "Supplier name is missing from OCR output." : "",
+    !result.invoiceDate ? "Invoice date is missing from OCR output." : "",
+    missingPricesCount > 0
+      ? `${missingPricesCount} OCR line${missingPricesCount === 1 ? "" : "s"} missing readable price data.`
+      : "",
+    unknownProductCount > 0
+      ? `${unknownProductCount} OCR line${unknownProductCount === 1 ? "" : "s"} have unknown product matches.`
+      : ""
+  ].filter((warning) => warning.trim().length > 0))];
+
+  const overallConfidence =
+    result.lines.length === 0
+      ? "none"
+      : getLowestConfidence([
+          result.confidence,
+          ...result.lines.map((line) => line.confidence)
+        ]);
+
+  const report: OcrQualityReport = {
+    overallConfidence,
+    lineCount: result.lines.length,
+    unresolvedLineCount,
+    missingSupplier: !result.supplierName,
+    missingInvoiceDate: !result.invoiceDate,
+    missingPricesCount,
+    unknownProductCount,
+    unitWarningCount,
+    warnings: qualityWarnings,
+    recommendedReviewMode: "careful_review"
+  };
+
+  return {
+    ...report,
+    recommendedReviewMode: getRecommendedReviewMode(report)
+  };
+}
+
 export function validateOcrResultSafety(result: OcrParsedInvoiceResult): OcrSafetyValidation {
-  const warnings = [...result.warnings];
+  const quality = evaluateOcrQuality(result);
+  const warnings = [...quality.warnings];
   const failures: string[] = [];
 
   if (result.lines.length === 0) {
     failures.push("OCR result did not contain any lines.");
-  }
-
-  if (!result.supplierName) {
-    warnings.push("Supplier name is missing from the OCR result and must be reviewed.");
-  }
-
-  if (!result.invoiceDate) {
-    warnings.push("Invoice date is missing from the OCR result and must be reviewed.");
   }
 
   for (const line of result.lines) {

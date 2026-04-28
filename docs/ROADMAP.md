@@ -238,7 +238,7 @@ Still out of scope for RM7:
 
 ## RM8 - Real OCR/Vision Adapter
 
-Status: started in MAX SPRINT 7, partial.
+Status: completed in MAX SPRINT 8 for the safe adapter boundary. Real provider accuracy remains unvalidated until a live provider is configured and benchmarked.
 
 ### Goal
 
@@ -293,6 +293,31 @@ Still out of scope for RM8:
 - mobile-native photo workflows
 - blind auto-import
 - supplier API sync
+
+### Current Sprint 8 Result
+
+Built now:
+
+- OCR provider registry with fixture default and external env seam
+- `GET /api/ocr/providers` for provider discovery in UI and validation
+- quality gate with quick-review, careful-review, and manual-entry guidance
+- hardened upload validation for mime type, file size, provider selection, and dataset selection
+- observable OCR job lifecycle with provider, quality, and failure metadata
+- fixture provider remaining the default path in local development
+- external provider stub that stays disabled unless env configuration is present
+- `validate:ocr` coverage for provider registry, upload hardening, quality gate, and pre-confirm safety
+
+Important note:
+
+RM8 is complete as an adapter-safe product slice. It does not mean live production OCR accuracy has been validated.
+
+Still out of scope after Sprint 8:
+
+- live paid provider accuracy benchmarking
+- camera capture
+- production file storage and retention
+- supplier API sync
+- blind auto-import
 
 ## RM9 - First Customer Ready / Pilot Package
 
