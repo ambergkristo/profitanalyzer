@@ -6,6 +6,8 @@ import { DashboardPage } from "./pages/Dashboard.js";
 import { DishDetailPage } from "./pages/DishDetail.js";
 import { DishesPage } from "./pages/Dishes.js";
 import { InvoicesPage } from "./pages/Invoices.js";
+import { OnboardingPage } from "./pages/Onboarding.js";
+import { PilotToolsPage } from "./pages/PilotTools.js";
 
 const router = createBrowserRouter([
   {
@@ -13,10 +15,12 @@ const router = createBrowserRouter([
     element: <Layout />,
     children: [
       { index: true, element: <DashboardPage /> },
+      { path: "onboarding", element: <OnboardingPage /> },
       { path: "dishes", element: <DishesPage /> },
       { path: "dishes/:dishId", element: <DishDetailPage /> },
       { path: "invoices", element: <InvoicesPage /> },
-      { path: "alerts", element: <AlertsPage /> }
+      { path: "alerts", element: <AlertsPage /> },
+      { path: "pilot-tools", element: <PilotToolsPage /> }
     ]
   }
 ]);

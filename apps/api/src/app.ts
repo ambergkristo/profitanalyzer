@@ -6,7 +6,7 @@ import {
   simulateDishPriceChange,
   type InvoiceUnit
 } from "../../../packages/core/src/index.js";
-import { createDataStore } from "./data.js";
+import { buildAppConfig, buildDeepHealth } from "./config.js";
 import {
   createOcrProviderRegistry,
   isAllowedMimeType,
@@ -17,6 +17,9 @@ import {
   OcrProviderExecutionError,
   OcrProviderNotConfiguredError
 } from "./ocr/shared.js";
+import { createStore } from "./store/storeFactory.js";
+import { isValidDatasetImportPayload, sanitizeImportedPayload } from "./store/exportImport.js";
+import type { AppStore } from "./store/types.js";
 
 function isPositivePrice(value: unknown): value is number {
   return typeof value === "number" && Number.isFinite(value) && value > 0;
@@ -29,7 +32,7 @@ function parseDatasetId(value: unknown): string | undefined {
 function resolveDatasetOrRespond(
   datasetId: string | undefined,
   response: express.Response,
-  dataStore: ReturnType<typeof createDataStore>
+  dataStore: AppStore
 ) {
   const dataset = dataStore.getResolvedDataset(datasetId);
 
@@ -46,13 +49,15 @@ function isInvoiceUnit(value: unknown): value is InvoiceUnit {
 }
 
 export interface CreateAppOptions {
+  env?: NodeJS.ProcessEnv;
   ocrRegistry?: OcrProviderRegistry;
+  store?: AppStore;
 }
 
 export function createApp(options: CreateAppOptions = {}) {
   const app = express();
-  const dataStore = createDataStore();
-  const ocrRegistry = options.ocrRegistry ?? createOcrProviderRegistry();
+  const dataStore = options.store ?? createStore();
+  const ocrRegistry = options.ocrRegistry ?? createOcrProviderRegistry({ env: options.env });
   const defaultOcrProvider = ocrRegistry.getDefaultProvider();
   const upload = multer({
     storage: multer.memoryStorage(),
@@ -66,6 +71,14 @@ export function createApp(options: CreateAppOptions = {}) {
 
   app.get("/health", (_request, response) => {
     response.json({ ok: true, service: "profit-analyzer-api" });
+  });
+
+  app.get("/api/health/deep", (_request, response) => {
+    response.json(buildDeepHealth(dataStore, ocrRegistry, options.env));
+  });
+
+  app.get("/api/app/config", (_request, response) => {
+    response.json(buildAppConfig(dataStore, ocrRegistry, options.env));
   });
 
   app.get("/api/demo/datasets", (_request, response) => {
@@ -129,6 +142,61 @@ export function createApp(options: CreateAppOptions = {}) {
 
   app.get("/api/invoices/samples", (_request, response) => {
     response.json(dataStore.getMockInvoiceSampleSummaries());
+  });
+
+  app.get("/api/export", (request, response) => {
+    const datasetId = parseDatasetId(request.query.dataset);
+    const dataset = resolveDatasetOrRespond(datasetId, response, dataStore);
+
+    if (!dataset) {
+      return;
+    }
+
+    response.json(dataStore.exportDataset(dataset.id));
+  });
+
+  app.post("/api/import", (request, response) => {
+    const datasetId = parseDatasetId(request.query.dataset);
+    const body = request.body as unknown;
+    const seededDatasetIds = new Set(dataStore.listDatasets().map((dataset) => dataset.id));
+    const targetDatasetId =
+      datasetId ||
+      (typeof body === "object" &&
+      body !== null &&
+      "dataset" in body &&
+      typeof body.dataset === "object" &&
+      body.dataset !== null &&
+      "id" in body.dataset &&
+      typeof body.dataset.id === "string"
+        ? body.dataset.id
+        : undefined);
+
+    if (!isValidDatasetImportPayload(body)) {
+      response.status(400).json({ message: "Import payload shape is invalid." });
+      return;
+    }
+
+    if (targetDatasetId && seededDatasetIds.has(targetDatasetId)) {
+      response.status(400).json({
+        message: "Import can only target a pilot workspace, not a seeded demo dataset."
+      });
+      return;
+    }
+
+    const sanitizedPayload = sanitizeImportedPayload(body, targetDatasetId);
+    response.status(201).json(dataStore.importDataset(sanitizedPayload, targetDatasetId));
+  });
+
+  app.post("/api/datasets/:id/reset", (request, response) => {
+    const datasetId = request.params.id;
+    const summary = dataStore.resetDataset(datasetId);
+
+    if (!summary) {
+      response.status(404).json({ message: `Unknown dataset "${datasetId}".` });
+      return;
+    }
+
+    response.json(summary);
   });
 
   app.post("/api/invoices/parse-mock", (request, response) => {

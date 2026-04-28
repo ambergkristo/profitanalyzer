@@ -1,0 +1,9 @@
+{
+  "appConfig": "App mode demo; persistence memory; external OCR configured false.",
+  "deepHealth": "Deep health returned 3 checks with storage memory.",
+  "exportImport": "Export returned dataset mixed-restaurant; invalid import returned HTTP 400; pilot import returned HTTP 201.",
+  "reset": "Reset returned HTTP 200 and cleared 1 invoices plus 6 alerts.",
+  "invoiceAfterReset": "Overview after reset shows 0 supplier alerts; invoice parse after reset returned HTTP 200.",
+  "ocrAfterReset": "Fixture OCR after reset returned HTTP 200 with source ocr_future.",
+  "pilotReadiness": "Pilot foundation is ready for a controlled workspace: config endpoint, deep health, export/import boundary, reset safety, invoice intake, and OCR fixture remain operational."
+}

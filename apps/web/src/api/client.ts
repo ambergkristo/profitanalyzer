@@ -1,4 +1,8 @@
 import type {
+  AppConfigResponse,
+  DatasetExportPayload,
+  DeepHealthResponse,
+  ImportDatasetSummary,
   InvoiceConfirmResponse,
   InvoiceDetailResponse,
   InvoiceDraftResponse,
@@ -11,6 +15,7 @@ import type {
   OcrProviderConfig,
   OcrQualityReport,
   PriceChangeAlert,
+  ResetDatasetSummary,
   CalculatedDish,
   DemoDatasetSummary,
   DishAction,
@@ -56,6 +61,16 @@ async function postJson<T>(path: string, body: unknown): Promise<T> {
   return (await response.json()) as T;
 }
 
+async function getBlob(path: string): Promise<Blob> {
+  const response = await fetch(path);
+  if (!response.ok) {
+    const errorBody = (await response.json().catch(() => null)) as { message?: string } | null;
+    throw new Error(errorBody?.message ?? `Request failed for ${path} with ${response.status}`);
+  }
+
+  return response.blob();
+}
+
 async function postFormData<T>(path: string, body: FormData): Promise<T> {
   const response = await fetch(path, {
     method: "POST",
@@ -71,6 +86,8 @@ async function postFormData<T>(path: string, body: FormData): Promise<T> {
 }
 
 export const apiClient = {
+  getAppConfig: () => getJson<AppConfigResponse>("/api/app/config"),
+  getDeepHealth: () => getJson<DeepHealthResponse>("/api/health/deep"),
   getDemoDatasets: () => getJson<DemoDatasetSummary[]>("/api/demo/datasets"),
   getOverview: (datasetId?: string) =>
     getJson<OverviewResponse>(buildDatasetPath("/api/analytics/overview", datasetId)),
@@ -88,6 +105,14 @@ export const apiClient = {
   getOcrJobs: (datasetId?: string) =>
     getJson<OcrInvoiceJob[]>(buildDatasetPath("/api/ocr/jobs", datasetId)),
   getInvoiceSamples: () => getJson<MockInvoiceSampleSummary[]>("/api/invoices/samples"),
+  exportDataset: (datasetId?: string) =>
+    getJson<DatasetExportPayload>(buildDatasetPath("/api/export", datasetId)),
+  exportDatasetBlob: (datasetId?: string) =>
+    getBlob(buildDatasetPath("/api/export", datasetId)),
+  importDataset: (payload: DatasetExportPayload, datasetId?: string) =>
+    postJson<ImportDatasetSummary>(buildDatasetPath("/api/import", datasetId), payload),
+  resetDataset: (datasetId: string) =>
+    postJson<ResetDatasetSummary>(`/api/datasets/${encodeURIComponent(datasetId)}/reset`, {}),
   parseMockInvoiceSample: (sampleInvoiceId: string, datasetId?: string) =>
     postJson<InvoiceDraftResponse>(buildDatasetPath("/api/invoices/parse-mock", datasetId), {
       sampleInvoiceId,

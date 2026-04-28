@@ -13,10 +13,11 @@ Implemented:
 - RM7: structured invoice cost intake, review-confirm, cost history, supplier alerts, and invoice-driven actions
 - RM8: OCR adapter boundary, fixture upload intake, and validation safety gate
 - RM8 provider pilot: env-gated external OCR provider seam, benchmark harness, and live-skip validation
+- RM9: pilot readiness foundation with app config, store boundary, onboarding, and reset/export/import safety
 
 Not started:
 
-- RM9 pilot packaging
+- full persistent pilot package hardening
 
 ## RM5 Validation Approach
 
@@ -215,3 +216,28 @@ Before pilot packaging starts:
 - Product copy should clearly explain OCR as a starting point rather than a source of truth.
 - Error states should remain owner-friendly.
 - The deterministic engine should remain the single source of truth for price and margin outcomes.
+
+## Sprint 10 RM9 Note
+
+Sprint 10 starts RM9 without pretending the product is a full SaaS platform:
+
+- app config now exposes mode, OCR readiness, and storage type
+- a store boundary exists so future persistence is not spread through route handlers
+- export, import, and reset controls exist for controlled pilot handling
+- onboarding and pilot tools make the first-run path explicit
+- `npm run validate:pilot` proves config, reset, export/import safety, invoice flow, and OCR fixture flow can coexist
+
+This proves:
+
+- pilot packaging has started in a controlled way
+- runtime state can be reset and exported cleanly
+- the review-confirm safety model survives the new pilot tooling
+
+It still does not prove:
+
+- willingness to pay
+- retention
+- real onboarding effort
+- real restaurant data messiness at pilot scale
+- real OCR accuracy on live supplier invoices
+- persistence durability after process restart

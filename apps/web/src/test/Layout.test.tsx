@@ -6,6 +6,7 @@ import { Layout } from "../components/Layout.js";
 
 vi.mock("../api/client.js", () => ({
   apiClient: {
+    getAppConfig: vi.fn(),
     getDemoDatasets: vi.fn(),
     getOverview: vi.fn(),
     getDishes: vi.fn(),
@@ -24,6 +25,17 @@ function LocationEcho() {
 
 describe("Layout", () => {
   beforeEach(() => {
+    vi.mocked(apiClient.getAppConfig).mockResolvedValue({
+      appMode: "demo",
+      version: "0.1.0",
+      features: {
+        invoiceIntake: true,
+        ocrFixture: true,
+        externalOcrConfigured: false,
+        persistence: "memory"
+      }
+    });
+
     vi.mocked(apiClient.getDemoDatasets).mockResolvedValue([
       {
         id: "mixed-restaurant",
@@ -64,6 +76,10 @@ describe("Layout", () => {
 
     expect(await screen.findByText("Dataset / Scenario")).toBeInTheDocument();
     expect((await screen.findAllByText("Show the full decision loop.")).length).toBeGreaterThan(0);
+    expect(await screen.findByText("Demo mode")).toBeInTheDocument();
+    expect(
+      await screen.findByText("This demo build uses memory storage. Restarting the API resets data.")
+    ).toBeInTheDocument();
 
     fireEvent.change(screen.getByDisplayValue("Mixed Casual Restaurant"), {
       target: { value: "low-margin-kitchen" }

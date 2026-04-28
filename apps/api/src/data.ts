@@ -45,6 +45,13 @@ import {
   type Supplier,
   type SupplierProductMatch
 } from "../../../packages/core/src/index.js";
+import type {
+  AnalyticsInputSnapshot,
+  AppStore,
+  DatasetExportPayload,
+  ImportDatasetSummary,
+  ResetDatasetSummary
+} from "./store/types.js";
 
 interface StoredInvoiceRecord {
   draft: ParsedInvoiceDraft;
@@ -77,6 +84,7 @@ interface DatasetSession {
   invoiceCounter: number;
   ocrJobs: Map<string, StoredOcrJobRecord>;
   ocrJobCounter: number;
+  baseline: DatasetExportPayload;
 }
 
 const severityOrder = {
@@ -98,6 +106,14 @@ function cloneDatasetDefinition(dataset: DemoDatasetDefinition): DemoDatasetDefi
       dishes: dataset.data.dishes.map((dish) => ({ ...dish }))
     }
   };
+}
+
+function cloneExportPayload(payload: DatasetExportPayload): DatasetExportPayload {
+  return JSON.parse(JSON.stringify(payload)) as DatasetExportPayload;
+}
+
+function cloneStoredInvoiceView(record: StoredInvoiceView): StoredInvoiceView {
+  return JSON.parse(JSON.stringify(record)) as StoredInvoiceView;
 }
 
 function buildTargetMarginActions(
@@ -133,7 +149,7 @@ function createDatasetSession(datasetId?: string): DatasetSession | null {
   const dataset = cloneDatasetDefinition(baseDataset);
   const restaurantId = dataset.id;
 
-  return {
+  const session: DatasetSession = {
     dataset,
     ingredients: dataset.data.ingredients,
     recipes: dataset.data.recipes,
@@ -145,11 +161,163 @@ function createDatasetSession(datasetId?: string): DatasetSession | null {
     invoices: new Map<string, StoredInvoiceRecord>(),
     invoiceCounter: 0,
     ocrJobs: new Map<string, StoredOcrJobRecord>(),
-    ocrJobCounter: 0
+    ocrJobCounter: 0,
+    baseline: {} as DatasetExportPayload
+  };
+
+  session.baseline = serializeDatasetSession(session);
+
+  return session;
+}
+
+function serializeDatasetSession(session: DatasetSession): DatasetExportPayload {
+  return {
+    dataset: cloneDatasetDefinition(session.dataset),
+    ingredients: session.ingredients.map((ingredient) => ({ ...ingredient })),
+    recipes: session.recipes.map((recipe) => ({
+      ...recipe,
+      ingredients: recipe.ingredients.map((ingredient) => ({ ...ingredient }))
+    })),
+    dishes: session.dishes.map((dish) => ({ ...dish })),
+    suppliers: session.suppliers.map((supplier) => ({ ...supplier })),
+    supplierProductMatches: session.supplierProductMatches.map((match) => ({ ...match })),
+    costHistory: session.costHistory.map((entry) => ({ ...entry })),
+    alerts: session.alerts.map((alert) => ({ ...alert })),
+    invoices: [...session.invoices.values()].map((record) =>
+      cloneStoredInvoiceView({
+        invoice: record.confirmedInvoice ?? record.draft.invoiceDraft,
+        supplierSuggestion: record.draft.supplierSuggestion,
+        lines: record.confirmedLines ?? record.draft.lines,
+        summary: record.draft.summary,
+        confirmationSummary: record.confirmationSummary,
+        affectedDishes: record.affectedDishes,
+        alerts: record.alerts,
+        ocrJob: record.ocrJob,
+        ocrResult: record.ocrResult,
+        qualityReport: record.qualityReport
+      })
+    ),
+    ocrJobs: [...session.ocrJobs.values()].map((record) => ({
+      ...record.job,
+      qualityReport: record.job.qualityReport
+        ? {
+            ...record.job.qualityReport,
+            warnings: [...record.job.qualityReport.warnings]
+          }
+        : undefined
+    }))
   };
 }
 
-export function createDataStore() {
+function createSessionFromExportPayload(
+  payload: DatasetExportPayload,
+  datasetId?: string
+): DatasetSession {
+  const imported = cloneExportPayload(payload);
+  const targetDatasetId = datasetId ?? imported.dataset.id;
+  const dataset: DemoDatasetDefinition = {
+    ...imported.dataset,
+    id: targetDatasetId,
+    data: {
+      ingredients: imported.ingredients.map((ingredient) => ({ ...ingredient })),
+      recipes: imported.recipes.map((recipe) => ({
+        ...recipe,
+        ingredients: recipe.ingredients.map((ingredient) => ({ ...ingredient }))
+      })),
+      dishes: imported.dishes.map((dish) => ({ ...dish }))
+    }
+  };
+
+  const invoices = new Map<string, StoredInvoiceRecord>();
+  for (const invoice of imported.invoices) {
+    invoices.set(invoice.invoice.id, {
+      draft: {
+        invoiceDraft: {
+          ...invoice.invoice
+        },
+        supplierSuggestion: { ...invoice.supplierSuggestion },
+        lines: invoice.lines.map((line) => ({ ...line })),
+        summary: { ...invoice.summary }
+      },
+      confirmedInvoice:
+        invoice.confirmationSummary || invoice.invoice.parseStatus === "confirmed"
+          ? { ...invoice.invoice }
+          : undefined,
+      confirmedLines:
+        invoice.confirmationSummary || invoice.invoice.parseStatus === "confirmed"
+          ? invoice.lines.map((line) => ({ ...line }))
+          : undefined,
+      confirmationSummary: invoice.confirmationSummary
+        ? {
+            ...invoice.confirmationSummary,
+            topAffectedDishes: invoice.confirmationSummary.topAffectedDishes.map((dish) => ({
+              ...dish
+            }))
+          }
+        : undefined,
+      affectedDishes: invoice.affectedDishes?.map((dish) => ({ ...dish })),
+      alerts: invoice.alerts?.map((alert) => ({ ...alert })),
+      ocrJob: invoice.ocrJob ? { ...invoice.ocrJob } : undefined,
+      ocrResult: invoice.ocrResult
+        ? {
+            ...invoice.ocrResult,
+            warnings: [...invoice.ocrResult.warnings],
+            lines: invoice.ocrResult.lines.map((line) => ({
+              ...line,
+              warnings: [...line.warnings]
+            }))
+          }
+        : undefined,
+      qualityReport: invoice.qualityReport
+        ? {
+            ...invoice.qualityReport,
+            warnings: [...invoice.qualityReport.warnings]
+          }
+        : undefined
+    });
+  }
+
+  const ocrJobs = new Map<string, StoredOcrJobRecord>();
+  for (const job of imported.ocrJobs) {
+    ocrJobs.set(job.id, {
+      job: {
+        ...job,
+        qualityReport: job.qualityReport
+          ? {
+              ...job.qualityReport,
+              warnings: [...job.qualityReport.warnings]
+            }
+          : undefined
+      },
+      invoiceDraftId: job.invoiceDraftId
+    });
+  }
+
+  const session: DatasetSession = {
+    dataset,
+    ingredients: dataset.data.ingredients,
+    recipes: dataset.data.recipes,
+    dishes: dataset.data.dishes,
+    suppliers: imported.suppliers.map((supplier) => ({ ...supplier, restaurantId: targetDatasetId })),
+    supplierProductMatches: imported.supplierProductMatches.map((match) => ({
+      ...match,
+      restaurantId: targetDatasetId
+    })),
+    costHistory: imported.costHistory.map((entry) => ({ ...entry })),
+    alerts: imported.alerts.map((alert) => ({ ...alert })),
+    invoices,
+    invoiceCounter: imported.invoices.length,
+    ocrJobs,
+    ocrJobCounter: imported.ocrJobs.length,
+    baseline: {} as DatasetExportPayload
+  };
+
+  session.baseline = cloneExportPayload(imported);
+
+  return session;
+}
+
+export function createDataStore(): AppStore {
   const sessions = new Map<string, DatasetSession>();
   const sampleInvoices = getMockInvoiceSamples();
 
@@ -233,8 +401,14 @@ export function createDataStore() {
 
   return {
     restaurantData: sampleRestaurantData,
+    getStorageType() {
+      return "memory" as const;
+    },
     getResolvedDataset(datasetId?: string): DemoDatasetDefinition | null {
       return getSession(datasetId)?.dataset ?? null;
+    },
+    listDatasets(): DemoDatasetSummary[] {
+      return listDemoDatasets();
     },
     getDemoDatasets(): DemoDatasetSummary[] {
       return listDemoDatasets();
@@ -244,6 +418,23 @@ export function createDataStore() {
     },
     getIngredients(datasetId?: string) {
       return getSession(datasetId)?.ingredients ?? null;
+    },
+    getAnalyticsInput(datasetId?: string): AnalyticsInputSnapshot | null {
+      const snapshot = getAnalyticsSnapshot(datasetId);
+
+      if (!snapshot) {
+        return null;
+      }
+
+      return {
+        ingredients: snapshot.session.ingredients.map((ingredient) => ({ ...ingredient })),
+        recipes: snapshot.session.recipes.map((recipe) => ({
+          ...recipe,
+          ingredients: recipe.ingredients.map((ingredient) => ({ ...ingredient }))
+        })),
+        dishes: snapshot.session.dishes.map((dish) => ({ ...dish })),
+        alerts: snapshot.session.alerts.map((alert) => ({ ...alert }))
+      };
     },
     getRecipes(datasetId?: string) {
       return getSession(datasetId)?.recipes ?? null;
@@ -682,6 +873,51 @@ export function createDataStore() {
       record.alerts = result.alerts;
 
       return result;
+    },
+    resetDataset(datasetId: string): ResetDatasetSummary | null {
+      const existingSession = sessions.get(datasetId);
+      const nextSession = existingSession?.baseline
+        ? createSessionFromExportPayload(existingSession.baseline, datasetId)
+        : createDatasetSession(datasetId);
+
+      if (!nextSession) {
+        return null;
+      }
+
+      const summary: ResetDatasetSummary = {
+        datasetId,
+        clearedInvoices: existingSession?.invoices.size ?? 0,
+        clearedCostHistory: existingSession?.costHistory.length ?? 0,
+        clearedAlerts: existingSession?.alerts.length ?? 0,
+        clearedOcrJobs: existingSession?.ocrJobs.size ?? 0,
+        restoredDishCount: nextSession.dishes.length
+      };
+
+      sessions.set(datasetId, nextSession);
+
+      return summary;
+    },
+    exportDataset(datasetId: string): DatasetExportPayload | null {
+      const session = getSession(datasetId);
+
+      if (!session) {
+        return null;
+      }
+
+      return cloneExportPayload(serializeDatasetSession(session));
+    },
+    importDataset(payload: DatasetExportPayload, datasetId?: string): ImportDatasetSummary {
+      const targetDatasetId = datasetId ?? payload.dataset.id;
+      const nextSession = createSessionFromExportPayload(payload, targetDatasetId);
+      sessions.set(targetDatasetId, nextSession);
+
+      return {
+        datasetId: targetDatasetId,
+        ingredientCount: nextSession.ingredients.length,
+        recipeCount: nextSession.recipes.length,
+        dishCount: nextSession.dishes.length,
+        supplierCount: nextSession.suppliers.length
+      } satisfies ImportDatasetSummary;
     }
   };
 }

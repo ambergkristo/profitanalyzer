@@ -346,17 +346,22 @@ Still out of scope after Sprint 9:
 
 ## RM9 - First Customer Ready / Pilot Package
 
+Status: partial in MAX SPRINT 10.
+
 ### Goal
 
 Prepare the product for a first controlled restaurant pilot.
 
 ### Scope
 
-- Auth
-- Data persistence
+- Persistence boundary
+- Demo mode vs pilot mode separation
 - Basic onboarding
-- Demo restaurant data
+- Pilot tools
+- Export or import safety
+- Reset controls
 - Deployment readiness
+- Controlled pilot workspace handling
 - Seed data
 - Basic error states
 - Pilot checklist
@@ -364,13 +369,36 @@ Prepare the product for a first controlled restaurant pilot.
 
 ### Exit Criteria
 
-- One restaurant can be onboarded
-- User can enter dishes manually
+- One restaurant workspace can be prepared safely
+- User can export, reset, and re-import controlled data
 - User can see dashboard insights
 - User can simulate price changes
 - User can test invoice cost intake
 - System can produce a credible weekly profit action summary
+- App mode and storage warnings are explicit
 
 ### Validation Check
 
 Manual check: onboard one pilot restaurant, complete the manual data flow, run the dashboard and simulator, test invoice cost intake, and produce a weekly profit action summary.
+
+### Current Sprint 10 Result
+
+Built now:
+
+- store boundary and store factory in `apps/api/src/store`
+- app config endpoint and deep health endpoint
+- demo mode vs pilot mode concept with `APP_MODE`
+- frontend mode badge and memory-persistence warning
+- onboarding route at `/onboarding`
+- pilot tooling route at `/pilot-tools`
+- controlled dataset export, import, and reset endpoints
+- deterministic `npm run validate:pilot`
+- deployment, pilot package, and pilot data setup docs
+
+Still out of scope after Sprint 10:
+
+- persistent database storage
+- auth or RBAC
+- billing
+- multi-tenant SaaS concerns
+- production OCR accuracy claims

@@ -39,6 +39,39 @@ describe("api", () => {
     expect(body[0]).toHaveProperty("demoNarrative");
   });
 
+  it("returns app config with demo defaults and memory persistence", async () => {
+    const response = await request(buildApp()).get("/api/app/config");
+    const body = response.body as {
+      appMode: string;
+      version: string;
+      features: {
+        persistence: string;
+        externalOcrConfigured: boolean;
+      };
+    };
+
+    expect(response.status).toBe(200);
+    expect(body.appMode).toBe("demo");
+    expect(body.version).toBeTruthy();
+    expect(body.features.persistence).toBe("memory");
+    expect(body.features.externalOcrConfigured).toBe(false);
+  });
+
+  it("returns deep health details without exposing secrets", async () => {
+    const response = await request(buildApp()).get("/api/health/deep");
+    const body = response.body as {
+      ok: boolean;
+      storage: string;
+      checks: Array<{ key: string; message: string }>;
+    };
+
+    expect(response.status).toBe(200);
+    expect(body.ok).toBe(true);
+    expect(body.storage).toBe("memory");
+    expect(body.checks.length).toBeGreaterThan(0);
+    expect(JSON.stringify(body)).not.toContain("OCR_PROVIDER_API_KEY");
+  });
+
   it("returns upgraded analytics overview for the selected dataset", async () => {
     const response = await request(buildApp()).get("/api/analytics/overview?dataset=mixed-restaurant");
     const body = response.body as OverviewMetrics;
@@ -161,6 +194,61 @@ describe("api", () => {
     expect(response.status).toBe(200);
     expect(body).toHaveLength(3);
     expect(body[0]).toHaveProperty("expectedImpact");
+  });
+
+  it("exports a dataset, rejects invalid import payloads, and imports a pilot workspace safely", async () => {
+    const app = buildApp();
+    const exportResponse = await request(app).get("/api/export?dataset=mixed-restaurant");
+    const exported = exportResponse.body as {
+      dataset: { id: string };
+      ingredients: unknown[];
+      recipes: unknown[];
+      dishes: unknown[];
+    };
+
+    expect(exportResponse.status).toBe(200);
+    expect(exported.dataset.id).toBe("mixed-restaurant");
+
+    const invalidImportResponse = await request(app)
+      .post("/api/import?dataset=pilot-workspace")
+      .send({ dataset: { id: "pilot-workspace" } });
+
+    expect(invalidImportResponse.status).toBe(400);
+
+    const importResponse = await request(app)
+      .post("/api/import?dataset=pilot-workspace")
+      .send({
+        ...exported,
+        dataset: {
+          ...exported.dataset,
+          id: "pilot-workspace",
+          name: "Pilot Workspace",
+          description: "Imported pilot workspace"
+        }
+      });
+    const importBody = importResponse.body as {
+      datasetId: string;
+      dishCount: number;
+    };
+
+    expect(importResponse.status).toBe(201);
+    expect(importBody.datasetId).toBe("pilot-workspace");
+    expect(importBody.dishCount).toBeGreaterThan(0);
+
+    const pilotOverviewResponse = await request(app).get("/api/analytics/overview?dataset=pilot-workspace");
+    expect(pilotOverviewResponse.status).toBe(200);
+  });
+
+  it("rejects imports that target seeded demo datasets", async () => {
+    const exportResponse = await request(buildApp()).get("/api/export?dataset=mixed-restaurant");
+    const exportedPayload = exportResponse.body as Record<string, unknown>;
+    const response = await request(buildApp())
+      .post("/api/import?dataset=mixed-restaurant")
+      .send(exportedPayload);
+    const body = response.body as { message: string };
+
+    expect(response.status).toBe(400);
+    expect(body.message).toContain("pilot workspace");
   });
 
   it("returns OCR provider registry metadata with fixture as the default", async () => {
@@ -580,6 +668,64 @@ describe("api", () => {
     expect(after.supplierAlertCount).toBeGreaterThan(0);
     expect(after.highSeveritySupplierAlertCount).toBeGreaterThan(0);
     expect(actions.some((action) => action.reasonCodes.includes("SUPPLIER_PRICE_INCREASE"))).toBe(true);
+  });
+
+  it("resets a dataset back to baseline and clears invoice-driven state without affecting others", async () => {
+    const app = buildApp();
+    const parseResponse = await request(app)
+      .post("/api/invoices/parse-mock?dataset=mixed-restaurant")
+      .send({ sampleInvoiceId: "high-impact-price-spike" });
+    const invoice = parseResponse.body as {
+      invoiceDraft: { id: string; supplierId: string; invoiceDate: string; invoiceNumber?: string };
+      lines: Array<{
+        id: string;
+        matchedIngredientId?: string;
+        parsedQuantity: number;
+        parsedUnit: string;
+        parsedUnitPriceCents?: number;
+        parsedLineTotalCents?: number;
+      }>;
+    };
+
+    await request(app)
+      .post(`/api/invoices/${invoice.invoiceDraft.id}/review-confirm?dataset=mixed-restaurant`)
+      .send({
+        supplierId: invoice.invoiceDraft.supplierId,
+        invoiceDate: invoice.invoiceDraft.invoiceDate,
+        invoiceNumber: invoice.invoiceDraft.invoiceNumber,
+        lines: invoice.lines.map((line) => ({
+          lineId: line.id,
+          reviewStatus: "confirmed",
+          matchedIngredientId: line.matchedIngredientId,
+          parsedQuantity: line.parsedQuantity,
+          parsedUnit: line.parsedUnit,
+          parsedUnitPriceCents: line.parsedUnitPriceCents ?? 1,
+          parsedLineTotalCents: line.parsedLineTotalCents
+        }))
+      });
+
+    const lowMarginBeforeReset = await request(app).get("/api/analytics/overview?dataset=low-margin-kitchen");
+    const resetResponse = await request(app).post("/api/datasets/mixed-restaurant/reset").send({});
+    const mixedOverviewAfterReset = await request(app).get("/api/analytics/overview?dataset=mixed-restaurant");
+    const mixedCostHistoryAfterReset = await request(app).get(
+      "/api/ingredients/beef-patty/cost-history?dataset=mixed-restaurant"
+    );
+    const mixedOcrJobsAfterReset = await request(app).get("/api/ocr/jobs?dataset=mixed-restaurant");
+    const lowMarginAfterReset = await request(app).get("/api/analytics/overview?dataset=low-margin-kitchen");
+    const resetBody = resetResponse.body as { clearedInvoices: number };
+    const mixedOverviewBody = mixedOverviewAfterReset.body as OverviewMetrics;
+    const mixedCostHistoryBody = mixedCostHistoryAfterReset.body as { history: unknown[] };
+    const lowMarginBeforeResetBody = lowMarginBeforeReset.body as OverviewMetrics;
+    const lowMarginAfterResetBody = lowMarginAfterReset.body as OverviewMetrics;
+
+    expect(resetResponse.status).toBe(200);
+    expect(resetBody.clearedInvoices).toBeGreaterThan(0);
+    expect(mixedOverviewBody.supplierAlertCount).toBe(0);
+    expect(mixedCostHistoryBody.history).toEqual([]);
+    expect(mixedOcrJobsAfterReset.body).toEqual([]);
+    expect(lowMarginAfterResetBody.estimatedPeriodProfitCents).toBe(
+      lowMarginBeforeResetBody.estimatedPeriodProfitCents
+    );
   });
 
   it("blocks repeated confirmation so cost history and alerts are not double-applied", async () => {
