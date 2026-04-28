@@ -15,6 +15,7 @@ Sprint 6 closes the deterministic RM7 workflow:
 - supplier price-change alerts
 - affected dish impact summary
 - invoice-driven action integration into the ranked dashboard stack
+- OCR adapter intake boundary that creates the same draft shape before review-confirm
 
 The workflow is intentionally review-first. Parsed invoice lines do not update current ingredient costs until the user confirms them.
 
@@ -33,7 +34,7 @@ It:
 - raises warnings for unresolved matches or unit mismatch
 - produces a structured `ParsedInvoiceDraft`
 
-This keeps RM7 deterministic and testable before any OCR variance enters the system.
+This keeps RM7 deterministic and testable before OCR variance enters the workflow.
 
 ## Review-Confirm Rules
 
@@ -43,6 +44,7 @@ This keeps RM7 deterministic and testable before any OCR variance enters the sys
 - Current `Ingredient.costPerUnitCents` updates only after confirmation.
 - Repeated confirmation of the same invoice is blocked.
 - Manual structured drafts never bypass review-confirm.
+- OCR-created drafts never bypass review-confirm.
 - Unit mismatch remains a review problem until the user changes the line or ignores it.
 
 ## Cost History Model
@@ -61,6 +63,18 @@ This keeps RM7 deterministic and testable before any OCR variance enters the sys
 This is the historical record. Current ingredient cost remains the latest effective value in the in-memory dataset session.
 
 Frontend visibility now exposes that history inside dish detail so a cost change can be traced from invoice to ingredient to affected dish.
+
+## OCR Adapter Boundary
+
+Sprint 7 starts RM8 without changing the trust model:
+
+- photo or PDF upload is accepted only as OCR draft intake
+- fixture OCR output is normalized into the same `ParsedInvoiceDraft` shape used by sample and manual drafts
+- low-confidence OCR lines become `needs_review`
+- OCR warnings stay visible in the shared review UI
+- confirmation still happens only through `POST /api/invoices/:id/review-confirm`
+
+This means OCR can plug into the product without inventing a second confirmation path.
 
 ## Alert Thresholds
 
@@ -92,21 +106,21 @@ This keeps invoice cost intake connected to the same action layer the dashboard 
 
 ## Known Limitations
 
-- No real OCR or image ingestion yet
-- No photo upload yet
+- OCR upload currently uses a deterministic fixture adapter, not a live provider
+- No camera capture yet
 - No persistence beyond in-memory demo state
 - No supplier API sync
 - No automated supplier normalization beyond deterministic string matching
 - No accounting, inventory, or POS workflows
 
-## Why OCR Is Deferred To RM8
+## Why Real OCR Is Still Deferred
 
-RM7 had to prove the safe part first:
+The current RM8 slice proves the adapter boundary and safety gate, not OCR accuracy. A live provider still needs:
 
-- the parser output shape
-- the human review step
-- the confirmation boundary
-- cost history creation
-- downstream margin impact
+- provider credentials and secret management
+- request and retry policy
+- raw text and field extraction tuning
+- invoice-format variance handling
+- accuracy validation against real supplier documents
 
-Adding OCR before this review-confirm workflow existed would have created fake automation risk. RM8 can now plug image parsing into an already-safe confirmation pipeline instead of inventing one later.
+That integration belongs on top of the existing draft and review-confirm boundary, not around it.

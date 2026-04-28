@@ -238,6 +238,8 @@ Still out of scope for RM7:
 
 ## RM8 - Real OCR/Vision Adapter
 
+Status: started in MAX SPRINT 7, partial.
+
 ### Goal
 
 Add real phone photo or image-based invoice parsing after the review-confirm cost intake workflow is stable.
@@ -270,6 +272,27 @@ Add real phone photo or image-based invoice parsing after the review-confirm cos
 ### Validation Check
 
 Manual check: submit a simple invoice image, verify parsed fields flow into the existing review screen, and confirm low-confidence fields require review before any cost update.
+
+### Current Sprint 7 Result
+
+Built now:
+
+- provider-neutral OCR adapter types and normalization helpers
+- fixture OCR adapter with clean, blurry, cropped, and generic outputs
+- in-memory upload intake through `POST /api/ocr/invoices/upload`
+- OCR job state and job lookup endpoint
+- frontend `Photo/OCR Upload` mode inside `/invoices`
+- OCR confidence and warning visibility in the existing review UI
+- OCR drafts reusing the RM7 review-confirm endpoint and downstream cost history / alert / action flow
+- deterministic `npm run validate:ocr`
+
+Still out of scope for RM8:
+
+- any external paid OCR provider integration
+- camera capture
+- mobile-native photo workflows
+- blind auto-import
+- supplier API sync
 
 ## RM9 - First Customer Ready / Pilot Package
 

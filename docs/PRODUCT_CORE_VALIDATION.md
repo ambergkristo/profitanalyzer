@@ -11,10 +11,10 @@ Implemented:
 - RM5: Synthetic Restaurant Validation
 - RM6: Premium decision-first UX polish
 - RM7: structured invoice cost intake, review-confirm, cost history, supplier alerts, and invoice-driven actions
+- RM8: OCR adapter boundary, fixture upload intake, and validation safety gate
 
 Not started:
 
-- RM8 OCR or vision adapter
 - RM9 pilot packaging
 
 ## RM5 Validation Approach
@@ -47,6 +47,7 @@ The validation runner writes deterministic outputs to:
 - Retention
 - Real supplier invoice quality
 - OCR quality
+- real OCR provider accuracy
 - Real onboarding effort
 - Real restaurant data hygiene
 - Operational behavior under live integrations
@@ -135,6 +136,25 @@ It still does not prove:
 - real supplier document variance at scale
 - real onboarding friction
 - willingness to pay
+
+## Sprint 7 RM8 Adapter Note
+
+Sprint 7 starts RM8 without weakening the RM7 safety model:
+
+- upload intake creates OCR drafts only
+- fixture OCR output is normalized into the same review-confirm flow
+- low-confidence OCR lines stay blocked until resolved or ignored
+- confirmed OCR drafts create the same cost history, alerts, and invoice-driven actions as other invoice sources
+- `npm run validate:ocr` proves adapter safety and downstream integration
+
+This proves the OCR boundary is safe and reusable.
+
+It does not prove:
+
+- real OCR accuracy
+- real supplier-format variance
+- real document upload behavior in production
+- real onboarding friction
 
 ## Next Readiness Gate Before RM8
 

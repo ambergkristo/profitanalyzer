@@ -6,6 +6,7 @@ import type {
   IngredientCostHistoryView,
   ManualInvoiceDraftInput,
   MockInvoiceSampleSummary,
+  OcrInvoiceDraftResponse,
   PriceChangeAlert,
   CalculatedDish,
   DemoDatasetSummary,
@@ -50,6 +51,19 @@ async function postJson<T>(path: string, body: unknown): Promise<T> {
   return (await response.json()) as T;
 }
 
+async function postFormData<T>(path: string, body: FormData): Promise<T> {
+  const response = await fetch(path, {
+    method: "POST",
+    body
+  });
+
+  if (!response.ok) {
+    throw new Error(`Request failed for ${path} with ${response.status}`);
+  }
+
+  return (await response.json()) as T;
+}
+
 export const apiClient = {
   getDemoDatasets: () => getJson<DemoDatasetSummary[]>("/api/demo/datasets"),
   getOverview: (datasetId?: string) =>
@@ -75,6 +89,25 @@ export const apiClient = {
       ...body,
       dataset: datasetId
     }),
+  uploadOcrInvoice: (file: File, datasetId?: string) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    if (datasetId) {
+      formData.append("dataset", datasetId);
+    }
+
+    return postFormData<OcrInvoiceDraftResponse>(
+      buildDatasetPath("/api/ocr/invoices/upload", datasetId),
+      formData
+    );
+  },
+  getOcrJob: (jobId: string, datasetId?: string) =>
+    getJson<{
+      ocrJob: import("../types.js").OcrInvoiceJob;
+      ocrResult?: import("../types.js").OcrParsedInvoiceResult;
+      invoiceDraft?: import("../types.js").PurchaseInvoice;
+      summary?: import("../types.js").ParsedInvoiceDraft["summary"];
+    }>(buildDatasetPath(`/api/ocr/jobs/${jobId}`, datasetId)),
   getInvoice: (invoiceId: string, datasetId?: string) =>
     getJson<InvoiceDetailResponse>(buildDatasetPath(`/api/invoices/${invoiceId}`, datasetId)),
   confirmInvoiceReview: (

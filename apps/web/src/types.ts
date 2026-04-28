@@ -16,6 +16,9 @@ import type {
   InvoiceUnit,
   ManualInvoiceDraftInput,
   MockInvoiceSampleSummary,
+  OcrDraftResponse,
+  OcrInvoiceJob,
+  OcrParsedInvoiceResult,
   OverviewMetrics,
   ParsedInvoiceDraft,
   PriceChangeAlert,
@@ -46,6 +49,9 @@ export type {
   InvoiceUnit,
   ManualInvoiceDraftInput,
   MockInvoiceSampleSummary,
+  OcrDraftResponse,
+  OcrInvoiceJob,
+  OcrParsedInvoiceResult,
   OverviewMetrics,
   ParsedInvoiceDraft,
   PriceChangeAlert,
@@ -62,6 +68,7 @@ export type OverviewResponse = OverviewMetrics;
 export type DishDetailResponse = DishDetailAnalytics;
 export type PriceSimulationResponse = PriceSimulationResult;
 export type InvoiceDraftResponse = ParsedInvoiceDraft;
+export type OcrInvoiceDraftResponse = OcrDraftResponse;
 export type InvoiceDetailResponse = StoredInvoiceView;
 export interface InvoiceConfirmResponse {
   confirmationSummary: InvoiceConfirmationSummary;

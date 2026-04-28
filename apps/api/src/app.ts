@@ -1,5 +1,6 @@
 import cors from "cors";
 import express from "express";
+import multer from "multer";
 
 import {
   simulateDishPriceChange,
@@ -34,9 +35,22 @@ function isInvoiceUnit(value: unknown): value is InvoiceUnit {
   return typeof value === "string" && ["g", "ml", "piece", "kg", "l", "pcs", "pack"].includes(value);
 }
 
+const allowedOcrMimeTypes = new Set([
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "application/pdf"
+]);
+
 export function createApp() {
   const app = express();
   const dataStore = createDataStore();
+  const upload = multer({
+    storage: multer.memoryStorage(),
+    limits: {
+      fileSize: 10 * 1024 * 1024
+    }
+  });
 
   app.use(cors());
   app.use(express.json());
@@ -232,6 +246,70 @@ export function createApp() {
     response.json(draft);
   });
 
+  app.post("/api/ocr/invoices/upload", upload.single("file"), (request, response) => {
+    const body = request.body as { dataset?: unknown };
+    const datasetId = parseDatasetId(request.query.dataset ?? body.dataset);
+    if (!resolveDatasetOrRespond(datasetId, response, dataStore)) {
+      return;
+    }
+
+    const file = request.file;
+
+    if (!file) {
+      response.status(400).json({ message: "file is required." });
+      return;
+    }
+
+    if (!allowedOcrMimeTypes.has(file.mimetype)) {
+      response.status(415).json({
+        message:
+          "Unsupported file type. Upload JPEG, PNG, WEBP, or PDF for the RM8 fixture OCR adapter."
+      });
+      return;
+    }
+
+    const result = dataStore.createFixtureOcrDraft(
+      {
+        fileName: file.originalname,
+        mimeType: file.mimetype,
+        fileSizeBytes: file.size
+      },
+      datasetId
+    );
+
+    if (!result) {
+      response.status(404).json({ message: `Unknown dataset "${datasetId}".` });
+      return;
+    }
+
+    response.json(result);
+  });
+
+  app.get("/api/ocr/jobs", (request, response) => {
+    const datasetId = parseDatasetId(request.query.dataset);
+    if (!resolveDatasetOrRespond(datasetId, response, dataStore)) {
+      return;
+    }
+
+    response.json(dataStore.listOcrJobs(datasetId));
+  });
+
+  app.get("/api/ocr/jobs/:id", (request, response) => {
+    const datasetId = parseDatasetId(request.query.dataset);
+    if (!resolveDatasetOrRespond(datasetId, response, dataStore)) {
+      return;
+    }
+
+    const ocrJob = dataStore.getOcrJob(request.params.id, datasetId);
+
+    if (!ocrJob) {
+      response.status(404).json({ message: "OCR job not found." });
+      return;
+    }
+
+    response.json(ocrJob);
+  });
+
   app.get("/api/invoices/:id", (request, response) => {
     const datasetId = parseDatasetId(request.query.dataset);
     if (!resolveDatasetOrRespond(datasetId, response, dataStore)) {
@@ -424,5 +502,22 @@ export function createApp() {
     response.json(simulateDishPriceChange(dish, recipe, ingredients, newPriceCents));
   });
 
+  app.use((error: unknown, _request: express.Request, response: express.Response, next: express.NextFunction) => {
+    void next;
+    if (isMulterLimitError(error)) {
+      response.status(413).json({
+        message: "Uploaded file is too large. Keep OCR fixture uploads under 10MB."
+      });
+      return;
+    }
+
+    const message = error instanceof Error ? error.message : "Request failed.";
+    response.status(500).json({ message });
+  });
+
   return app;
+}
+
+export function isMulterLimitError(error: unknown) {
+  return error instanceof multer.MulterError && error.code === "LIMIT_FILE_SIZE";
 }

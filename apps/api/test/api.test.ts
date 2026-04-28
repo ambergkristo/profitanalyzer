@@ -511,4 +511,139 @@ describe("api", () => {
     expect(emptyHistoryBody.history).toEqual([]);
     expect(missingIngredientResponse.status).toBe(404);
   });
+
+  it("creates an OCR draft from fixture upload and returns the linked job", async () => {
+    const app = buildApp();
+    const uploadResponse = await request(app)
+      .post("/api/ocr/invoices/upload?dataset=mixed-restaurant")
+      .attach("file", Buffer.from("fixture"), {
+        filename: "clean-invoice-photo.jpg",
+        contentType: "image/jpeg"
+      });
+
+    const uploadBody = uploadResponse.body as {
+      ocrJob: { id: string; status: string; invoiceDraftId?: string };
+      ocrResult: { confidence: string };
+      invoiceDraft: { id: string; sourceType: string };
+    };
+
+    expect(uploadResponse.status).toBe(200);
+    expect(uploadBody.invoiceDraft.sourceType).toBe("ocr_future");
+    expect(uploadBody.ocrJob.status).toBe("parsed");
+    expect(uploadBody.ocrResult.confidence).toBe("high");
+
+    const jobResponse = await request(app).get(
+      `/api/ocr/jobs/${uploadBody.ocrJob.id}?dataset=mixed-restaurant`
+    );
+    const jobBody = jobResponse.body as {
+      ocrJob: { invoiceDraftId?: string };
+    };
+
+    expect(jobResponse.status).toBe(200);
+    expect(jobBody.ocrJob.invoiceDraftId).toBe(uploadBody.invoiceDraft.id);
+  });
+
+  it("rejects unsupported OCR upload file types", async () => {
+    const response = await request(buildApp())
+      .post("/api/ocr/invoices/upload?dataset=mixed-restaurant")
+      .attach("file", Buffer.from("bad"), {
+        filename: "invoice.txt",
+        contentType: "text/plain"
+      });
+
+    expect(response.status).toBe(415);
+  });
+
+  it("blocks OCR confirmation while low-confidence lines remain unresolved", async () => {
+    const app = buildApp();
+    const uploadResponse = await request(app)
+      .post("/api/ocr/invoices/upload?dataset=mixed-restaurant")
+      .attach("file", Buffer.from("fixture"), {
+        filename: "blurry-invoice-photo.jpg",
+        contentType: "image/jpeg"
+      });
+
+    const invoice = uploadResponse.body as {
+      invoiceDraft: { id: string; supplierId: string; invoiceDate: string; invoiceNumber?: string };
+      lines: Array<{
+        id: string;
+        matchedIngredientId?: string;
+        parsedQuantity: number;
+        parsedUnit: string;
+        parsedUnitPriceCents?: number;
+        parsedLineTotalCents?: number;
+      }>;
+    };
+
+    const response = await request(app)
+      .post(`/api/invoices/${invoice.invoiceDraft.id}/review-confirm?dataset=mixed-restaurant`)
+      .send({
+        supplierId: invoice.invoiceDraft.supplierId,
+        invoiceDate: invoice.invoiceDraft.invoiceDate,
+        invoiceNumber: invoice.invoiceDraft.invoiceNumber,
+        lines: invoice.lines.map((line) => ({
+          lineId: line.id,
+          reviewStatus: "confirmed",
+          matchedIngredientId: line.matchedIngredientId,
+          parsedQuantity: line.parsedQuantity,
+          parsedUnit: line.parsedUnit,
+          parsedUnitPriceCents: line.parsedUnitPriceCents ?? 1,
+          parsedLineTotalCents: line.parsedLineTotalCents
+        }))
+      });
+
+    expect(response.status).toBe(400);
+  });
+
+  it("confirms OCR drafts through the existing review-confirm flow and updates actions", async () => {
+    const app = buildApp();
+    const uploadResponse = await request(app)
+      .post("/api/ocr/invoices/upload?dataset=mixed-restaurant")
+      .attach("file", Buffer.from("fixture"), {
+        filename: "clean-invoice-photo.jpg",
+        contentType: "image/jpeg"
+      });
+
+    const invoice = uploadResponse.body as {
+      invoiceDraft: { id: string; supplierId: string; invoiceDate: string; invoiceNumber?: string };
+      lines: Array<{
+        id: string;
+        matchedIngredientId?: string;
+        parsedQuantity: number;
+        parsedUnit: string;
+        parsedUnitPriceCents?: number;
+        parsedLineTotalCents?: number;
+      }>;
+    };
+
+    const confirmResponse = await request(app)
+      .post(`/api/invoices/${invoice.invoiceDraft.id}/review-confirm?dataset=mixed-restaurant`)
+      .send({
+        supplierId: invoice.invoiceDraft.supplierId,
+        invoiceDate: invoice.invoiceDraft.invoiceDate,
+        invoiceNumber: invoice.invoiceDraft.invoiceNumber,
+        lines: invoice.lines.map((line) => ({
+          lineId: line.id,
+          reviewStatus: "confirmed",
+          matchedIngredientId: line.matchedIngredientId,
+          parsedQuantity: line.parsedQuantity,
+          parsedUnit: line.parsedUnit,
+          parsedUnitPriceCents: line.parsedUnitPriceCents ?? 1,
+          parsedLineTotalCents: line.parsedLineTotalCents
+        }))
+      });
+    const confirmBody = confirmResponse.body as {
+      costHistory: Array<{ ingredientId: string }>;
+      alerts: Array<{ id: string }>;
+    };
+
+    expect(confirmResponse.status).toBe(200);
+    expect(confirmBody.costHistory.length).toBeGreaterThan(0);
+    expect(confirmBody.alerts.length).toBeGreaterThan(0);
+
+    const actionsResponse = await request(app).get("/api/analytics/actions?dataset=mixed-restaurant");
+    const actions = actionsResponse.body as DishAction[];
+
+    expect(actions.some((action) => action.reasonCodes.includes("SUPPLIER_PRICE_INCREASE"))).toBe(true);
+  });
 });

@@ -43,6 +43,17 @@ interface StructuredInvoiceLineInput {
   lineTotalCents?: number;
   matchedIngredientId?: string;
   reviewStatus?: Extract<InvoiceReviewStatus, "needs_review" | "ready" | "ignored">;
+  matchConfidenceOverride?: InvoiceMatchConfidence;
+  warnings?: string[];
+}
+
+export interface StructuredInvoiceDraftInput {
+  invoiceKey: string;
+  supplierName: string;
+  invoiceNumber?: string;
+  invoiceDate: string;
+  totalAmountCents?: number;
+  lines: StructuredInvoiceLineInput[];
 }
 
 interface ConfirmInvoiceReviewInput {
@@ -280,6 +291,28 @@ function getConfidenceFromScore(score: number): InvoiceMatchConfidence {
   return "none";
 }
 
+function getConfidenceRank(confidence: InvoiceMatchConfidence) {
+  return {
+    none: 0,
+    low: 1,
+    medium: 2,
+    high: 3
+  }[confidence];
+}
+
+function reduceConfidence(
+  derivedConfidence: InvoiceMatchConfidence,
+  overrideConfidence: InvoiceMatchConfidence | undefined
+) {
+  if (!overrideConfidence) {
+    return derivedConfidence;
+  }
+
+  return getConfidenceRank(overrideConfidence) < getConfidenceRank(derivedConfidence)
+    ? overrideConfidence
+    : derivedConfidence;
+}
+
 function buildDraftSummary(lines: PurchaseInvoiceLine[]): InvoiceDraftSummary {
   return {
     totalLines: lines.length,
@@ -427,15 +460,8 @@ function buildInvoiceLineWarnings(
   return warnings;
 }
 
-function buildParsedInvoiceDraft(
-  input: {
-    invoiceKey: string;
-    supplierName: string;
-    invoiceNumber?: string;
-    invoiceDate: string;
-    totalAmountCents?: number;
-    lines: StructuredInvoiceLineInput[];
-  },
+export function parseStructuredInvoiceDraft(
+  input: StructuredInvoiceDraftInput,
   knownSuppliers: Supplier[],
   knownIngredients: Ingredient[],
   existingSupplierProductMatches: SupplierProductMatch[],
@@ -459,7 +485,7 @@ function buildParsedInvoiceDraft(
       line.lineTotalCents
     );
     const explicitIngredient = resolveIngredientById(line.matchedIngredientId, knownIngredients);
-    const matched = explicitIngredient
+    const matchedCandidate = explicitIngredient
       ? {
           ingredient: explicitIngredient,
           confidence: "high" as const
@@ -470,18 +496,22 @@ function buildParsedInvoiceDraft(
           knownIngredients,
           existingSupplierProductMatches
         );
+    const finalConfidence = reduceConfidence(
+      matchedCandidate.confidence,
+      line.matchConfidenceOverride
+    );
     const convertedCost =
-      parsedUnitPriceCents !== undefined && matched.ingredient
+      parsedUnitPriceCents !== undefined && matchedCandidate.ingredient
         ? convertInvoiceCostToIngredientUnit(
             parsedUnitPriceCents,
             line.unit,
-            matched.ingredient.unit
+            matchedCandidate.ingredient.unit
           )
         : null;
-    const previousCostPerUnitCents = matched.ingredient?.costPerUnitCents;
+    const previousCostPerUnitCents = matchedCandidate.ingredient?.costPerUnitCents;
     const nextCostPerUnitCents =
       typeof convertedCost === "number" ? convertedCost : undefined;
-    const baseWarnings: string[] = [];
+    const baseWarnings: string[] = [...(line.warnings ?? [])];
 
     if (line.matchedIngredientId && !explicitIngredient) {
       baseWarnings.push(`Matched ingredient "${line.matchedIngredientId}" is not valid.`);
@@ -495,17 +525,17 @@ function buildParsedInvoiceDraft(
       line.rawProductName,
       line.quantity,
       parsedUnitPriceCents,
-      matched.ingredient,
+      matchedCandidate.ingredient,
       line.unit,
       nextCostPerUnitCents,
-      matched.confidence,
+      finalConfidence,
       baseWarnings
     );
 
     const reviewStatus: InvoiceReviewStatus =
       line.reviewStatus === "ignored"
         ? "ignored"
-        : warnings.length > 0 || matched.confidence === "low" || matched.confidence === "none"
+        : warnings.length > 0 || finalConfidence === "low" || finalConfidence === "none"
           ? "needs_review"
           : "ready";
 
@@ -519,8 +549,8 @@ function buildParsedInvoiceDraft(
       parsedLineTotalCents:
         line.lineTotalCents ??
         (parsedUnitPriceCents !== undefined ? parsedUnitPriceCents * line.quantity : undefined),
-      matchedIngredientId: matched.ingredient?.id,
-      matchConfidence: matched.confidence,
+      matchedIngredientId: matchedCandidate.ingredient?.id,
+      matchConfidence: finalConfidence,
       reviewStatus,
       previousCostPerUnitCents,
       newCostPerUnitCents: nextCostPerUnitCents,
@@ -607,7 +637,7 @@ export function parseMockInvoice(
   existingSupplierProductMatches: SupplierProductMatch[],
   options: ParseMockInvoiceOptions = {}
 ): ParsedInvoiceDraft {
-  return buildParsedInvoiceDraft(
+  return parseStructuredInvoiceDraft(
     {
       invoiceKey: input.id,
       supplierName: input.supplierName,
@@ -636,7 +666,7 @@ export function parseManualInvoice(
   existingSupplierProductMatches: SupplierProductMatch[],
   options: ParseStructuredInvoiceOptions = {}
 ): ParsedInvoiceDraft {
-  return buildParsedInvoiceDraft(
+  return parseStructuredInvoiceDraft(
     {
       invoiceKey: "manual",
       supplierName: input.supplierName,

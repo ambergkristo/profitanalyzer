@@ -320,6 +320,45 @@ export interface ManualInvoiceDraftInput {
   lines: ManualInvoiceLineInput[];
 }
 
+export type OcrProvider = "fixture" | "manual_dev" | "external_future";
+export type OcrJobStatus = "uploaded" | "processing" | "parsed" | "needs_review" | "failed";
+export type OcrConfidence = "high" | "medium" | "low" | "none";
+
+export interface OcrParsedLine {
+  rawProductName: string;
+  quantity?: number;
+  unit?: InvoiceUnit;
+  unitPriceCents?: number;
+  lineTotalCents?: number;
+  confidence: OcrConfidence;
+  warnings: string[];
+}
+
+export interface OcrParsedInvoiceResult {
+  supplierName?: string;
+  invoiceNumber?: string;
+  invoiceDate?: string;
+  totalAmountCents?: number;
+  lines: OcrParsedLine[];
+  rawText?: string;
+  confidence: OcrConfidence;
+  warnings: string[];
+}
+
+export interface OcrInvoiceJob {
+  id: string;
+  datasetId: string;
+  provider: OcrProvider;
+  status: OcrJobStatus;
+  originalFileName: string;
+  mimeType: string;
+  fileSizeBytes: number;
+  createdAt: string;
+  parsedAt?: string;
+  failureReason?: string;
+  invoiceDraftId?: string;
+}
+
 export interface MockInvoiceSampleSummary {
   id: string;
   name: string;
@@ -349,6 +388,11 @@ export interface ParsedInvoiceDraft {
   supplierSuggestion: SupplierSuggestion;
   lines: PurchaseInvoiceLine[];
   summary: InvoiceDraftSummary;
+}
+
+export interface OcrDraftResponse extends ParsedInvoiceDraft {
+  ocrJob: OcrInvoiceJob;
+  ocrResult: OcrParsedInvoiceResult;
 }
 
 export interface ReviewedInvoiceLineInput {
@@ -408,6 +452,8 @@ export interface StoredInvoiceView {
   confirmationSummary?: InvoiceConfirmationSummary;
   affectedDishes?: AffectedDishImpact[];
   alerts?: PriceChangeAlert[];
+  ocrJob?: OcrInvoiceJob;
+  ocrResult?: OcrParsedInvoiceResult;
 }
 
 export interface IngredientCostHistoryEntryView {

@@ -12,6 +12,7 @@ vi.mock("../api/client.js", () => ({
     getInvoiceSamples: vi.fn(),
     parseMockInvoiceSample: vi.fn(),
     createManualInvoiceDraft: vi.fn(),
+    uploadOcrInvoice: vi.fn(),
     confirmInvoiceReview: vi.fn()
   }
 }));
@@ -158,6 +159,95 @@ describe("InvoicesPage", () => {
         ignoredLineCount: 0,
         highConfidenceCount: 1,
         lowConfidenceCount: 0
+      }
+    });
+
+    vi.mocked(apiClient.uploadOcrInvoice).mockResolvedValue({
+      ocrJob: {
+        id: "ocr-job-1",
+        datasetId: "low-margin-kitchen",
+        provider: "fixture",
+        status: "needs_review",
+        originalFileName: "blurry-invoice-photo.jpg",
+        mimeType: "image/jpeg",
+        fileSizeBytes: 2048,
+        createdAt: "2026-04-28T11:00:00.000Z",
+        parsedAt: "2026-04-28T11:00:00.000Z",
+        invoiceDraftId: "ocr-invoice-1"
+      },
+      ocrResult: {
+        supplierName: "KitchenHub Cash & Carry",
+        invoiceNumber: "OCR-7732",
+        invoiceDate: "2026-04-14",
+        totalAmountCents: 19840,
+        confidence: "low",
+        warnings: [
+          "RM8 development adapter: fixture OCR result.",
+          "Photo was blurry. Review low-confidence lines before confirming."
+        ],
+        lines: [
+          {
+            rawProductName: "Burger Dip House",
+            quantity: 900,
+            unit: "ml",
+            unitPriceCents: 5,
+            confidence: "medium",
+            warnings: []
+          }
+        ]
+      },
+      invoiceDraft: {
+        id: "ocr-invoice-1",
+        restaurantId: "low-margin-kitchen",
+        supplierId: "supplier-prime-butchery",
+        invoiceNumber: "OCR-7732",
+        invoiceDate: "2026-04-14",
+        sourceType: "ocr_future",
+        parseStatus: "needs_review",
+        createdAt: "2026-04-28T11:00:00.000Z"
+      },
+      supplierSuggestion: {
+        supplierId: "supplier-prime-butchery",
+        supplierName: "Prime Butchery Co",
+        confidence: "high"
+      },
+      lines: [
+        {
+          id: "ocr-line-1",
+          invoiceId: "ocr-invoice-1",
+          rawProductName: "Burger Dip House",
+          parsedQuantity: 900,
+          parsedUnit: "ml",
+          parsedUnitPriceCents: 5,
+          parsedLineTotalCents: 4500,
+          matchedIngredientId: "beef-patty",
+          matchConfidence: "medium",
+          reviewStatus: "ready",
+          previousCostPerUnitCents: 3,
+          newCostPerUnitCents: 5,
+          priceDeltaPercent: 66.7,
+          warnings: []
+        },
+        {
+          id: "ocr-line-2",
+          invoiceId: "ocr-invoice-1",
+          rawProductName: "Mystery Herb Mix",
+          parsedQuantity: 100,
+          parsedUnit: "g",
+          parsedUnitPriceCents: 9,
+          parsedLineTotalCents: 900,
+          matchConfidence: "none",
+          reviewStatus: "needs_review",
+          warnings: ["OCR could not classify this line."]
+        }
+      ],
+      summary: {
+        totalLines: 2,
+        readyLineCount: 1,
+        needsReviewLineCount: 1,
+        ignoredLineCount: 0,
+        highConfidenceCount: 0,
+        lowConfidenceCount: 1
       }
     });
 
@@ -369,5 +459,57 @@ describe("InvoicesPage", () => {
       expect.objectContaining({ supplierId: "supplier-prime-butchery" }),
       "low-margin-kitchen"
     );
+  });
+
+  it("renders OCR upload mode and passes the dataset param into OCR draft creation", async () => {
+    render(
+      <MemoryRouter
+        future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
+        initialEntries={["/invoices?dataset=low-margin-kitchen"]}
+      >
+        <InvoicesPage />
+      </MemoryRouter>
+    );
+
+    fireEvent.click(await screen.findByRole("button", { name: "Photo/OCR Upload" }));
+    const file = new File(["fixture"], "blurry-invoice-photo.jpg", { type: "image/jpeg" });
+    fireEvent.change(screen.getByLabelText("Choose file"), {
+      target: { files: [file] }
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Create review draft" }));
+
+    await waitFor(() => {
+      expect(vi.mocked(apiClient.uploadOcrInvoice)).toHaveBeenCalledWith(
+        expect.objectContaining({ name: "blurry-invoice-photo.jpg" }),
+        "low-margin-kitchen"
+      );
+    });
+  });
+
+  it("shows OCR warnings and keeps confirmation blocked until unresolved OCR lines are handled", async () => {
+    render(
+      <MemoryRouter
+        future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
+        initialEntries={["/invoices?dataset=low-margin-kitchen"]}
+      >
+        <InvoicesPage />
+      </MemoryRouter>
+    );
+
+    fireEvent.click(await screen.findByRole("button", { name: "Photo/OCR Upload" }));
+    const file = new File(["fixture"], "blurry-invoice-photo.jpg", { type: "image/jpeg" });
+    fireEvent.change(screen.getByLabelText("Choose file"), {
+      target: { files: [file] }
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Create review draft" }));
+
+    expect(await screen.findByText("OCR warnings")).toBeInTheDocument();
+    expect(await screen.findByText("Photo was blurry. Review low-confidence lines before confirming.")).toBeInTheDocument();
+    expect(await screen.findByText("OCR could not classify this line.")).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: "Confirm cost updates" })).toBeDisabled();
+    expect(
+      (await screen.findAllByText("Resolve or ignore 1 OCR lines before confirming.")).length
+    ).toBeGreaterThan(0);
   });
 });

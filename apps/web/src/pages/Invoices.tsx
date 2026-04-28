@@ -13,7 +13,8 @@ import { useAsyncData } from "../hooks.js";
 import type {
   InvoiceConfirmResponse,
   InvoiceDraftResponse,
-  InvoiceUnit
+  InvoiceUnit,
+  OcrInvoiceDraftResponse
 } from "../types.js";
 import { formatEuro } from "../utils/format.js";
 import {
@@ -29,8 +30,11 @@ import { buildDatasetSearch, getScenarioMeta } from "../utils/scenario.js";
 const invoiceUnits: InvoiceUnit[] = ["g", "kg", "ml", "l", "pcs", "pack", "piece"];
 const entryModes = [
   { id: "sample", label: "Sample invoice" },
-  { id: "manual", label: "Manual structured entry" }
+  { id: "manual", label: "Manual structured entry" },
+  { id: "ocr", label: "Photo/OCR Upload" }
 ] as const;
+const allowedOcrMimeTypes = ["image/jpeg", "image/png", "image/webp", "application/pdf"];
+const maxOcrFileSizeBytes = 10 * 1024 * 1024;
 
 const confidenceLabel = {
   high: "High confidence",
@@ -136,6 +140,12 @@ function createInitialManualLines() {
   return [createManualInvoiceLineForm("manual-line-1")];
 }
 
+function isOcrDraftResponse(
+  draft: InvoiceDraftResponse | OcrInvoiceDraftResponse
+): draft is OcrInvoiceDraftResponse {
+  return "ocrJob" in draft;
+}
+
 export function InvoicesPage() {
   const [searchParams] = useSearchParams();
   const datasetId = searchParams.get("dataset") ?? undefined;
@@ -157,18 +167,21 @@ export function InvoicesPage() {
   const [manualInvoiceNumber, setManualInvoiceNumber] = useState("");
   const [manualInvoiceDate, setManualInvoiceDate] = useState("2026-04-28");
   const [manualLines, setManualLines] = useState<ManualInvoiceLineForm[]>(createInitialManualLines);
-  const [draft, setDraft] = useState<InvoiceDraftResponse | null>(null);
+  const [draft, setDraft] = useState<(InvoiceDraftResponse | OcrInvoiceDraftResponse) | null>(null);
   const [reviewLines, setReviewLines] = useState<EditableInvoiceLine[]>([]);
   const [supplierId, setSupplierId] = useState("");
   const [invoiceDate, setInvoiceDate] = useState("");
   const [invoiceNumber, setInvoiceNumber] = useState("");
+  const [ocrFile, setOcrFile] = useState<File | null>(null);
   const [latestConfirmation, setLatestConfirmation] = useState<InvoiceConfirmResponse | null>(null);
   const [parseError, setParseError] = useState<string | null>(null);
   const [confirmError, setConfirmError] = useState<string | null>(null);
   const [manualError, setManualError] = useState<string | null>(null);
+  const [ocrError, setOcrError] = useState<string | null>(null);
   const [datasetResetNotice, setDatasetResetNotice] = useState<string | null>(null);
   const [isParsing, setIsParsing] = useState(false);
   const [isCreatingManualDraft, setIsCreatingManualDraft] = useState(false);
+  const [isUploadingOcr, setIsUploadingOcr] = useState(false);
   const [isConfirming, setIsConfirming] = useState(false);
 
   useEffect(() => {
@@ -186,6 +199,8 @@ export function InvoicesPage() {
         setConfirmError(null);
         setParseError(null);
         setManualError(null);
+        setOcrError(null);
+        setOcrFile(null);
         setDatasetResetNotice(
           "Scenario changed. The current invoice draft was cleared so cost updates stay isolated to one restaurant profile."
         );
@@ -199,6 +214,8 @@ export function InvoicesPage() {
   const selectedSample = page.data?.samples.find((sample) => sample.id === selectedSampleId);
   const unresolvedLineCount = getUnresolvedInvoiceLineCount(reviewLines);
   const isInvoiceConfirmed = latestConfirmation !== null;
+  const ocrDraft = draft && isOcrDraftResponse(draft) ? draft : null;
+  const isOcrDraft = ocrDraft !== null;
   const alertPreview = latestConfirmation?.alerts ?? [];
   const affectedDishes = latestConfirmation?.affectedDishes ?? [];
   const confirmationSummary = latestConfirmation?.confirmationSummary;
@@ -207,7 +224,7 @@ export function InvoicesPage() {
     reviewLines.length === 0
       ? "No invoice loaded yet."
       : unresolvedLineCount > 0
-        ? `Resolve or ignore ${unresolvedLineCount} lines before confirming.`
+        ? `Resolve or ignore ${unresolvedLineCount} ${isOcrDraft ? "OCR " : ""}lines before confirming.`
         : "All non-ignored lines are ready. Confirming now will update current ingredient costs for this scenario.";
 
   const confirmDisabled =
@@ -240,7 +257,7 @@ export function InvoicesPage() {
 
   const pageData = page.data;
 
-  function loadDraft(parsed: InvoiceDraftResponse) {
+  function loadDraft(parsed: InvoiceDraftResponse | OcrInvoiceDraftResponse) {
     setDraft(parsed);
     setReviewLines(createEditableInvoiceLines(parsed.lines));
     setSupplierId(parsed.supplierSuggestion.supplierId ?? parsed.invoiceDraft.supplierId);
@@ -258,6 +275,7 @@ export function InvoicesPage() {
     setParseError(null);
     setConfirmError(null);
     setManualError(null);
+    setOcrError(null);
     setDatasetResetNotice(null);
 
     try {
@@ -278,6 +296,7 @@ export function InvoicesPage() {
     setManualError(null);
     setConfirmError(null);
     setParseError(null);
+    setOcrError(null);
     setDatasetResetNotice(null);
 
     try {
@@ -303,6 +322,52 @@ export function InvoicesPage() {
       setManualError(reason instanceof Error ? reason.message : "Failed to create manual invoice draft.");
     } finally {
       setIsCreatingManualDraft(false);
+    }
+  }
+
+  function handleOcrFileChange(file: File | null) {
+    setOcrFile(null);
+    setOcrError(null);
+
+    if (!file) {
+      return;
+    }
+
+    if (!allowedOcrMimeTypes.includes(file.type)) {
+      setOcrError("Unsupported file type. Use JPEG, PNG, WEBP, or PDF for RM8 adapter mode.");
+      return;
+    }
+
+    if (file.size > maxOcrFileSizeBytes) {
+      setOcrError("File is too large. Keep OCR fixture uploads under 10MB.");
+      return;
+    }
+
+    setOcrFile(file);
+  }
+
+  async function handleUploadOcrDraft() {
+    if (!ocrFile) {
+      return;
+    }
+
+    setIsUploadingOcr(true);
+    setOcrError(null);
+    setConfirmError(null);
+    setParseError(null);
+    setManualError(null);
+    setDatasetResetNotice(null);
+
+    try {
+      const parsed = await apiClient.uploadOcrInvoice(ocrFile, datasetId);
+      loadDraft(parsed);
+    } catch (reason) {
+      setDraft(null);
+      setReviewLines([]);
+      setLatestConfirmation(null);
+      setOcrError(reason instanceof Error ? reason.message : "Failed to create OCR review draft.");
+    } finally {
+      setIsUploadingOcr(false);
     }
   }
 
@@ -384,7 +449,7 @@ export function InvoicesPage() {
               <p className="mt-2 font-display text-2xl text-text">{selectedDataset.name}</p>
               <p className="mt-3 text-sm leading-6 text-text">{selectedDataset.ownerDiagnosis}</p>
               <p className="mt-3 text-sm leading-6 text-muted">
-                Real photo and OCR upload starts in RM8. This workflow is deliberately structured and review-first.
+                Sample, manual, and RM8 adapter uploads all stop at review. Nothing updates current costs until you confirm.
               </p>
             </Panel>
           }
@@ -412,7 +477,7 @@ export function InvoicesPage() {
 
       <Panel>
         <SectionHeader
-          description="Use repeatable sample invoices for demo flow or enter a structured supplier invoice manually when you want to test a custom cost move."
+          description="Use repeatable sample invoices for demo flow, enter a structured invoice manually, or create an RM8 OCR review draft from an uploaded file."
           eyebrow="Draft source"
           title="Choose how to start the review"
         />
@@ -471,7 +536,7 @@ export function InvoicesPage() {
             </div>
             {parseError ? <p className="mt-4 text-sm leading-6 text-danger">{parseError}</p> : null}
           </>
-        ) : (
+        ) : entryMode === "manual" ? (
           <>
             <div className="mt-6 grid gap-4 xl:grid-cols-3">
               <label className="text-sm text-muted">
@@ -632,6 +697,74 @@ export function InvoicesPage() {
             </div>
             {manualError ? <p className="mt-4 text-sm leading-6 text-danger">{manualError}</p> : null}
           </>
+        ) : (
+          <>
+            <div className="mt-6 grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
+              <Panel className="rounded-panel border border-border bg-black/20 p-5">
+                <p className="text-[11px] uppercase tracking-[0.18em] text-muted">RM8 adapter mode</p>
+                <h2 className="mt-3 font-display text-3xl text-text">Photo/OCR upload creates a draft only</h2>
+                <p className="mt-3 text-sm leading-6 text-muted">
+                  Upload a file to simulate OCR intake. The adapter returns a review draft, not a confirmed invoice. Low-confidence lines stay blocked until you resolve or ignore them.
+                </p>
+                <div className="mt-5 rounded-tile border border-warning/25 bg-warning/10 p-4">
+                  <p className="text-sm leading-6 text-text">
+                    OCR is only a draft. Review is required before ingredient costs change.
+                  </p>
+                </div>
+                <label className="mt-5 block text-sm text-muted">
+                  Choose file
+                  <input
+                    accept={allowedOcrMimeTypes.join(",")}
+                    className="mt-2 block w-full rounded-tile border border-border bg-black/20 px-4 py-3 text-text file:mr-4 file:rounded-full file:border-0 file:bg-accent/15 file:px-4 file:py-2 file:text-sm file:font-medium file:text-accent"
+                    onChange={(event) => handleOcrFileChange(event.target.files?.[0] ?? null)}
+                    type="file"
+                  />
+                </label>
+                <div className="mt-5 flex flex-wrap items-center gap-3">
+                  <ActionButton
+                    disabled={!ocrFile || isUploadingOcr}
+                    onClick={() => void handleUploadOcrDraft()}
+                    variant="primary"
+                  >
+                    {isUploadingOcr ? "Creating OCR review draft..." : "Create review draft"}
+                  </ActionButton>
+                  <p className="text-sm leading-6 text-muted">
+                    Use `clean-invoice-photo.jpg`, `blurry-invoice-photo.jpg`, or `cropped-invoice-photo.jpg` to drive the fixture adapter.
+                  </p>
+                </div>
+                {ocrFile ? (
+                  <p className="mt-4 text-sm leading-6 text-text">
+                    Selected {ocrFile.name} ({Math.max(1, Math.round(ocrFile.size / 1024))} KB)
+                  </p>
+                ) : null}
+                {ocrError ? <p className="mt-4 text-sm leading-6 text-danger">{ocrError}</p> : null}
+              </Panel>
+
+              <Panel className="rounded-panel border border-white/8 bg-white/[0.02] p-5">
+                <p className="text-[11px] uppercase tracking-[0.18em] text-muted">Fixture behavior</p>
+                <div className="mt-5 space-y-4">
+                  <div className="rounded-tile border border-profit/20 bg-profit/10 p-4">
+                    <p className="font-medium text-text">Clean fixture</p>
+                    <p className="mt-2 text-sm leading-6 text-muted">
+                      Mostly high-confidence lines. Draft should open ready for a fast review-confirm pass.
+                    </p>
+                  </div>
+                  <div className="rounded-tile border border-warning/20 bg-warning/10 p-4">
+                    <p className="font-medium text-text">Blurry fixture</p>
+                    <p className="mt-2 text-sm leading-6 text-muted">
+                      Includes low-confidence and missing-price lines. Confirmation stays blocked until you resolve or ignore them.
+                    </p>
+                  </div>
+                  <div className="rounded-tile border border-white/10 bg-black/20 p-4">
+                    <p className="font-medium text-text">Cropped fixture</p>
+                    <p className="mt-2 text-sm leading-6 text-muted">
+                      Header data is incomplete, but the adapter still creates a safe draft with warnings.
+                    </p>
+                  </div>
+                </div>
+              </Panel>
+            </div>
+          </>
         )}
       </Panel>
 
@@ -639,7 +772,11 @@ export function InvoicesPage() {
         <section className="grid gap-6 xl:grid-cols-[1.18fr_0.82fr]">
           <Panel>
             <SectionHeader
-              description="Confirm the supplier, inspect every parsed line, and resolve low-confidence matches before current ingredient costs are updated."
+              description={
+                isOcrDraft
+                  ? "OCR created this draft. Confirm the supplier, inspect every parsed line, and resolve low-confidence OCR output before current ingredient costs are updated."
+                  : "Confirm the supplier, inspect every parsed line, and resolve low-confidence matches before current ingredient costs are updated."
+              }
               eyebrow="Parsed invoice review"
               title="Review before applying cost changes"
             />
@@ -679,7 +816,9 @@ export function InvoicesPage() {
                 />
               </label>
               <Panel className="rounded-tile p-4" tone="subtle">
-                <p className="text-[11px] uppercase tracking-[0.18em] text-muted">Parse status</p>
+                <p className="text-[11px] uppercase tracking-[0.18em] text-muted">
+                  {isOcrDraft ? "OCR draft status" : "Parse status"}
+                </p>
                 <p className="mt-2 font-medium capitalize text-text">
                   {draft.invoiceDraft.parseStatus.replaceAll("_", " ")}
                 </p>
@@ -688,6 +827,41 @@ export function InvoicesPage() {
                 </p>
               </Panel>
             </div>
+
+            {ocrDraft ? (
+              <div className="mt-4 grid gap-4 xl:grid-cols-[0.95fr_1.05fr]">
+                <Panel className="rounded-tile p-4" tone="subtle">
+                  <p className="text-[11px] uppercase tracking-[0.18em] text-muted">OCR job</p>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <span className="rounded-full border border-accent/30 bg-accent/10 px-3 py-1 text-[11px] uppercase tracking-[0.16em] text-accent">
+                      {ocrDraft.ocrJob.provider}
+                    </span>
+                    <span className="rounded-full border border-white/10 px-3 py-1 text-[11px] uppercase tracking-[0.16em] text-muted">
+                      {ocrDraft.ocrJob.status.replaceAll("_", " ")}
+                    </span>
+                    <span className={`rounded-full border px-3 py-1 text-[11px] uppercase tracking-[0.16em] ${confidenceTone[ocrDraft.ocrResult.confidence]}`}>
+                      {confidenceLabel[ocrDraft.ocrResult.confidence]}
+                    </span>
+                  </div>
+                  <p className="mt-3 text-sm leading-6 text-text">
+                    Source file: {ocrDraft.ocrJob.originalFileName}
+                  </p>
+                  <p className="mt-2 text-sm leading-6 text-muted">
+                    OCR is only a draft. No ingredient costs move until review-confirm succeeds.
+                  </p>
+                </Panel>
+                <Panel className="rounded-tile p-4" tone="subtle">
+                  <p className="text-[11px] uppercase tracking-[0.18em] text-muted">OCR warnings</p>
+                  <div className="mt-3 space-y-2">
+                    {ocrDraft.ocrResult.warnings.map((warning: string) => (
+                      <p key={warning} className="text-sm leading-6 text-warning">
+                        {warning}
+                      </p>
+                    ))}
+                  </div>
+                </Panel>
+              </div>
+            ) : null}
 
             <div className="mt-6 flex flex-wrap gap-3">
               <ActionButton onClick={confirmReadyLines} variant="secondary">
