@@ -1,0 +1,9 @@
+{
+  "sampleParse": "Normal sample parsed with 7 ready lines; messy sample produced 3 unresolved lines.",
+  "manualDraft": "Manual structured draft created as manual with derived unit price 4 cents.",
+  "unresolvedBlock": "Unresolved-line confirmation returned HTTP 400.",
+  "confirmation": "Spike confirmation created 6 history records, 12 alerts, and 5 affected dishes.",
+  "alertsAndActions": "Overview now shows 12 supplier alerts, and the ranked action stack includes supplier-price reason codes.",
+  "costHistory": "Beef Patty history returned 1 entries. Top affected dish: Beef Burger (EUR -828.00).",
+  "repeatedConfirm": "Repeated confirmation returned HTTP 409."
+}

@@ -4,7 +4,8 @@ import {
   type DishActionConfidence,
   type DishActionReasonCode,
   type DishActionSeverity,
-  type OverviewMetrics
+  type OverviewMetrics,
+  type PriceChangeAlert
 } from "./types.js";
 import { suggestPriceForTargetMargin } from "./calculations.js";
 
@@ -111,6 +112,40 @@ function getEstimatedPriceImpact(
 
 function dedupeReasonCodes(reasonCodes: DishActionReasonCode[]) {
   return [...new Set(reasonCodes)];
+}
+
+function compareSeverity(left: DishActionSeverity, right: DishActionSeverity) {
+  return severityWeight[left] - severityWeight[right];
+}
+
+function sortActions(actions: DishAction[], calculatedDishes: CalculatedDish[]) {
+  return actions.sort((left, right) => {
+    const severityDifference = severityWeight[right.severity] - severityWeight[left.severity];
+    if (severityDifference !== 0) {
+      return severityDifference;
+    }
+
+    if (right.estimatedImpactCents !== left.estimatedImpactCents) {
+      return right.estimatedImpactCents - left.estimatedImpactCents;
+    }
+
+    const rightSalesVolume =
+      calculatedDishes.find((dish) => dish.dishId === right.dishId)?.salesVolume ?? 0;
+    const leftSalesVolume =
+      calculatedDishes.find((dish) => dish.dishId === left.dishId)?.salesVolume ?? 0;
+
+    if (rightSalesVolume !== leftSalesVolume) {
+      return rightSalesVolume - leftSalesVolume;
+    }
+
+    const confidenceDifference =
+      confidenceWeight[right.confidence] - confidenceWeight[left.confidence];
+    if (confidenceDifference !== 0) {
+      return confidenceDifference;
+    }
+
+    return left.id.localeCompare(right.id);
+  });
 }
 
 function buildPrimaryAction(
@@ -333,36 +368,177 @@ export function rankDishActions(calculatedDishes: CalculatedDish[]): DishAction[
     return actionList;
   });
 
-  return actions.sort((left, right) => {
-    const severityDifference = severityWeight[right.severity] - severityWeight[left.severity];
-    if (severityDifference !== 0) {
-      return severityDifference;
+  return sortActions(actions, calculatedDishes);
+}
+
+function buildInvoiceAlertActions(
+  calculatedDishes: CalculatedDish[],
+  invoiceAlerts: PriceChangeAlert[]
+) {
+  const dishById = new Map(calculatedDishes.map((dish) => [dish.dishId, dish]));
+  const groupedAlerts = new Map<string, PriceChangeAlert[]>();
+
+  for (const alert of invoiceAlerts) {
+    for (const dishId of alert.affectedDishIds) {
+      if (!dishById.has(dishId)) {
+        continue;
+      }
+
+      const key = `${dishId}:${alert.ingredientId}`;
+      groupedAlerts.set(key, [...(groupedAlerts.get(key) ?? []), alert]);
+    }
+  }
+
+  return [...groupedAlerts.entries()].flatMap<DishAction>(([key, alerts]) => {
+    const [dishId] = key.split(":");
+    const dish = dishById.get(dishId);
+
+    if (!dish || alerts.length === 0) {
+      return [];
     }
 
-    if (right.estimatedImpactCents !== left.estimatedImpactCents) {
-      return right.estimatedImpactCents - left.estimatedImpactCents;
+    const primaryAlert = [...alerts].sort((left, right) => {
+      const severityDifference = compareSeverity(right.severity, left.severity);
+
+      if (severityDifference !== 0) {
+        return severityDifference;
+      }
+
+      return (right.estimatedMarginImpactCents ?? 0) - (left.estimatedMarginImpactCents ?? 0);
+    })[0];
+    const ingredientNames = [...new Set(alerts.map((alert) => alert.ingredientName).filter(Boolean))] as string[];
+    const maxDeltaPercent = Math.max(...alerts.map((alert) => Math.abs(alert.deltaPercent ?? 0)));
+    const estimatedImpactCents = Math.max(
+      0,
+      ...alerts.map((alert) => Math.abs(alert.estimatedMarginImpactCents ?? 0))
+    );
+    const hasSupplierPriceIncrease = alerts.some((alert) => alert.type === "ingredient_price_up");
+    const hasDishMarginRisk = alerts.some(
+      (alert) => alert.type === "dish_margin_at_risk_due_to_cost_change"
+    );
+    const recommendedPrice = dish.marginPercent < 50 ? getRecommendedPrice(dish, [50, 60]) : null;
+    const reasonCodes: DishActionReasonCode[] = [
+      "COST_HISTORY_UPDATED",
+      "INGREDIENT_PRICE_CHANGE"
+    ];
+
+    if (hasSupplierPriceIncrease) {
+      reasonCodes.push("SUPPLIER_PRICE_INCREASE");
     }
 
-    const rightSalesVolume =
-      calculatedDishes.find((dish) => dish.dishId === right.dishId)?.salesVolume ?? 0;
-    const leftSalesVolume =
-      calculatedDishes.find((dish) => dish.dishId === left.dishId)?.salesVolume ?? 0;
-
-    if (rightSalesVolume !== leftSalesVolume) {
-      return rightSalesVolume - leftSalesVolume;
+    if (hasDishMarginRisk) {
+      reasonCodes.push("DISH_MARGIN_AT_RISK");
     }
 
-    const confidenceDifference =
-      confidenceWeight[right.confidence] - confidenceWeight[left.confidence];
-    if (confidenceDifference !== 0) {
-      return confidenceDifference;
+    if (maxDeltaPercent >= 15) {
+      reasonCodes.push("INVOICE_COST_SPIKE");
     }
 
-    return left.id.localeCompare(right.id);
+    if (dish.marginPercent < 50) {
+      reasonCodes.push("LOW_MARGIN");
+    }
+
+    if (dish.marginPercent < 30) {
+      reasonCodes.push("LOSS_MARGIN");
+    }
+
+    if (dish.salesVolume >= 150 && dish.marginPercent < 50) {
+      reasonCodes.push("HIGH_SALES_LOW_MARGIN");
+    }
+
+    const ingredientLabel =
+      ingredientNames.length === 0
+        ? "ingredient cost"
+        : ingredientNames.length === 1
+          ? ingredientNames[0]
+          : `${ingredientNames[0]} and ${ingredientNames.length - 1} more inputs`;
+
+    return [
+      {
+        id: `supplier-price-review-${dish.dishId}-${primaryAlert.ingredientId}`,
+        type: "supplier_price_review",
+        title:
+          hasDishMarginRisk || dish.marginPercent < 30
+            ? `Repair ${dish.name} after the latest supplier spike`
+            : `Review ${dish.name} after the latest supplier cost update`,
+        message: hasSupplierPriceIncrease
+          ? `${dish.name} is now at risk because ${ingredientLabel} increased ${maxDeltaPercent.toFixed(1)}% on the latest supplier invoice. Review price or portion cost before more margin slips.`
+          : `${dish.name} has a fresh supplier-cost update in ${ingredientLabel}. Recheck margin and decide whether to protect price or use the cost relief elsewhere.`,
+        dishId: dish.dishId,
+        severity:
+          hasDishMarginRisk && dish.marginPercent < 30
+            ? "critical"
+            : primaryAlert.severity,
+        estimatedImpactCents,
+        confidence: alerts.every((alert) => typeof alert.deltaPercent === "number")
+          ? "high"
+          : "medium",
+        reasonCodes: dedupeReasonCodes(reasonCodes),
+        recommendedPriceCents: recommendedPrice?.recommendedPriceCents,
+        currentMarginPercent: dish.marginPercent,
+        targetMarginPercent: recommendedPrice?.targetMarginPercent,
+        createdFromRule: "supplier-price-alert",
+        isAggressive: recommendedPrice?.isAggressive
+      }
+    ];
   });
 }
 
-export function calculateOverview(calculatedDishes: CalculatedDish[]): OverviewMetrics {
+function mergeDishActions(primary: DishAction, secondary: DishAction): DishAction {
+  return {
+    ...primary,
+    type: secondary.type,
+    title: secondary.title,
+    message: secondary.message,
+    severity:
+      compareSeverity(primary.severity, secondary.severity) >= 0
+        ? primary.severity
+        : secondary.severity,
+    estimatedImpactCents: Math.max(primary.estimatedImpactCents, secondary.estimatedImpactCents),
+    confidence:
+      confidenceWeight[secondary.confidence] >= confidenceWeight[primary.confidence]
+        ? secondary.confidence
+        : primary.confidence,
+    reasonCodes: dedupeReasonCodes([...primary.reasonCodes, ...secondary.reasonCodes]),
+    recommendedPriceCents: secondary.recommendedPriceCents ?? primary.recommendedPriceCents,
+    currentMarginPercent: secondary.currentMarginPercent ?? primary.currentMarginPercent,
+    targetMarginPercent: secondary.targetMarginPercent ?? primary.targetMarginPercent,
+    createdFromRule: `${primary.createdFromRule}+${secondary.createdFromRule}`,
+    isAggressive: secondary.isAggressive ?? primary.isAggressive
+  };
+}
+
+export function rankCombinedActions(params: {
+  calculatedDishes: CalculatedDish[];
+  invoiceAlerts: PriceChangeAlert[];
+}): DishAction[] {
+  const baseActions = rankDishActions(params.calculatedDishes);
+  const invoiceActions = buildInvoiceAlertActions(
+    params.calculatedDishes,
+    params.invoiceAlerts.filter((alert) => alert.status === "open")
+  );
+  const combined = [...baseActions];
+
+  for (const invoiceAction of invoiceActions) {
+    const existingIndex = combined.findIndex(
+      (action) => action.dishId === invoiceAction.dishId && action.type !== "data_quality"
+    );
+
+    if (existingIndex >= 0) {
+      combined[existingIndex] = mergeDishActions(combined[existingIndex], invoiceAction);
+      continue;
+    }
+
+    combined.push(invoiceAction);
+  }
+
+  return sortActions(combined, params.calculatedDishes);
+}
+
+export function calculateOverview(
+  calculatedDishes: CalculatedDish[],
+  invoiceAlerts: PriceChangeAlert[] = []
+): OverviewMetrics {
   const profitableCount = calculatedDishes.filter((dish) => dish.status === "profitable").length;
   const warningCount = calculatedDishes.filter((dish) => dish.status === "warning").length;
   const lossCount = calculatedDishes.filter((dish) => dish.status === "loss").length;
@@ -384,7 +560,18 @@ export function calculateOverview(calculatedDishes: CalculatedDish[]): OverviewM
       ? 0
       : Number((((totalRevenueCents - totalCostCents) / totalRevenueCents) * 100).toFixed(2));
 
-  const actions = rankDishActions(calculatedDishes);
+  const actions = rankCombinedActions({ calculatedDishes, invoiceAlerts });
+  const latestSupplierAlerts = [...invoiceAlerts]
+    .sort((left, right) => {
+      const severityDifference = compareSeverity(right.severity, left.severity);
+
+      if (severityDifference !== 0) {
+        return severityDifference;
+      }
+
+      return right.createdAt.localeCompare(left.createdAt);
+    })
+    .slice(0, 4);
 
   return {
     totalDishes: calculatedDishes.length,
@@ -428,6 +615,11 @@ export function calculateOverview(calculatedDishes: CalculatedDish[]): OverviewM
         return left.dishId.localeCompare(right.dishId);
       })
       .slice(0, 4),
+    supplierAlertCount: invoiceAlerts.length,
+    highSeveritySupplierAlertCount: invoiceAlerts.filter(
+      (alert) => alert.severity === "high" || alert.severity === "critical"
+    ).length,
+    latestSupplierAlerts,
     dataQualityWarnings: [...new Set(calculatedDishes.flatMap((dish) => dish.warnings.map((warning) => warning.message)))]
   };
 }

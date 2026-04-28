@@ -11,6 +11,7 @@ vi.mock("../api/client.js", () => ({
     getSuppliers: vi.fn(),
     getInvoiceSamples: vi.fn(),
     parseMockInvoiceSample: vi.fn(),
+    createManualInvoiceDraft: vi.fn(),
     confirmInvoiceReview: vi.fn()
   }
 }));
@@ -19,6 +20,8 @@ import { apiClient } from "../api/client.js";
 
 describe("InvoicesPage", () => {
   beforeEach(() => {
+    vi.clearAllMocks();
+
     vi.mocked(apiClient.getDemoDatasets).mockResolvedValue([
       {
         id: "low-margin-kitchen",
@@ -114,6 +117,50 @@ describe("InvoicesPage", () => {
       }
     });
 
+    vi.mocked(apiClient.createManualInvoiceDraft).mockResolvedValue({
+      invoiceDraft: {
+        id: "manual-invoice-1",
+        restaurantId: "low-margin-kitchen",
+        supplierId: "supplier-prime-butchery",
+        invoiceNumber: "MAN-100",
+        invoiceDate: "2026-04-28",
+        sourceType: "manual",
+        parseStatus: "draft",
+        createdAt: "2026-04-28T09:00:00.000Z"
+      },
+      supplierSuggestion: {
+        supplierId: "supplier-prime-butchery",
+        supplierName: "Prime Butchery Co",
+        confidence: "high"
+      },
+      lines: [
+        {
+          id: "manual-line-1",
+          invoiceId: "manual-invoice-1",
+          rawProductName: "Beef Patty 180g Fresh",
+          parsedQuantity: 1000,
+          parsedUnit: "g",
+          parsedUnitPriceCents: 4,
+          parsedLineTotalCents: 4000,
+          matchedIngredientId: "beef-patty",
+          matchConfidence: "high",
+          reviewStatus: "ready",
+          previousCostPerUnitCents: 3,
+          newCostPerUnitCents: 4,
+          priceDeltaPercent: 33.3,
+          warnings: []
+        }
+      ],
+      summary: {
+        totalLines: 1,
+        readyLineCount: 1,
+        needsReviewLineCount: 0,
+        ignoredLineCount: 0,
+        highConfidenceCount: 1,
+        lowConfidenceCount: 0
+      }
+    });
+
     vi.mocked(apiClient.confirmInvoiceReview).mockResolvedValue({
       confirmationSummary: {
         invoiceId: "invoice-1",
@@ -166,10 +213,11 @@ describe("InvoicesPage", () => {
           invoiceLineId: "line-1",
           previousCostPerUnitCents: 3,
           newCostPerUnitCents: 4,
-          deltaPercent: 33.3,
-          affectedDishIds: ["dish-burger"],
-          estimatedMarginImpactCents: 64800,
-          message: "Beef Patty 180g Fresh increased 33.3%. Beef Burger is the largest affected dish.",
+        deltaPercent: 33.3,
+        affectedDishIds: ["dish-burger"],
+        affectedDishNames: ["Beef Burger"],
+        estimatedMarginImpactCents: 64800,
+        message: "Beef Patty 180g Fresh increased 33.3%. Beef Burger is the largest affected dish.",
           recommendedAction: "Review affected dishes and test margin repair on the highest-volume items.",
           createdAt: "2026-04-20T10:15:00.000Z",
           status: "open"
@@ -205,6 +253,9 @@ describe("InvoicesPage", () => {
     );
 
     expect(await screen.findByText("Prime Butchery Co")).toBeInTheDocument();
+    expect(
+      await screen.findByText(/Selected Prime Butchery Co\. Use this to confirm costs safely before analytics update\./)
+    ).toBeInTheDocument();
 
     fireEvent.click((await screen.findAllByRole("button", { name: "Parse sample invoice" }))[0]);
 
@@ -226,11 +277,60 @@ describe("InvoicesPage", () => {
       </MemoryRouter>
     );
 
+    expect(
+      await screen.findByText(/Selected Prime Butchery Co\. Use this to confirm costs safely before analytics update\./)
+    ).toBeInTheDocument();
     fireEvent.click((await screen.findAllByRole("button", { name: "Parse sample invoice" }))[0]);
 
     expect(await screen.findByText("Mystery Herb Mix")).toBeInTheDocument();
     expect(await screen.findByText("Ingredient match is unresolved and must be reviewed or ignored.")).toBeInTheDocument();
     expect(await screen.findByRole("button", { name: "Confirm cost updates" })).toBeDisabled();
+    expect(
+      (await screen.findAllByText("Resolve or ignore 1 lines before confirming.")).length
+    ).toBeGreaterThan(0);
+  });
+
+  it("renders manual invoice mode and submits a structured draft with the dataset param", async () => {
+    render(
+      <MemoryRouter
+        future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
+        initialEntries={["/invoices?dataset=low-margin-kitchen"]}
+      >
+        <InvoicesPage />
+      </MemoryRouter>
+    );
+
+    fireEvent.click(await screen.findByRole("button", { name: "Manual structured entry" }));
+    fireEvent.change(screen.getByLabelText("Supplier"), {
+      target: { value: "Prime Butchery Co" }
+    });
+    fireEvent.change(screen.getByLabelText("Invoice number"), {
+      target: { value: "MAN-100" }
+    });
+    fireEvent.change(screen.getAllByLabelText("Product name")[0], {
+      target: { value: "Beef Patty 180g Fresh" }
+    });
+    fireEvent.change(screen.getAllByLabelText("Quantity")[0], {
+      target: { value: "1000" }
+    });
+    fireEvent.change(screen.getAllByLabelText("Unit price")[0], {
+      target: { value: "0.04" }
+    });
+    fireEvent.change(screen.getAllByLabelText("Matched ingredient")[0], {
+      target: { value: "beef-patty" }
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Create manual draft" }));
+
+    await waitFor(() => {
+      expect(vi.mocked(apiClient.createManualInvoiceDraft)).toHaveBeenCalledWith(
+        expect.objectContaining({
+          supplierName: "Prime Butchery Co",
+          invoiceNumber: "MAN-100"
+        }),
+        "low-margin-kitchen"
+      );
+    });
   });
 
   it("renders confirmation summary and alerts after review-confirm", async () => {
@@ -243,6 +343,9 @@ describe("InvoicesPage", () => {
       </MemoryRouter>
     );
 
+    expect(
+      await screen.findByText(/Selected Prime Butchery Co\. Use this to confirm costs safely before analytics update\./)
+    ).toBeInTheDocument();
     fireEvent.click((await screen.findAllByRole("button", { name: "Parse sample invoice" }))[0]);
 
     const confirmButton = await screen.findByRole("button", { name: "Confirm cost updates" });

@@ -2,16 +2,19 @@
 
 ## What Was Built
 
-Sprint 5 adds the first RM7 product slice:
+Sprint 6 closes the deterministic RM7 workflow:
 
 - canonical mock invoice samples
 - deterministic mock invoice parser
+- manual structured invoice draft creation
 - review-confirm API workflow
 - `/invoices` frontend route
-- ingredient cost history records
+- `/alerts` frontend route
+- ingredient cost history records and dish-detail history visibility
 - supplier product match creation and refresh
 - supplier price-change alerts
 - affected dish impact summary
+- invoice-driven action integration into the ranked dashboard stack
 
 The workflow is intentionally review-first. Parsed invoice lines do not update current ingredient costs until the user confirms them.
 
@@ -23,6 +26,7 @@ It:
 
 - resolves supplier suggestions from normalized names
 - derives missing unit price from line total and quantity when possible
+- accepts manual structured invoice lines through the same parser shape
 - resolves ingredient matches from confirmed supplier aliases first
 - falls back to deterministic token-overlap matching
 - assigns confidence
@@ -38,6 +42,7 @@ This keeps RM7 deterministic and testable before any OCR variance enters the sys
 - `needs_review` lines block confirmation.
 - Current `Ingredient.costPerUnitCents` updates only after confirmation.
 - Repeated confirmation of the same invoice is blocked.
+- Manual structured drafts never bypass review-confirm.
 - Unit mismatch remains a review problem until the user changes the line or ignores it.
 
 ## Cost History Model
@@ -54,6 +59,8 @@ This keeps RM7 deterministic and testable before any OCR variance enters the sys
 - created timestamp
 
 This is the historical record. Current ingredient cost remains the latest effective value in the in-memory dataset session.
+
+Frontend visibility now exposes that history inside dish detail so a cost change can be traced from invoice to ingredient to affected dish.
 
 ## Alert Thresholds
 
@@ -72,15 +79,25 @@ Threshold rules:
 
 Affected dishes are recalculated by finding recipes that use the updated ingredient and comparing old vs new dish metrics.
 
+## Alert-To-Action Integration
+
+Confirmed invoice alerts now feed back into the ranked decision stack:
+
+- supplier price increases create supplier-origin reason codes
+- large cost spikes can elevate dish actions
+- affected high-sales dishes are prioritized higher
+- duplicate alert spam for the same dish and ingredient is suppressed into a single supplier-price review action
+
+This keeps invoice cost intake connected to the same action layer the dashboard already uses.
+
 ## Known Limitations
 
-- Uses canned sample invoices only
-- No manual invoice entry flow yet
+- No real OCR or image ingestion yet
 - No photo upload yet
-- No OCR yet
 - No persistence beyond in-memory demo state
 - No supplier API sync
-- Invoice-driven alerts are shown on the dashboard, but not yet merged deeply into the ranked action engine
+- No automated supplier normalization beyond deterministic string matching
+- No accounting, inventory, or POS workflows
 
 ## Why OCR Is Deferred To RM8
 

@@ -11,8 +11,10 @@ import {
   getMockInvoiceSamples,
   listDemoDatasets,
   listMockInvoiceSampleSummaries,
+  normalizeName,
+  parseManualInvoice,
   parseMockInvoice,
-  rankDishActions,
+  rankCombinedActions,
   sampleRestaurantData,
   suggestPriceForTargetMargin,
   type AffectedDishImpact,
@@ -23,6 +25,8 @@ import {
   type DishDetailAnalytics,
   type Ingredient,
   type IngredientCostHistory,
+  type IngredientCostHistoryView,
+  type ManualInvoiceDraftInput,
   type MockInvoiceSampleSummary,
   type ParsedInvoiceDraft,
   type PriceChangeAlert,
@@ -56,6 +60,13 @@ interface DatasetSession {
   invoices: Map<string, StoredInvoiceRecord>;
   invoiceCounter: number;
 }
+
+const severityOrder = {
+  critical: 4,
+  high: 3,
+  medium: 2,
+  low: 1
+} as const;
 
 function cloneDatasetDefinition(dataset: DemoDatasetDefinition): DemoDatasetDefinition {
   return {
@@ -142,6 +153,39 @@ export function createDataStore() {
     return sessions.get(resolvedId) ?? null;
   }
 
+  function ensureSupplier(session: DatasetSession, supplierName: string) {
+    const normalizedName = normalizeName(supplierName);
+    const existing = session.suppliers.find(
+      (supplier) => supplier.normalizedName === normalizedName
+    );
+
+    if (existing) {
+      return existing;
+    }
+
+    const supplier: Supplier = {
+      id: `supplier-manual-${normalizedName.replaceAll(" ", "-")}`,
+      restaurantId: session.dataset.id,
+      name: supplierName.trim(),
+      normalizedName,
+      createdAt: "2026-04-01T00:00:00.000Z"
+    };
+
+    session.suppliers = [...session.suppliers, supplier];
+    return supplier;
+  }
+
+  function getInvoiceByLineId(session: DatasetSession, invoiceLineId: string) {
+    for (const record of session.invoices.values()) {
+      const lines = record.confirmedLines ?? record.draft.lines;
+      if (lines.some((line) => line.id === invoiceLineId)) {
+        return record.confirmedInvoice ?? record.draft.invoiceDraft;
+      }
+    }
+
+    return null;
+  }
+
   function getAnalyticsSnapshot(datasetId?: string) {
     const session = getSession(datasetId);
 
@@ -154,13 +198,16 @@ export function createDataStore() {
       recipes: session.recipes,
       dishes: session.dishes
     });
-    const actions = rankDishActions(calculatedDishes);
+    const actions = rankCombinedActions({
+      calculatedDishes,
+      invoiceAlerts: session.alerts
+    });
 
     return {
       session,
       calculatedDishes,
       actions,
-      overview: calculateOverview(calculatedDishes)
+      overview: calculateOverview(calculatedDishes, session.alerts)
     };
   }
 
@@ -203,7 +250,15 @@ export function createDataStore() {
         return null;
       }
 
-      return [...session.alerts].sort((left, right) => right.createdAt.localeCompare(left.createdAt));
+      return [...session.alerts].sort((left, right) => {
+        const severityDifference = severityOrder[right.severity] - severityOrder[left.severity];
+
+        if (severityDifference !== 0) {
+          return severityDifference;
+        }
+
+        return right.createdAt.localeCompare(left.createdAt);
+      });
     },
     getIngredientCostHistory(ingredientId: string, datasetId?: string) {
       const session = getSession(datasetId);
@@ -212,7 +267,49 @@ export function createDataStore() {
         return null;
       }
 
-      return session.costHistory.filter((history) => history.ingredientId === ingredientId);
+      const ingredient = session.ingredients.find((item) => item.id === ingredientId);
+
+      if (!ingredient) {
+        return undefined;
+      }
+
+      const history = session.costHistory
+        .filter((entry) => entry.ingredientId === ingredientId)
+        .sort((left, right) => right.createdAt.localeCompare(left.createdAt))
+        .map((entry) => {
+          const invoice = getInvoiceByLineId(session, entry.invoiceLineId);
+          const supplier = session.suppliers.find((item) => item.id === entry.supplierId);
+          const deltaPercent =
+            typeof entry.previousCostPerUnitCents === "number" && entry.previousCostPerUnitCents > 0
+              ? Number(
+                  (
+                    ((entry.newCostPerUnitCents - entry.previousCostPerUnitCents) /
+                      entry.previousCostPerUnitCents) *
+                    100
+                  ).toFixed(2)
+                )
+              : undefined;
+
+          return {
+            id: entry.id,
+            supplierName: supplier?.name ?? "Unknown supplier",
+            invoiceNumber: invoice?.invoiceNumber,
+            invoiceDate: invoice?.invoiceDate ?? entry.effectiveDate,
+            previousCostPerUnitCents: entry.previousCostPerUnitCents,
+            newCostPerUnitCents: entry.newCostPerUnitCents,
+            deltaPercent,
+            source: invoice?.sourceType ?? "manual",
+            createdAt: entry.createdAt
+          };
+        });
+
+      return {
+        ingredientId: ingredient.id,
+        ingredientName: ingredient.name,
+        currentCostPerUnitCents: ingredient.costPerUnitCents,
+        unit: ingredient.unit,
+        history
+      } satisfies IngredientCostHistoryView;
     },
     getDishDetail(dishId: string, datasetId?: string): DishDetailAnalytics | null {
       const snapshot = getAnalyticsSnapshot(datasetId);
@@ -286,6 +383,32 @@ export function createDataStore() {
         {
           restaurantId: session.dataset.id,
           invoiceId: `${sampleInvoice.id}-${session.invoiceCounter.toString().padStart(2, "0")}`
+        }
+      );
+
+      session.invoices.set(draft.invoiceDraft.id, { draft });
+
+      return draft;
+    },
+    createManualInvoiceDraft(input: ManualInvoiceDraftInput, datasetId?: string) {
+      const session = getSession(datasetId);
+
+      if (!session) {
+        return null;
+      }
+
+      const supplier = ensureSupplier(session, input.supplierName);
+
+      session.invoiceCounter += 1;
+      const draft = parseManualInvoice(
+        input,
+        session.suppliers,
+        session.ingredients,
+        session.supplierProductMatches,
+        {
+          restaurantId: session.dataset.id,
+          supplierId: supplier.id,
+          invoiceId: `manual-invoice-${session.invoiceCounter.toString().padStart(2, "0")}`
         }
       );
 

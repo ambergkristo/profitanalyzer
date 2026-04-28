@@ -165,7 +165,7 @@ Manual check: complete the main dashboard-to-dish-detail-to-simulator flow on de
 
 ## RM7 - Invoice Scan Cost Intake
 
-Status: partial in MAX SPRINT 5.
+Status: completed in MAX SPRINT 6.
 
 ### Goal
 
@@ -215,24 +215,26 @@ This milestone starts with a mocked or structured parser. Real OCR or vision int
 
 Manual check: load a mocked invoice, correct low-confidence lines, confirm the draft, verify cost history creation, and confirm the dashboard surfaces invoice-driven actions.
 
-### Current Sprint 5 Result
+### Current Sprint 6 Result
 
 Built now:
 
 - sample invoice selection through `/invoices`
-- mock invoice parsing endpoint and review screen
-- confirmation workflow that updates current ingredient cost only after review
-- `IngredientCostHistory` records
+- manual structured invoice entry through `/invoices`
+- deterministic mock and manual invoice draft creation
+- review-confirm workflow that updates current ingredient cost only after review
+- `IngredientCostHistory` records and dish-detail cost-history visibility
 - supplier product match creation and refresh
-- supplier price-change alerts
-- affected dish impact summary and dashboard alert section
+- supplier price-change alerts and dedicated `/alerts` view
+- invoice-driven action integration inside the ranked dashboard action stack
+- dashboard overview supplier alert counts and latest supplier alerts
 
-Still remaining inside RM7:
+Still out of scope for RM7:
 
-- manual invoice entry beyond canned samples
-- richer line-edit ergonomics for fast operator review
-- deeper invoice-alert integration into the ranked dashboard action stack
-- any real OCR, image upload, or supplier ingestion work
+- any real OCR or image ingestion work
+- photo upload
+- supplier API sync
+- accounting, inventory, or POS workflows
 
 ## RM8 - Real OCR/Vision Adapter
 

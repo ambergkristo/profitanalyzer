@@ -47,6 +47,9 @@ describe("api", () => {
     expect(body).toHaveProperty("weightedAverageMarginPercent");
     expect(body).toHaveProperty("totalRevenueCents");
     expect(body).toHaveProperty("totalCostCents");
+    expect(body).toHaveProperty("supplierAlertCount");
+    expect(body).toHaveProperty("highSeveritySupplierAlertCount");
+    expect(body).toHaveProperty("latestSupplierAlerts");
     expect(body.topActions).toHaveLength(3);
     expect(body.topProfitContributors.length).toBeGreaterThan(0);
     expect(body.riskiestDishes.length).toBeGreaterThan(0);
@@ -184,6 +187,46 @@ describe("api", () => {
     expect(body.message).toContain('Unknown sample invoice "ghost-sample"');
   });
 
+  it("creates a manual structured invoice draft and derives unit price from line total", async () => {
+    const response = await request(buildApp())
+      .post("/api/invoices/manual-draft?dataset=mixed-restaurant")
+      .send({
+        supplierName: "Prime Butchery Co",
+        invoiceNumber: "MAN-100",
+        invoiceDate: "2026-04-28",
+        lines: [
+          {
+            rawProductName: "Beef Patty 180g Fresh",
+            parsedQuantity: 1000,
+            parsedUnit: "g",
+            parsedLineTotalCents: 4000,
+            matchedIngredientId: "beef-patty"
+          }
+        ]
+      });
+    const body = response.body as {
+      invoiceDraft: { sourceType: string };
+      lines: Array<{ parsedUnitPriceCents?: number; reviewStatus: string }>;
+    };
+
+    expect(response.status).toBe(200);
+    expect(body.invoiceDraft.sourceType).toBe("manual");
+    expect(body.lines[0].parsedUnitPriceCents).toBe(4);
+    expect(body.lines[0].reviewStatus).toBe("ready");
+  });
+
+  it("validates manual structured invoice drafts", async () => {
+    const response = await request(buildApp())
+      .post("/api/invoices/manual-draft?dataset=mixed-restaurant")
+      .send({
+        supplierName: "",
+        invoiceDate: "2026-04-28",
+        lines: []
+      });
+
+    expect(response.status).toBe(400);
+  });
+
   it("returns a stored invoice draft by id", async () => {
     const app = buildApp();
     const parseResponse = await request(app)
@@ -307,8 +350,10 @@ describe("api", () => {
     const historyResponse = await request(app).get(
       "/api/ingredients/parmesan/cost-history?dataset=mixed-restaurant"
     );
+    const historyBody = historyResponse.body as { ingredientId: string; history: unknown[] };
     expect(historyResponse.status).toBe(200);
-    expect(historyResponse.body).toHaveLength(1);
+    expect(historyBody.ingredientId).toBe("parmesan");
+    expect(historyBody.history).toHaveLength(1);
   });
 
   it("returns price-change alerts after invoice confirmation", async () => {
@@ -354,9 +399,11 @@ describe("api", () => {
     expect(body.some((alert) => alert.type === "dish_margin_at_risk_due_to_cost_change")).toBe(
       true
     );
+    expect(body[0]).toHaveProperty("supplierName");
+    expect(body[0]).toHaveProperty("affectedDishNames");
   });
 
-  it("changes analytics after invoice confirmation", async () => {
+  it("changes analytics and enriches action ranking after invoice confirmation", async () => {
     const app = buildApp();
     const beforeResponse = await request(app).get("/api/analytics/overview?dataset=mixed-restaurant");
     const before = beforeResponse.body as OverviewMetrics;
@@ -396,8 +443,72 @@ describe("api", () => {
 
     const afterResponse = await request(app).get("/api/analytics/overview?dataset=mixed-restaurant");
     const after = afterResponse.body as OverviewMetrics;
+    const actionsResponse = await request(app).get("/api/analytics/actions?dataset=mixed-restaurant");
+    const actions = actionsResponse.body as DishAction[];
 
     expect(after.weightedAverageMarginPercent).toBeLessThan(before.weightedAverageMarginPercent);
     expect(after.estimatedPeriodProfitCents).toBeLessThan(before.estimatedPeriodProfitCents);
+    expect(after.supplierAlertCount).toBeGreaterThan(0);
+    expect(after.highSeveritySupplierAlertCount).toBeGreaterThan(0);
+    expect(actions.some((action) => action.reasonCodes.includes("SUPPLIER_PRICE_INCREASE"))).toBe(true);
+  });
+
+  it("blocks repeated confirmation so cost history and alerts are not double-applied", async () => {
+    const app = buildApp();
+    const parseResponse = await request(app)
+      .post("/api/invoices/parse-mock?dataset=mixed-restaurant")
+      .send({ sampleInvoiceId: "normal-supplier-invoice" });
+
+    const invoice = parseResponse.body as {
+      invoiceDraft: { id: string; supplierId: string; invoiceDate: string; invoiceNumber?: string };
+      lines: Array<{
+        id: string;
+        matchedIngredientId?: string;
+        parsedQuantity: number;
+        parsedUnit: string;
+        parsedUnitPriceCents?: number;
+        parsedLineTotalCents?: number;
+      }>;
+    };
+
+    const payload = {
+      supplierId: invoice.invoiceDraft.supplierId,
+      invoiceDate: invoice.invoiceDraft.invoiceDate,
+      invoiceNumber: invoice.invoiceDraft.invoiceNumber,
+      lines: invoice.lines.map((line) => ({
+        lineId: line.id,
+        reviewStatus: "confirmed",
+        matchedIngredientId: line.matchedIngredientId,
+        parsedQuantity: line.parsedQuantity,
+        parsedUnit: line.parsedUnit,
+        parsedUnitPriceCents: line.parsedUnitPriceCents ?? 1,
+        parsedLineTotalCents: line.parsedLineTotalCents
+      }))
+    };
+
+    const firstResponse = await request(app)
+      .post(`/api/invoices/${invoice.invoiceDraft.id}/review-confirm?dataset=mixed-restaurant`)
+      .send(payload);
+    const secondResponse = await request(app)
+      .post(`/api/invoices/${invoice.invoiceDraft.id}/review-confirm?dataset=mixed-restaurant`)
+      .send(payload);
+
+    expect(firstResponse.status).toBe(200);
+    expect(secondResponse.status).toBe(409);
+  });
+
+  it("returns empty cost-history payloads and 404s invalid ingredients", async () => {
+    const app = buildApp();
+    const emptyHistoryResponse = await request(app).get(
+      "/api/ingredients/beef-patty/cost-history?dataset=mixed-restaurant"
+    );
+    const missingIngredientResponse = await request(app).get(
+      "/api/ingredients/ghost/cost-history?dataset=mixed-restaurant"
+    );
+    const emptyHistoryBody = emptyHistoryResponse.body as { history: unknown[] };
+
+    expect(emptyHistoryResponse.status).toBe(200);
+    expect(emptyHistoryBody.history).toEqual([]);
+    expect(missingIngredientResponse.status).toBe(404);
   });
 });

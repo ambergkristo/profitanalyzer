@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -11,6 +11,7 @@ vi.mock("../api/client.js", () => ({
     getDishes: vi.fn(),
     getActions: vi.fn(),
     getDishDetail: vi.fn(),
+    getIngredientCostHistory: vi.fn(),
     simulatePrice: vi.fn()
   }
 }));
@@ -106,9 +107,16 @@ describe("DishDetailPage", () => {
         note: "Use the suggested price as a decision test."
       }
     });
+    vi.mocked(apiClient.getIngredientCostHistory).mockResolvedValue({
+      ingredientId: "beef-patty",
+      ingredientName: "Beef Patty",
+      currentCostPerUnitCents: 3,
+      unit: "g",
+      history: []
+    });
   });
 
-  it("renders the cost driver section and simulator target-margin controls", async () => {
+  it("renders the cost driver section, simulator target-margin controls, and cost history panel", async () => {
     render(
       <MemoryRouter
         future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
@@ -123,6 +131,10 @@ describe("DishDetailPage", () => {
     expect(await screen.findByText("What makes it expensive")).toBeInTheDocument();
     expect(await screen.findByText("Reach 50% margin")).toBeInTheDocument();
     expect(await screen.findByText("Primary next move")).toBeInTheDocument();
+
+    fireEvent.click(await screen.findByRole("button", { name: "View cost history" }));
+
+    expect(await screen.findByText("No confirmed invoice updates yet.")).toBeInTheDocument();
   });
 
   it("renders a clear not-found state for invalid scenario dish combinations", async () => {

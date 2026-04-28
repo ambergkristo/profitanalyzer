@@ -1,7 +1,10 @@
 import cors from "cors";
 import express from "express";
 
-import { simulateDishPriceChange, type InvoiceUnit } from "../../../packages/core/src/index.js";
+import {
+  simulateDishPriceChange,
+  type InvoiceUnit
+} from "../../../packages/core/src/index.js";
 import { createDataStore } from "./data.js";
 
 function isPositivePrice(value: unknown): value is number {
@@ -126,6 +129,107 @@ export function createApp() {
     }
 
     response.json(parsed);
+  });
+
+  app.post("/api/invoices/manual-draft", (request, response) => {
+    const body = request.body as {
+      dataset?: unknown;
+      supplierName?: unknown;
+      invoiceNumber?: unknown;
+      invoiceDate?: unknown;
+      lines?: unknown;
+    };
+    const datasetId = parseDatasetId(request.query.dataset ?? body.dataset);
+    if (!resolveDatasetOrRespond(datasetId, response, dataStore)) {
+      return;
+    }
+
+    if (typeof body.supplierName !== "string" || body.supplierName.trim().length === 0) {
+      response.status(400).json({ message: "supplierName is required." });
+      return;
+    }
+
+    if (typeof body.invoiceDate !== "string" || body.invoiceDate.trim().length === 0) {
+      response.status(400).json({ message: "invoiceDate is required." });
+      return;
+    }
+
+    if (!Array.isArray(body.lines) || body.lines.length === 0) {
+      response.status(400).json({ message: "At least one invoice line is required." });
+      return;
+    }
+
+    for (const line of body.lines) {
+      const typedLine = line as {
+        rawProductName?: unknown;
+        parsedQuantity?: unknown;
+        parsedUnit?: unknown;
+        parsedUnitPriceCents?: unknown;
+        parsedLineTotalCents?: unknown;
+        matchedIngredientId?: unknown;
+      };
+
+      if (
+        typeof typedLine.rawProductName !== "string" ||
+        typedLine.rawProductName.trim().length === 0 ||
+        typeof typedLine.parsedQuantity !== "number" ||
+        !Number.isFinite(typedLine.parsedQuantity) ||
+        typedLine.parsedQuantity <= 0 ||
+        !isInvoiceUnit(typedLine.parsedUnit)
+      ) {
+        response.status(400).json({
+          message: "Each manual invoice line must include product name, quantity, and a valid unit."
+        });
+        return;
+      }
+
+      if (
+        typedLine.parsedUnitPriceCents !== undefined &&
+        !isPositivePrice(typedLine.parsedUnitPriceCents)
+      ) {
+        response.status(400).json({ message: "parsedUnitPriceCents must be positive when provided." });
+        return;
+      }
+
+      if (
+        typedLine.parsedLineTotalCents !== undefined &&
+        !isPositivePrice(typedLine.parsedLineTotalCents)
+      ) {
+        response.status(400).json({ message: "parsedLineTotalCents must be positive when provided." });
+        return;
+      }
+    }
+
+    const draft = dataStore.createManualInvoiceDraft(
+      {
+        supplierName: body.supplierName,
+        invoiceNumber: typeof body.invoiceNumber === "string" ? body.invoiceNumber : undefined,
+        invoiceDate: body.invoiceDate,
+        lines: (body.lines as Array<{
+          rawProductName: string;
+          parsedQuantity: number;
+          parsedUnit: InvoiceUnit;
+          parsedUnitPriceCents?: number;
+          parsedLineTotalCents?: number;
+          matchedIngredientId?: string;
+        }>).map((line) => ({
+          rawProductName: line.rawProductName,
+          parsedQuantity: line.parsedQuantity,
+          parsedUnit: line.parsedUnit,
+          parsedUnitPriceCents: line.parsedUnitPriceCents,
+          parsedLineTotalCents: line.parsedLineTotalCents,
+          matchedIngredientId: line.matchedIngredientId
+        }))
+      },
+      datasetId
+    );
+
+    if (!draft) {
+      response.status(404).json({ message: `Unknown dataset "${datasetId}".` });
+      return;
+    }
+
+    response.json(draft);
   });
 
   app.get("/api/invoices/:id", (request, response) => {

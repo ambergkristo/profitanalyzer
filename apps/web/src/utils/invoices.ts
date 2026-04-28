@@ -1,6 +1,15 @@
 import type { InvoiceUnit, PurchaseInvoiceLine } from "../types.js";
 
 export type InvoiceReviewLineState = "needs_review" | "confirmed" | "ignored";
+export interface ManualInvoiceLineForm {
+  id: string;
+  rawProductName: string;
+  parsedQuantity: string;
+  parsedUnit: InvoiceUnit;
+  parsedUnitPrice: string;
+  parsedLineTotal: string;
+  matchedIngredientId: string;
+}
 
 export interface EditableInvoiceLine {
   lineId: string;
@@ -37,7 +46,11 @@ export function createEditableInvoiceLines(lines: PurchaseInvoiceLine[]): Editab
 }
 
 export function hasUnresolvedInvoiceLines(lines: EditableInvoiceLine[]): boolean {
-  return lines.some((line) => {
+  return getUnresolvedInvoiceLineCount(lines) > 0;
+}
+
+export function getUnresolvedInvoiceLineCount(lines: EditableInvoiceLine[]): number {
+  return lines.filter((line) => {
     if (line.reviewStatus === "needs_review") {
       return true;
     }
@@ -54,5 +67,30 @@ export function hasUnresolvedInvoiceLines(lines: EditableInvoiceLine[]): boolean
       !Number.isFinite(line.parsedUnitPriceCents) ||
       line.parsedUnitPriceCents <= 0
     );
-  });
+  }).length;
+}
+
+export function canConfirmInvoiceLine(line: EditableInvoiceLine): boolean {
+  return (
+    line.reviewStatus !== "ignored" &&
+    line.reviewStatus !== "needs_review" &&
+    Boolean(line.matchedIngredientId) &&
+    Number.isFinite(line.parsedQuantity) &&
+    line.parsedQuantity > 0 &&
+    line.parsedUnitPriceCents !== null &&
+    Number.isFinite(line.parsedUnitPriceCents) &&
+    line.parsedUnitPriceCents > 0
+  );
+}
+
+export function createManualInvoiceLineForm(id: string): ManualInvoiceLineForm {
+  return {
+    id,
+    rawProductName: "",
+    parsedQuantity: "1",
+    parsedUnit: "g",
+    parsedUnitPrice: "",
+    parsedLineTotal: "",
+    matchedIngredientId: ""
+  };
 }

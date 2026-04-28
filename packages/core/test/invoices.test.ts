@@ -1,12 +1,15 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  calculateCalculatedDishes,
   confirmInvoiceReview,
   createDefaultSupplierProductMatches,
   createDefaultSuppliers,
   getDemoDataset,
   getMockInvoiceSamples,
+  parseManualInvoice,
   parseMockInvoice,
+  rankCombinedActions,
   type ReviewedInvoiceLineInput
 } from "../src/index.js";
 
@@ -62,6 +65,39 @@ describe("mock invoice parser", () => {
     expect(unknownLine?.warnings.some((warning) => warning.includes("must be reviewed or ignored"))).toBe(true);
     expect(mismatchedLine?.reviewStatus).toBe("needs_review");
     expect(mismatchedLine?.warnings.some((warning) => warning.includes("Unit mismatch"))).toBe(true);
+  });
+
+  it("creates a manual structured draft and derives unit price from line total", () => {
+    const draft = parseManualInvoice(
+      {
+        supplierName: "Prime Butchery Co",
+        invoiceNumber: "MAN-100",
+        invoiceDate: "2026-04-28",
+        lines: [
+          {
+            rawProductName: "Beef Patty 180g Fresh",
+            parsedQuantity: 1000,
+            parsedUnit: "g",
+            parsedLineTotalCents: 4000,
+            matchedIngredientId: "beef-patty"
+          }
+        ]
+      },
+      suppliers,
+      mixedDataset.data.ingredients,
+      supplierProductMatches,
+      {
+        restaurantId: mixedDataset.id,
+        supplierId: "supplier-prime-butchery",
+        invoiceId: "manual-01",
+        createdAt: "2026-04-28T09:00:00.000Z"
+      }
+    );
+
+    expect(draft.invoiceDraft.sourceType).toBe("manual");
+    expect(draft.lines[0].parsedUnitPriceCents).toBe(4);
+    expect(draft.lines[0].reviewStatus).toBe("ready");
+    expect(draft.lines[0].matchedIngredientId).toBe("beef-patty");
   });
 
   it("does not update ingredient costs before confirmation", () => {
@@ -250,5 +286,56 @@ describe("invoice confirmation", () => {
         createdAt: "2026-04-22T11:16:00.000Z"
       })
     ).toThrow("already been applied to cost history");
+  });
+
+  it("promotes supplier-cost risk into the combined action stack without duplicate spam", () => {
+    const sample = invoiceSamples.find((invoice) => invoice.id === "high-impact-price-spike");
+    const draft = parseMockInvoice(
+      sample!,
+      suppliers,
+      mixedDataset.data.ingredients,
+      supplierProductMatches,
+      { restaurantId: mixedDataset.id, invoiceId: "invoice-combined-actions", createdAt: "2026-04-22T12:00:00.000Z" }
+    );
+
+    const reviewedLines = draft.lines.map<ReviewedInvoiceLineInput>((line) => ({
+      lineId: line.id,
+      reviewStatus: "confirmed",
+      matchedIngredientId: line.matchedIngredientId,
+      parsedQuantity: line.parsedQuantity,
+      parsedUnit: line.parsedUnit,
+      parsedUnitPriceCents: line.parsedUnitPriceCents ?? 1,
+      parsedLineTotalCents: line.parsedLineTotalCents
+    }));
+
+    const confirmation = confirmInvoiceReview({
+      invoiceDraft: draft,
+      reviewedLines,
+      ingredients: mixedDataset.data.ingredients,
+      recipes: mixedDataset.data.recipes,
+      dishes: mixedDataset.data.dishes,
+      suppliers,
+      existingCostHistory: [],
+      existingAlerts: [],
+      existingSupplierProductMatches: supplierProductMatches,
+      createdAt: "2026-04-22T12:15:00.000Z"
+    });
+
+    const actions = rankCombinedActions({
+      calculatedDishes: calculateCalculatedDishes({
+        ingredients: confirmation.updatedIngredients,
+        recipes: mixedDataset.data.recipes,
+        dishes: mixedDataset.data.dishes
+      }),
+      invoiceAlerts: confirmation.alerts
+    });
+    const burgerActions = actions.filter((action) => action.dishId === "dish-burger");
+    const supplierAction = burgerActions.find((action) => action.type === "supplier_price_review");
+
+    expect(supplierAction).toBeDefined();
+    expect(supplierAction?.reasonCodes).toContain("SUPPLIER_PRICE_INCREASE");
+    expect(supplierAction?.reasonCodes).toContain("COST_HISTORY_UPDATED");
+    expect(supplierAction?.reasonCodes).toContain("INGREDIENT_PRICE_CHANGE");
+    expect(burgerActions).toHaveLength(1);
   });
 });

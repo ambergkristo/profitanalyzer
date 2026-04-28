@@ -81,7 +81,8 @@ export type DishActionType =
   | "warning_review"
   | "bestseller_protection"
   | "promotion_opportunity"
-  | "data_quality";
+  | "data_quality"
+  | "supplier_price_review";
 
 export type DishActionReasonCode =
   | "LOW_MARGIN"
@@ -92,7 +93,12 @@ export type DishActionReasonCode =
   | "STRONG_PROFIT_CONTRIBUTOR"
   | "PRICE_SIMULATION_UPSIDE"
   | "MISSING_COST_DATA"
-  | "AGGRESSIVE_PRICE_INCREASE";
+  | "AGGRESSIVE_PRICE_INCREASE"
+  | "SUPPLIER_PRICE_INCREASE"
+  | "INVOICE_COST_SPIKE"
+  | "INGREDIENT_PRICE_CHANGE"
+  | "DISH_MARGIN_AT_RISK"
+  | "COST_HISTORY_UPDATED";
 
 export interface DishAction {
   id: string;
@@ -257,13 +263,19 @@ export interface PriceChangeAlert {
   type: PriceChangeAlertType;
   severity: DishActionSeverity;
   ingredientId: string;
+  ingredientName?: string;
   supplierId?: string;
+  supplierName?: string;
   invoiceId?: string;
   invoiceLineId?: string;
+  sourceInvoiceNumber?: string;
+  sourceInvoiceDate?: string;
+  sourceType?: PurchaseInvoiceSourceType;
   previousCostPerUnitCents?: number;
   newCostPerUnitCents: number;
   deltaPercent?: number;
   affectedDishIds: string[];
+  affectedDishNames?: string[];
   estimatedMarginImpactCents?: number;
   message: string;
   recommendedAction: string;
@@ -289,6 +301,23 @@ export interface MockInvoiceInput {
   description: string;
   expectedImpact: string;
   lines: MockInvoiceLineInput[];
+}
+
+export interface ManualInvoiceLineInput {
+  rawProductName: string;
+  parsedQuantity: number;
+  parsedUnit: InvoiceUnit;
+  parsedUnitPriceCents?: number;
+  parsedLineTotalCents?: number;
+  matchedIngredientId?: string;
+  reviewStatus?: Extract<InvoiceReviewStatus, "needs_review" | "ready" | "ignored">;
+}
+
+export interface ManualInvoiceDraftInput {
+  supplierName: string;
+  invoiceNumber?: string;
+  invoiceDate: string;
+  lines: ManualInvoiceLineInput[];
 }
 
 export interface MockInvoiceSampleSummary {
@@ -381,6 +410,26 @@ export interface StoredInvoiceView {
   alerts?: PriceChangeAlert[];
 }
 
+export interface IngredientCostHistoryEntryView {
+  id: string;
+  supplierName: string;
+  invoiceNumber?: string;
+  invoiceDate: string;
+  previousCostPerUnitCents?: number;
+  newCostPerUnitCents: number;
+  deltaPercent?: number;
+  source: PurchaseInvoiceSourceType;
+  createdAt: string;
+}
+
+export interface IngredientCostHistoryView {
+  ingredientId: string;
+  ingredientName: string;
+  currentCostPerUnitCents: number;
+  unit: IngredientUnit;
+  history: IngredientCostHistoryEntryView[];
+}
+
 export type DemoDatasetProfile = "high-margin" | "low-margin" | "mixed";
 export type DatasetValidationStatus = "pass";
 
@@ -412,6 +461,9 @@ export interface OverviewMetrics {
   topActions: DishAction[];
   topProfitContributors: CalculatedDish[];
   riskiestDishes: CalculatedDish[];
+  supplierAlertCount: number;
+  highSeveritySupplierAlertCount: number;
+  latestSupplierAlerts: PriceChangeAlert[];
   dataQualityWarnings: string[];
 }
 

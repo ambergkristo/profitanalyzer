@@ -91,6 +91,12 @@ export function Layout() {
                     >
                       Cost Intake
                     </NavLink>
+                    <NavLink
+                      className={linkClass}
+                      to={{ pathname: "/alerts", search: buildDatasetSearch(selectedDataset?.id) }}
+                    >
+                      Supplier Alerts
+                    </NavLink>
                   </nav>
                 </div>
               </Panel>

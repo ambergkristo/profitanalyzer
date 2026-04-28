@@ -257,6 +257,14 @@ export function DashboardPage() {
 
         <Panel>
           <SectionHeader
+            aside={
+              <Link
+                className="text-sm font-medium text-accent"
+                to={{ pathname: "/alerts", search: buildDatasetSearch(selectedDataset.id) }}
+              >
+                Open all alerts
+              </Link>
+            }
             description="Confirmed invoice cost moves show up here with the first dishes likely to feel the change."
             eyebrow="Latest supplier price alerts"
             title="What changed since the last cost intake"
@@ -282,6 +290,11 @@ export function DashboardPage() {
                   {typeof alert.estimatedMarginImpactCents === "number" ? (
                     <p className="mt-3 text-sm leading-6 text-warning">
                       Estimated period impact {formatEuro(alert.estimatedMarginImpactCents)}
+                    </p>
+                  ) : null}
+                  {alert.affectedDishNames?.length ? (
+                    <p className="mt-3 text-sm leading-6 text-muted">
+                      Affected dishes: {alert.affectedDishNames.join(", ")}.
                     </p>
                   ) : null}
                 </div>

@@ -10,7 +10,7 @@ Implemented:
 - RM4: Price Simulator
 - RM5: Synthetic Restaurant Validation
 - RM6: Premium decision-first UX polish
-- RM7 first slice: mock invoice cost intake, review-confirm, cost history, and price alerts
+- RM7: structured invoice cost intake, review-confirm, cost history, supplier alerts, and invoice-driven actions
 
 Not started:
 
@@ -115,6 +115,26 @@ It is still not evidence of:
 - supplier document variance at scale
 - real onboarding speed
 - accounting or inventory interoperability
+
+## Sprint 6 RM7 Validation Note
+
+Sprint 6 closes RM7 as a deterministic product workflow:
+
+- sample invoice parsing still works
+- manual structured invoice entry goes through the same review-confirm boundary
+- confirmed lines create cost history and supplier product matches
+- supplier price alerts are visible in the dashboard, invoices flow, and dedicated alerts view
+- invoice-driven alerts now influence ranked dashboard actions
+- `npm run validate:invoice` verifies manual drafts, unresolved-line blocking, confirmation, action integration, and idempotency
+
+This proves the product can safely convert structured supplier cost inputs into decision output on synthetic data.
+
+It still does not prove:
+
+- real invoice OCR quality
+- real supplier document variance at scale
+- real onboarding friction
+- willingness to pay
 
 ## Next Readiness Gate Before RM8
 

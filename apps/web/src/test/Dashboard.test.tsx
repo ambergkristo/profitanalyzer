@@ -43,6 +43,9 @@ describe("DashboardPage", () => {
       totalRevenueCents: 1079100,
       totalCostCents: 867935,
       weightedAverageMarginPercent: 19.55,
+      supplierAlertCount: 0,
+      highSeveritySupplierAlertCount: 0,
+      latestSupplierAlerts: [],
       topActions: [
         {
           id: "1",
@@ -200,6 +203,7 @@ describe("DashboardPage", () => {
         newCostPerUnitCents: 4,
         deltaPercent: 33.3,
         affectedDishIds: ["dish-burger"],
+        affectedDishNames: ["Beef Burger"],
         estimatedMarginImpactCents: 34800,
         message: "Beef Patty increased 33.3%. Beef Burger is the largest affected dish.",
         recommendedAction: "Review affected dishes and test margin repair on the highest-volume items.",

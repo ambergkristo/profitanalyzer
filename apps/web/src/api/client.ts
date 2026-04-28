@@ -3,7 +3,8 @@ import type {
   InvoiceDetailResponse,
   InvoiceDraftResponse,
   Ingredient,
-  IngredientCostHistory,
+  IngredientCostHistoryView,
+  ManualInvoiceDraftInput,
   MockInvoiceSampleSummary,
   PriceChangeAlert,
   CalculatedDish,
@@ -69,6 +70,11 @@ export const apiClient = {
       sampleInvoiceId,
       dataset: datasetId
     }),
+  createManualInvoiceDraft: (body: ManualInvoiceDraftInput, datasetId?: string) =>
+    postJson<InvoiceDraftResponse>(buildDatasetPath("/api/invoices/manual-draft", datasetId), {
+      ...body,
+      dataset: datasetId
+    }),
   getInvoice: (invoiceId: string, datasetId?: string) =>
     getJson<InvoiceDetailResponse>(buildDatasetPath(`/api/invoices/${invoiceId}`, datasetId)),
   confirmInvoiceReview: (
@@ -100,7 +106,7 @@ export const apiClient = {
   getSuppliers: (datasetId?: string) =>
     getJson<Supplier[]>(buildDatasetPath("/api/suppliers", datasetId)),
   getIngredientCostHistory: (ingredientId: string, datasetId?: string) =>
-    getJson<IngredientCostHistory[]>(
+    getJson<IngredientCostHistoryView>(
       buildDatasetPath(`/api/ingredients/${ingredientId}/cost-history`, datasetId)
     ),
   simulatePrice: (dishId: string, newPriceCents: number, datasetId?: string) =>

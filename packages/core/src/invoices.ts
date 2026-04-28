@@ -5,6 +5,7 @@ import {
   type Ingredient,
   type IngredientCostHistory,
   type IngredientUnit,
+  type ManualInvoiceDraftInput,
   type MockInvoiceSampleSummary,
   type InvoiceDraftSummary,
   type InvoiceMatchConfidence,
@@ -27,6 +28,21 @@ interface ParseMockInvoiceOptions {
   restaurantId?: string;
   invoiceId?: string;
   createdAt?: string;
+}
+
+interface ParseStructuredInvoiceOptions extends ParseMockInvoiceOptions {
+  supplierId?: string;
+  sourceType?: PurchaseInvoice["sourceType"];
+}
+
+interface StructuredInvoiceLineInput {
+  rawProductName: string;
+  quantity: number;
+  unit: InvoiceUnit;
+  unitPriceCents?: number;
+  lineTotalCents?: number;
+  matchedIngredientId?: string;
+  reviewStatus?: Extract<InvoiceReviewStatus, "needs_review" | "ready" | "ignored">;
 }
 
 interface ConfirmInvoiceReviewInput {
@@ -311,6 +327,14 @@ function buildSupplierSuggestion(
   };
 }
 
+function resolveIngredientById(ingredientId: string | undefined, ingredients: Ingredient[]) {
+  if (!ingredientId) {
+    return undefined;
+  }
+
+  return ingredients.find((candidate) => candidate.id === ingredientId);
+}
+
 function resolveMatchedIngredient(
   rawProductName: string,
   supplierId: string | undefined,
@@ -371,9 +395,10 @@ function buildInvoiceLineWarnings(
   ingredient: Ingredient | undefined,
   parsedUnit: InvoiceUnit,
   newCostPerUnitCents: number | undefined,
-  confidence: InvoiceMatchConfidence
+  confidence: InvoiceMatchConfidence,
+  baseWarnings: string[] = []
 ) {
-  const warnings: string[] = [];
+  const warnings: string[] = [...baseWarnings];
 
   if (quantity <= 0) {
     warnings.push("Quantity must be greater than zero.");
@@ -400,6 +425,134 @@ function buildInvoiceLineWarnings(
   }
 
   return warnings;
+}
+
+function buildParsedInvoiceDraft(
+  input: {
+    invoiceKey: string;
+    supplierName: string;
+    invoiceNumber?: string;
+    invoiceDate: string;
+    totalAmountCents?: number;
+    lines: StructuredInvoiceLineInput[];
+  },
+  knownSuppliers: Supplier[],
+  knownIngredients: Ingredient[],
+  existingSupplierProductMatches: SupplierProductMatch[],
+  options: ParseStructuredInvoiceOptions = {}
+): ParsedInvoiceDraft {
+  const createdAt = options.createdAt ?? new Date().toISOString();
+  const restaurantId = options.restaurantId ?? defaultRestaurantId;
+  const supplierSuggestion = buildSupplierSuggestion(input.supplierName, knownSuppliers);
+  const invoiceId =
+    options.invoiceId ??
+    createId("invoice", [input.invoiceKey, input.invoiceNumber ?? input.supplierName, input.invoiceDate]);
+  const resolvedSupplierId =
+    options.supplierId ??
+    supplierSuggestion.supplierId ??
+    createId("supplier-unresolved", [input.supplierName]);
+
+  const lines = input.lines.map<PurchaseInvoiceLine>((line, index) => {
+    const parsedUnitPriceCents = deriveUnitPriceCents(
+      line.quantity,
+      line.unitPriceCents,
+      line.lineTotalCents
+    );
+    const explicitIngredient = resolveIngredientById(line.matchedIngredientId, knownIngredients);
+    const matched = explicitIngredient
+      ? {
+          ingredient: explicitIngredient,
+          confidence: "high" as const
+        }
+      : resolveMatchedIngredient(
+          line.rawProductName,
+          resolvedSupplierId,
+          knownIngredients,
+          existingSupplierProductMatches
+        );
+    const convertedCost =
+      parsedUnitPriceCents !== undefined && matched.ingredient
+        ? convertInvoiceCostToIngredientUnit(
+            parsedUnitPriceCents,
+            line.unit,
+            matched.ingredient.unit
+          )
+        : null;
+    const previousCostPerUnitCents = matched.ingredient?.costPerUnitCents;
+    const nextCostPerUnitCents =
+      typeof convertedCost === "number" ? convertedCost : undefined;
+    const baseWarnings: string[] = [];
+
+    if (line.matchedIngredientId && !explicitIngredient) {
+      baseWarnings.push(`Matched ingredient "${line.matchedIngredientId}" is not valid.`);
+    }
+
+    if (line.unitPriceCents === undefined && line.lineTotalCents === undefined) {
+      baseWarnings.push("Either a unit price or a line total is required.");
+    }
+
+    const warnings = buildInvoiceLineWarnings(
+      line.rawProductName,
+      line.quantity,
+      parsedUnitPriceCents,
+      matched.ingredient,
+      line.unit,
+      nextCostPerUnitCents,
+      matched.confidence,
+      baseWarnings
+    );
+
+    const reviewStatus: InvoiceReviewStatus =
+      line.reviewStatus === "ignored"
+        ? "ignored"
+        : warnings.length > 0 || matched.confidence === "low" || matched.confidence === "none"
+          ? "needs_review"
+          : "ready";
+
+    return {
+      id: `${invoiceId}-line-${index + 1}`,
+      invoiceId,
+      rawProductName: line.rawProductName,
+      parsedQuantity: line.quantity,
+      parsedUnit: line.unit,
+      parsedUnitPriceCents,
+      parsedLineTotalCents:
+        line.lineTotalCents ??
+        (parsedUnitPriceCents !== undefined ? parsedUnitPriceCents * line.quantity : undefined),
+      matchedIngredientId: matched.ingredient?.id,
+      matchConfidence: matched.confidence,
+      reviewStatus,
+      previousCostPerUnitCents,
+      newCostPerUnitCents: nextCostPerUnitCents,
+      priceDeltaPercent: calculateDeltaPercent(previousCostPerUnitCents, nextCostPerUnitCents),
+      warnings
+    };
+  });
+
+  const invoiceDraft: PurchaseInvoice = {
+    id: invoiceId,
+    restaurantId,
+    supplierId: resolvedSupplierId,
+    invoiceNumber: input.invoiceNumber,
+    invoiceDate: input.invoiceDate,
+    sourceType: options.sourceType ?? "mock",
+    parseStatus: lines.some((line) => line.reviewStatus === "needs_review")
+      ? "needs_review"
+      : "draft",
+    totalAmountCents: input.totalAmountCents,
+    createdAt
+  };
+
+  return {
+    invoiceDraft,
+    supplierSuggestion: {
+      supplierId: supplierSuggestion.supplierId ?? resolvedSupplierId,
+      supplierName: supplierSuggestion.supplierName,
+      confidence: supplierSuggestion.supplierId || options.supplierId ? "high" : supplierSuggestion.confidence
+    },
+    lines,
+    summary: buildDraftSummary(lines)
+  };
 }
 
 export function createDefaultSuppliers(restaurantId = defaultRestaurantId, createdAt = "2026-04-01T00:00:00.000Z"): Supplier[] {
@@ -454,90 +607,59 @@ export function parseMockInvoice(
   existingSupplierProductMatches: SupplierProductMatch[],
   options: ParseMockInvoiceOptions = {}
 ): ParsedInvoiceDraft {
-  const createdAt = options.createdAt ?? new Date().toISOString();
-  const restaurantId = options.restaurantId ?? defaultRestaurantId;
-  const supplierSuggestion = buildSupplierSuggestion(input.supplierName, knownSuppliers);
-  const invoiceId =
-    options.invoiceId ??
-    createId("invoice", [input.id, input.invoiceNumber ?? input.supplierName, input.invoiceDate]);
+  return buildParsedInvoiceDraft(
+    {
+      invoiceKey: input.id,
+      supplierName: input.supplierName,
+      invoiceNumber: input.invoiceNumber,
+      invoiceDate: input.invoiceDate,
+      totalAmountCents: input.totalAmountCents,
+      lines: input.lines.map((line) => ({
+        rawProductName: line.rawProductName,
+        quantity: line.quantity,
+        unit: line.unit,
+        unitPriceCents: line.unitPriceCents,
+        lineTotalCents: line.lineTotalCents
+      }))
+    },
+    knownSuppliers,
+    knownIngredients,
+    existingSupplierProductMatches,
+    options
+  );
+}
 
-  const lines = input.lines.map<PurchaseInvoiceLine>((line, index) => {
-    const parsedUnitPriceCents = deriveUnitPriceCents(
-      line.quantity,
-      line.unitPriceCents,
-      line.lineTotalCents
-    );
-    const matched = resolveMatchedIngredient(
-      line.rawProductName,
-      supplierSuggestion.supplierId,
-      knownIngredients,
-      existingSupplierProductMatches
-    );
-    const convertedCost =
-      parsedUnitPriceCents !== undefined && matched.ingredient
-        ? convertInvoiceCostToIngredientUnit(
-            parsedUnitPriceCents,
-            line.unit,
-            matched.ingredient.unit
-          )
-        : null;
-    const previousCostPerUnitCents = matched.ingredient?.costPerUnitCents;
-    const nextCostPerUnitCents =
-      typeof convertedCost === "number" ? convertedCost : undefined;
-    const warnings = buildInvoiceLineWarnings(
-      line.rawProductName,
-      line.quantity,
-      parsedUnitPriceCents,
-      matched.ingredient,
-      line.unit,
-      nextCostPerUnitCents,
-      matched.confidence
-    );
-    const reviewStatus: InvoiceReviewStatus =
-      warnings.length > 0 || matched.confidence === "low" || matched.confidence === "none"
-        ? "needs_review"
-        : "ready";
-
-    return {
-      id: `${invoiceId}-line-${index + 1}`,
-      invoiceId,
-      rawProductName: line.rawProductName,
-      parsedQuantity: line.quantity,
-      parsedUnit: line.unit,
-      parsedUnitPriceCents,
-      parsedLineTotalCents: line.lineTotalCents ?? (parsedUnitPriceCents !== undefined ? parsedUnitPriceCents * line.quantity : undefined),
-      matchedIngredientId: matched.ingredient?.id,
-      matchConfidence: matched.confidence,
-      reviewStatus,
-      previousCostPerUnitCents,
-      newCostPerUnitCents: nextCostPerUnitCents,
-      priceDeltaPercent: calculateDeltaPercent(previousCostPerUnitCents, nextCostPerUnitCents),
-      warnings
-    };
-  });
-
-  const invoiceDraft: PurchaseInvoice = {
-    id: invoiceId,
-    restaurantId,
-    supplierId:
-      supplierSuggestion.supplierId ??
-      createId("supplier-unresolved", [input.supplierName]),
-    invoiceNumber: input.invoiceNumber,
-    invoiceDate: input.invoiceDate,
-    sourceType: "mock",
-    parseStatus: lines.some((line) => line.reviewStatus === "needs_review")
-      ? "needs_review"
-      : "draft",
-    totalAmountCents: input.totalAmountCents,
-    createdAt
-  };
-
-  return {
-    invoiceDraft,
-    supplierSuggestion,
-    lines,
-    summary: buildDraftSummary(lines)
-  };
+export function parseManualInvoice(
+  input: ManualInvoiceDraftInput,
+  knownSuppliers: Supplier[],
+  knownIngredients: Ingredient[],
+  existingSupplierProductMatches: SupplierProductMatch[],
+  options: ParseStructuredInvoiceOptions = {}
+): ParsedInvoiceDraft {
+  return buildParsedInvoiceDraft(
+    {
+      invoiceKey: "manual",
+      supplierName: input.supplierName,
+      invoiceNumber: input.invoiceNumber,
+      invoiceDate: input.invoiceDate,
+      lines: input.lines.map((line) => ({
+        rawProductName: line.rawProductName,
+        quantity: line.parsedQuantity,
+        unit: line.parsedUnit,
+        unitPriceCents: line.parsedUnitPriceCents,
+        lineTotalCents: line.parsedLineTotalCents,
+        matchedIngredientId: line.matchedIngredientId,
+        reviewStatus: line.reviewStatus
+      }))
+    },
+    knownSuppliers,
+    knownIngredients,
+    existingSupplierProductMatches,
+    {
+      ...options,
+      sourceType: "manual"
+    }
+  );
 }
 
 function cloneIngredients(ingredients: Ingredient[]) {
@@ -624,7 +746,8 @@ function buildSupplierProductMatchRecord(
 function buildIngredientAlert(
   invoice: PurchaseInvoice,
   line: PurchaseInvoiceLine,
-  supplierId: string,
+  supplier: Supplier,
+  ingredientName: string,
   deltaPercent: number,
   affectedDishImpacts: AffectedDishImpact[]
 ): PriceChangeAlert {
@@ -655,13 +778,19 @@ function buildIngredientAlert(
     type: isIncrease ? "ingredient_price_up" : "ingredient_price_down",
     severity,
     ingredientId: line.matchedIngredientId!,
-    supplierId,
+    ingredientName,
+    supplierId: supplier.id,
+    supplierName: supplier.name,
     invoiceId: invoice.id,
     invoiceLineId: line.id,
+    sourceInvoiceNumber: invoice.invoiceNumber,
+    sourceInvoiceDate: invoice.invoiceDate,
+    sourceType: invoice.sourceType,
     previousCostPerUnitCents: line.previousCostPerUnitCents,
     newCostPerUnitCents: line.newCostPerUnitCents!,
     deltaPercent,
     affectedDishIds: affectedDishImpacts.map((dish) => dish.dishId),
+    affectedDishNames: affectedDishImpacts.map((dish) => dish.name),
     estimatedMarginImpactCents: topAffectedDish
       ? Math.abs(topAffectedDish.periodProfitImpactCents)
       : undefined,
@@ -675,7 +804,8 @@ function buildIngredientAlert(
 function buildDishRiskAlert(
   invoice: PurchaseInvoice,
   line: PurchaseInvoiceLine,
-  supplierId: string,
+  supplier: Supplier,
+  ingredientName: string,
   affectedDishImpacts: AffectedDishImpact[]
 ): PriceChangeAlert | null {
   const atRiskDishes = affectedDishImpacts.filter(
@@ -696,15 +826,21 @@ function buildDishRiskAlert(
     type: "dish_margin_at_risk_due_to_cost_change",
     severity,
     ingredientId: line.matchedIngredientId!,
-    supplierId,
+    ingredientName,
+    supplierId: supplier.id,
+    supplierName: supplier.name,
     invoiceId: invoice.id,
     invoiceLineId: line.id,
+    sourceInvoiceNumber: invoice.invoiceNumber,
+    sourceInvoiceDate: invoice.invoiceDate,
+    sourceType: invoice.sourceType,
     previousCostPerUnitCents: line.previousCostPerUnitCents,
     newCostPerUnitCents: line.newCostPerUnitCents!,
     deltaPercent: line.priceDeltaPercent,
     affectedDishIds: atRiskDishes.map((dish) => dish.dishId),
+    affectedDishNames: atRiskDishes.map((dish) => dish.name),
     estimatedMarginImpactCents: Math.abs(topDish.periodProfitImpactCents),
-    message: `${topDish.name} moved from ${topDish.oldMarginPercent.toFixed(1)}% to ${topDish.newMarginPercent.toFixed(1)}% margin after the ${line.rawProductName} cost change.`,
+    message: `${topDish.name} moved from ${topDish.oldMarginPercent.toFixed(1)}% to ${topDish.newMarginPercent.toFixed(1)}% margin after the ${ingredientName} cost change.`,
     recommendedAction:
       topDish.newStatus === "loss"
         ? `Repair ${topDish.name} immediately with a price move or ingredient cost review.`
@@ -820,6 +956,7 @@ export function confirmInvoiceReview({
     const previousCostPerUnitCents = ingredient.costPerUnitCents;
     const newCostPerUnitCents = convertedCost;
     const priceDeltaPercent = calculateDeltaPercent(previousCostPerUnitCents, newCostPerUnitCents);
+    const ingredientName = ingredient.name;
 
     const finalLine: PurchaseInvoiceLine = {
       ...parsedLine,
@@ -899,7 +1036,14 @@ export function confirmInvoiceReview({
 
     if (typeof priceDeltaPercent === "number" && Math.abs(priceDeltaPercent) >= 5) {
       lineAlerts.push(
-        buildIngredientAlert(invoiceDraft.invoiceDraft, finalLine, supplier.id, priceDeltaPercent, impactedByLine)
+        buildIngredientAlert(
+          invoiceDraft.invoiceDraft,
+          finalLine,
+          supplier,
+          ingredientName,
+          priceDeltaPercent,
+          impactedByLine
+        )
       );
     }
 
@@ -907,7 +1051,8 @@ export function confirmInvoiceReview({
       const dishRiskAlert = buildDishRiskAlert(
         invoiceDraft.invoiceDraft,
         finalLine,
-        supplier.id,
+        supplier,
+        ingredientName,
         impactedByLine
       );
 
@@ -970,7 +1115,7 @@ export function confirmInvoiceReview({
       priceIncreaseCount,
       priceDecreaseCount,
       unchangedCount,
-      alertCount: lineAlerts.length,
+      alertCount: dedupedAlerts.length,
       affectedDishCount: affectedDishes.length,
       topAffectedDishes: affectedDishes.slice(0, 5)
     }

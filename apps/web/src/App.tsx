@@ -1,6 +1,7 @@
 import { createBrowserRouter, RouterProvider } from "react-router-dom";
 
 import { Layout } from "./components/Layout.js";
+import { AlertsPage } from "./pages/Alerts.js";
 import { DashboardPage } from "./pages/Dashboard.js";
 import { DishDetailPage } from "./pages/DishDetail.js";
 import { DishesPage } from "./pages/Dishes.js";
@@ -14,7 +15,8 @@ const router = createBrowserRouter([
       { index: true, element: <DashboardPage /> },
       { path: "dishes", element: <DishesPage /> },
       { path: "dishes/:dishId", element: <DishDetailPage /> },
-      { path: "invoices", element: <InvoicesPage /> }
+      { path: "invoices", element: <InvoicesPage /> },
+      { path: "alerts", element: <AlertsPage /> }
     ]
   }
 ]);

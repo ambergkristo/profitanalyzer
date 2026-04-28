@@ -44,12 +44,20 @@ export function DishDetailPage() {
   const [simulation, setSimulation] = useState<Awaited<ReturnType<typeof apiClient.simulatePrice>> | null>(null);
   const [simulationError, setSimulationError] = useState<string | null>(null);
   const [isSimulating, setIsSimulating] = useState(false);
+  const [expandedIngredientId, setExpandedIngredientId] = useState<string | null>(null);
+  const [historyByIngredient, setHistoryByIngredient] = useState<Record<string, Awaited<ReturnType<typeof apiClient.getIngredientCostHistory>>>>({});
+  const [historyLoadingId, setHistoryLoadingId] = useState<string | null>(null);
+  const [historyErrors, setHistoryErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
     if (data) {
       setPriceInput(centsToInputValue(data.dish.priceCents));
       setSimulation(null);
       setSimulationError(null);
+      setExpandedIngredientId(null);
+      setHistoryLoadingId(null);
+      setHistoryByIngredient({});
+      setHistoryErrors({});
     }
   }, [data]);
 
@@ -133,6 +141,34 @@ export function DishDetailPage() {
     const currentValue = parseInputToCents(priceInput) ?? resolvedDetail.dish.priceCents;
     const nextValue = Math.max(50, currentValue + deltaCents);
     void runSimulation(nextValue);
+  }
+
+  async function toggleIngredientHistory(ingredientId: string) {
+    if (expandedIngredientId === ingredientId) {
+      setExpandedIngredientId(null);
+      return;
+    }
+
+    setExpandedIngredientId(ingredientId);
+
+    if (historyByIngredient[ingredientId]) {
+      return;
+    }
+
+    setHistoryLoadingId(ingredientId);
+    setHistoryErrors((current) => ({ ...current, [ingredientId]: "" }));
+
+    try {
+      const history = await apiClient.getIngredientCostHistory(ingredientId, datasetId);
+      setHistoryByIngredient((current) => ({ ...current, [ingredientId]: history }));
+    } catch (reason) {
+      setHistoryErrors((current) => ({
+        ...current,
+        [ingredientId]: reason instanceof Error ? reason.message : "Failed to load cost history."
+      }));
+    } finally {
+      setHistoryLoadingId(null);
+    }
   }
 
   return (
@@ -378,6 +414,50 @@ export function DishDetailPage() {
                   </span>
                 </div>
                 {item.warning ? <p className="mt-3 text-sm leading-6 text-warning">{item.warning}</p> : null}
+                <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+                  <p className="text-sm leading-6 text-muted">Latest supplier cost updates</p>
+                  <ActionButton
+                    onClick={() => void toggleIngredientHistory(item.ingredientId)}
+                    variant="secondary"
+                  >
+                    {expandedIngredientId === item.ingredientId ? "Hide cost history" : "View cost history"}
+                  </ActionButton>
+                </div>
+
+                {expandedIngredientId === item.ingredientId ? (
+                  <div className="mt-4 rounded-tile border border-white/8 bg-black/20 p-4">
+                    {historyLoadingId === item.ingredientId ? (
+                      <p className="text-sm leading-6 text-muted">Loading latest supplier cost updates...</p>
+                    ) : historyErrors[item.ingredientId] ? (
+                      <p className="text-sm leading-6 text-danger">{historyErrors[item.ingredientId]}</p>
+                    ) : historyByIngredient[item.ingredientId]?.history.length ? (
+                      <div className="space-y-3">
+                        {historyByIngredient[item.ingredientId].history.map((entry) => (
+                          <div key={entry.id} className="rounded-tile border border-white/8 bg-white/[0.03] p-4">
+                            <div className="flex flex-wrap items-center justify-between gap-3">
+                              <p className="font-medium text-text">{entry.supplierName}</p>
+                              <span className="text-sm text-muted">{entry.invoiceDate}</span>
+                            </div>
+                            <p className="mt-2 text-sm leading-6 text-muted">
+                              {entry.invoiceNumber ? `${entry.invoiceNumber} · ` : ""}
+                              {entry.source}
+                            </p>
+                            <p className="mt-3 text-sm leading-6 text-text">
+                              {typeof entry.previousCostPerUnitCents === "number"
+                                ? `${formatEuro(entry.previousCostPerUnitCents)} to ${formatEuro(entry.newCostPerUnitCents)}`
+                                : `New baseline ${formatEuro(entry.newCostPerUnitCents)}`}
+                              {typeof entry.deltaPercent === "number"
+                                ? ` (${entry.deltaPercent > 0 ? "+" : ""}${entry.deltaPercent.toFixed(1)}%)`
+                                : ""}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-sm leading-6 text-muted">No confirmed invoice updates yet.</p>
+                    )}
+                  </div>
+                ) : null}
               </div>
             ))}
           </div>
