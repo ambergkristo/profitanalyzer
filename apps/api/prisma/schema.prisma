@@ -1,0 +1,389 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum WorkspaceRole {
+  owner
+  admin
+  member
+}
+
+enum PurchaseInvoiceSourceType {
+  mock
+  manual
+  ocr_future
+}
+
+enum PurchaseInvoiceParseStatus {
+  draft
+  needs_review
+  reviewed
+  confirmed
+}
+
+enum InvoiceMatchConfidence {
+  high
+  medium
+  low
+  none
+}
+
+enum InvoiceReviewStatus {
+  needs_review
+  ready
+  confirmed
+  ignored
+}
+
+enum PriceChangeAlertType {
+  ingredient_price_up
+  ingredient_price_down
+  dish_margin_at_risk_due_to_cost_change
+}
+
+enum PriceChangeAlertSeverity {
+  critical
+  high
+  medium
+  low
+}
+
+enum PriceChangeAlertStatus {
+  open
+  reviewed
+  dismissed
+}
+
+enum OcrJobStatus {
+  uploaded
+  processing
+  parsed
+  needs_review
+  failed
+}
+
+model User {
+  id           String                @id
+  email        String                @unique
+  name         String
+  createdAt    DateTime              @default(now())
+  updatedAt    DateTime              @updatedAt
+  memberships  WorkspaceMembership[]
+  auditLogs    AuditLog[]
+}
+
+model Workspace {
+  id             String                @id
+  name           String
+  slug           String                @unique
+  createdAt      DateTime              @default(now())
+  updatedAt      DateTime              @updatedAt
+  memberships    WorkspaceMembership[]
+  restaurants    Restaurant[]
+  auditLogs      AuditLog[]
+}
+
+model WorkspaceMembership {
+  id          String        @id
+  workspaceId String
+  userId      String
+  role        WorkspaceRole
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  workspace   Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceId, userId])
+  @@index([userId])
+}
+
+model Restaurant {
+  id                   String                  @id
+  workspaceId          String
+  name                 String
+  currency             String
+  datasetMetaJson      Json?
+  baselineSnapshotJson Json?
+  createdAt            DateTime                @default(now())
+  updatedAt            DateTime                @updatedAt
+  workspace            Workspace               @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  ingredients          Ingredient[]
+  recipes              Recipe[]
+  recipeIngredients    RecipeIngredient[]
+  dishes               Dish[]
+  suppliers            Supplier[]
+  invoices             PurchaseInvoice[]
+  invoiceLines         PurchaseInvoiceLine[]
+  costHistory          IngredientCostHistory[]
+  supplierMatches      SupplierProductMatch[]
+  alerts               PriceChangeAlert[]
+  ocrJobs              OcrJob[]
+  auditLogs            AuditLog[]
+
+  @@index([workspaceId])
+}
+
+model Ingredient {
+  id               String                  @id
+  workspaceId      String
+  restaurantId     String
+  name             String
+  costPerUnitCents Int
+  unit             String
+  createdAt        DateTime                @default(now())
+  updatedAt        DateTime                @updatedAt
+  restaurant       Restaurant              @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  recipeIngredients RecipeIngredient[]
+  costHistory      IngredientCostHistory[]
+  supplierMatches  SupplierProductMatch[]
+  alerts           PriceChangeAlert[]
+  matchedInvoiceLines PurchaseInvoiceLine[]
+
+  @@index([workspaceId, restaurantId])
+  @@index([restaurantId])
+}
+
+model Recipe {
+  id               String             @id
+  workspaceId      String
+  restaurantId     String
+  name             String
+  yield            Float
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+  restaurant       Restaurant         @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  ingredients      RecipeIngredient[]
+  dishes           Dish[]
+
+  @@index([workspaceId, restaurantId])
+}
+
+model RecipeIngredient {
+  id           String      @id
+  workspaceId  String
+  restaurantId String
+  recipeId     String
+  ingredientId String
+  quantity     Float
+  unit         String
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+  restaurant   Restaurant  @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  recipe       Recipe      @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  ingredient   Ingredient  @relation(fields: [ingredientId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId, restaurantId])
+  @@index([recipeId])
+  @@index([ingredientId])
+  @@unique([recipeId, ingredientId])
+}
+
+model Dish {
+  id           String      @id
+  workspaceId  String
+  restaurantId String
+  recipeId     String
+  name         String
+  priceCents   Int
+  salesVolume  Int
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+  restaurant   Restaurant  @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  recipe       Recipe      @relation(fields: [recipeId], references: [id], onDelete: Restrict)
+
+  @@index([workspaceId, restaurantId])
+  @@index([recipeId])
+}
+
+model Supplier {
+  id             String                  @id
+  workspaceId    String
+  restaurantId   String
+  name           String
+  normalizedName String
+  contactLabel   String?
+  createdAt      DateTime                @default(now())
+  updatedAt      DateTime                @updatedAt
+  restaurant     Restaurant              @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  invoices       PurchaseInvoice[]
+  costHistory    IngredientCostHistory[]
+  supplierMatches SupplierProductMatch[]
+  alerts         PriceChangeAlert[]
+
+  @@index([workspaceId, restaurantId])
+  @@index([normalizedName])
+}
+
+model PurchaseInvoice {
+  id                     String                     @id
+  workspaceId            String
+  restaurantId           String
+  supplierId             String
+  invoiceNumber          String?
+  invoiceDate            DateTime
+  sourceType             PurchaseInvoiceSourceType
+  sourceImageUrl         String?
+  parseStatus            PurchaseInvoiceParseStatus
+  totalAmountCents       Int?
+  supplierSuggestionJson Json?
+  summaryJson            Json?
+  confirmationSummaryJson Json?
+  affectedDishesJson     Json?
+  ocrResultJson          Json?
+  qualityReportJson      Json?
+  createdAt              DateTime                   @default(now())
+  updatedAt              DateTime                   @updatedAt
+  restaurant             Restaurant                 @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  supplier               Supplier                   @relation(fields: [supplierId], references: [id], onDelete: Restrict)
+  lines                  PurchaseInvoiceLine[]
+  alerts                 PriceChangeAlert[]
+
+  @@index([workspaceId, restaurantId])
+  @@index([supplierId])
+}
+
+model PurchaseInvoiceLine {
+  id                       String                  @id
+  workspaceId              String
+  restaurantId             String
+  invoiceId                String
+  rawProductName           String
+  parsedQuantity           Float
+  parsedUnit               String
+  parsedUnitPriceCents     Int?
+  parsedLineTotalCents     Int?
+  matchedIngredientId      String?
+  matchConfidence          InvoiceMatchConfidence
+  reviewStatus             InvoiceReviewStatus
+  previousCostPerUnitCents Int?
+  newCostPerUnitCents      Int?
+  priceDeltaPercent        Float?
+  warningsJson             Json
+  createdAt                DateTime                @default(now())
+  updatedAt                DateTime                @updatedAt
+  restaurant               Restaurant              @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  invoice                  PurchaseInvoice         @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  matchedIngredient        Ingredient?             @relation(fields: [matchedIngredientId], references: [id], onDelete: SetNull)
+  costHistory              IngredientCostHistory[]
+  alerts                   PriceChangeAlert[]
+
+  @@index([workspaceId, restaurantId])
+  @@index([invoiceId])
+  @@index([matchedIngredientId])
+}
+
+model IngredientCostHistory {
+  id                       String               @id
+  workspaceId              String
+  restaurantId             String
+  ingredientId             String
+  supplierId               String?
+  invoiceLineId            String?
+  previousCostPerUnitCents Int?
+  newCostPerUnitCents      Int
+  unit                     String
+  effectiveDate            DateTime
+  createdAt                DateTime             @default(now())
+  restaurant               Restaurant           @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  ingredient               Ingredient           @relation(fields: [ingredientId], references: [id], onDelete: Cascade)
+  supplier                 Supplier?            @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+  invoiceLine              PurchaseInvoiceLine? @relation(fields: [invoiceLineId], references: [id], onDelete: SetNull)
+
+  @@index([workspaceId, restaurantId])
+  @@index([ingredientId])
+}
+
+model SupplierProductMatch {
+  id                    String                 @id
+  workspaceId           String
+  restaurantId          String
+  supplierId            String
+  rawProductName        String
+  normalizedProductName String
+  ingredientId          String
+  confidence            InvoiceMatchConfidence
+  lastConfirmedAt       DateTime
+  createdAt             DateTime               @default(now())
+  updatedAt             DateTime               @updatedAt
+  restaurant            Restaurant             @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  supplier              Supplier               @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  ingredient            Ingredient             @relation(fields: [ingredientId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId, restaurantId])
+  @@index([supplierId, normalizedProductName])
+  @@unique([supplierId, rawProductName, ingredientId])
+}
+
+model PriceChangeAlert {
+  id                         String                   @id
+  workspaceId                String
+  restaurantId               String
+  type                       PriceChangeAlertType
+  severity                   PriceChangeAlertSeverity
+  ingredientId               String
+  supplierId                 String?
+  invoiceId                  String?
+  invoiceLineId              String?
+  previousCostPerUnitCents   Int?
+  newCostPerUnitCents        Int
+  deltaPercent               Float?
+  affectedDishIdsJson        Json
+  estimatedMarginImpactCents Int?
+  message                    String
+  recommendedAction          String
+  status                     PriceChangeAlertStatus
+  createdAt                  DateTime                 @default(now())
+  updatedAt                  DateTime                 @updatedAt
+  restaurant                 Restaurant               @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  ingredient                 Ingredient               @relation(fields: [ingredientId], references: [id], onDelete: Cascade)
+  supplier                   Supplier?                @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+  invoice                    PurchaseInvoice?         @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
+  invoiceLine                PurchaseInvoiceLine?     @relation(fields: [invoiceLineId], references: [id], onDelete: SetNull)
+
+  @@index([workspaceId, restaurantId])
+  @@index([severity, createdAt])
+}
+
+model OcrJob {
+  id                String      @id
+  workspaceId       String
+  restaurantId      String
+  provider          String
+  status            OcrJobStatus
+  originalFileName  String
+  mimeType          String
+  fileSizeBytes     Int
+  createdAt         DateTime    @default(now())
+  parsedAt          DateTime?
+  failureReason     String?
+  invoiceDraftId    String?
+  qualityReportJson Json?
+  resultJson        Json?
+  restaurant        Restaurant  @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId, restaurantId])
+  @@index([invoiceDraftId])
+}
+
+model AuditLog {
+  id            String      @id
+  workspaceId   String
+  restaurantId  String?
+  actorUserId   String?
+  action        String
+  entityType    String
+  entityId      String?
+  metadataJson  Json
+  createdAt     DateTime    @default(now())
+  workspace     Workspace   @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  restaurant    Restaurant? @relation(fields: [restaurantId], references: [id], onDelete: SetNull)
+  actorUser     User?       @relation(fields: [actorUserId], references: [id], onDelete: SetNull)
+
+  @@index([workspaceId, restaurantId])
+  @@index([actorUserId])
+}

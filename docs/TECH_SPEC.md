@@ -1,76 +1,95 @@
 # Technical Specification
 
-## Production Target Architecture
+## Target Architecture
 
 ### Frontend
 
 - React
 - Vite
 - TypeScript
+- mobile-first invoice intake and review
 
 ### Backend
 
 - Express
 - TypeScript
-- shared deterministic decision logic from `packages/core`
+- shared decision logic from `packages/core`
 
-### Database
+### Store Layer
 
-- Postgres target
+- `memory` driver for deterministic local/demo/test workflows
+- `file` driver for controlled local persistence
+- `database` driver for production-oriented Postgres persistence
+- one shared store boundary across all drivers
 
-### Migration Layer
+### Database Target
 
-- Prisma or equivalent should be evaluated and selected
+- Postgres
+- Prisma as the selected migration and client layer for Phase 12
 
-### Auth
+### SaaS Data Model Direction
 
-- auth provider to be selected
-- architecture must support protected API access and workspace scoping
-
-### Storage
-
-- file and image storage strategy needed for production invoice and OCR inputs
+- workspace
+- restaurant
+- user placeholder
+- workspace membership
+- restaurant-scoped business entities
+- future authenticated actor context
 
 ### OCR
 
-- provider adapter remains the pattern
-- OCR still creates drafts only
+- env-configured provider adapter
+- fixture remains safe default
+- OCR creates drafts only
+- review-confirm remains mandatory
 
-### Deployment
+### Deployment Shape
 
-- separate frontend, backend, and DB deployment profile
+- separate frontend and backend deployment
+- database as separate managed service
+- production env validation as a gate
+- health and deep health endpoints
 
-### Observability
+### Observability Direction
 
-- logging
-- health checks
-- error handling
-- validation gates
+- structured health checks now
+- structured logging, monitoring, and error aggregation later
 
-## Migration Note
+## Phase 12 Implementation Direction
 
-Existing memory and file store support must not be abruptly destroyed.
+The chosen Phase 12 path is:
 
-The correct approach is:
+1. keep current API behavior stable
+2. keep `memory` and `file` stores alive
+3. add a Prisma-backed Postgres store behind the same boundary
+4. keep current decision and invoice logic in one place
+5. persist dataset state through the DB adapter without weakening OCR or invoice safety
 
-- introduce DB adapter behind the existing store boundary
-- preserve memory and file store for deterministic tests, demo, or local fallback where useful
-- keep validation deterministic while the DB path is introduced
+## Migration Rule
+
+Existing memory and file store behavior must not be destroyed during DB rollout.
+
+The DB adapter is additive:
+
+- no silent fallback from `database` to `memory`
+- no requirement for `DATABASE_URL` in normal demo or test validation
+- no auth dependency yet
 
 ## Production Gaps Still Open
 
-- database is not live yet
-- auth is not live yet
-- tenant isolation is not live yet
-- billing is not live yet
-- production file storage strategy is not finalized
-- monitoring is not live yet
-- backup and restore strategy is not finalized
+- database runtime is not yet universally validated in this local environment without `DATABASE_URL`
+- auth is not live
+- workspace access control is not live
+- protected APIs are not live
+- billing is not live
+- production object or file storage strategy is not finalized
+- monitoring and alerting are not live
+- backup and restore operations are not fully productionized
 - external OCR is not benchmarked on real invoices yet
 
-## Technical Rules That Stay Fixed
+## Fixed Technical Rules
 
-- review-confirm remains mandatory
 - no blind OCR import
-- no direct ingredient-cost mutation from parser or OCR output
-- mobile-first invoice workflow remains a product requirement
+- invoice and OCR output remain draft-only until review-confirm
+- ingredient costs update only after confirmation
+- mobile invoice upload and review remain a product requirement

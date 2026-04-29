@@ -1,8 +1,8 @@
 # Deployment Readiness
 
-## Current Deployment Posture
+## Current Posture
 
-The app is deployable for controlled demo and pilot evaluation, but it is not yet a production SaaS platform.
+The app is not yet production SaaS ready, but it now has a database-oriented deployment path instead of only memory and file persistence.
 
 ## Runtime Split
 
@@ -10,6 +10,7 @@ Suggested split:
 
 - frontend: static hosting
 - backend: Node service
+- database: managed Postgres
 
 ## Local Commands
 
@@ -26,6 +27,7 @@ npm run validate:ocr
 npm run validate:ocr:provider
 npm run validate:pilot
 npm run validate:env
+npm run validate:db
 ```
 
 ## Node and Ports
@@ -34,15 +36,16 @@ npm run validate:env
 - frontend dev port: `5173`
 - backend dev port: `3001`
 
-## Required Env
+## Required Environment
 
 Core:
 
 - `APP_MODE=demo|pilot`
-- `STORE_DRIVER=memory|file`
+- `STORE_DRIVER=memory|file|database`
 - `DATA_DIR=.data`
+- `DATABASE_URL=` when `STORE_DRIVER=database`
 
-Optional OCR:
+OCR:
 
 - `OCR_PROVIDER`
 - `OCR_PROVIDER_API_KEY`
@@ -51,49 +54,40 @@ Optional OCR:
 - `OCR_PROVIDER_TIMEOUT_MS`
 - `OCR_PROVIDER_MAX_RETRIES`
 
-Future only:
+## Deployment Notes By Driver
 
-- `DATABASE_URL`
+### Memory
+
+- safe for demo only
+- restarts clear data
+
+### File
+
+- safe for local controlled use
+- requires persistent writable disk
+- many hosted environments are ephemeral
+
+### Database
+
+- intended production-oriented path
+- requires Postgres and `DATABASE_URL`
+- should not silently fall back to memory
 
 ## Health Endpoints
 
 - `GET /health`
 - `GET /api/health/deep`
+- `GET /api/app/config`
 
-## Mode Notes
+`/api/health/deep` must be treated as a readiness signal for storage:
 
-`demo` mode:
-
-- synthetic scenario selector is expected
-- fixture OCR remains the clean default
-
-`pilot` mode:
-
-- pilot workspace copy is shown
-- the same review-confirm safety boundary remains active
-
-## Storage Warning
-
-Current storage can run in two local modes:
-
-- `memory`: default, resets on API restart
-- `file`: local JSON persistence under `DATA_DIR`
-
-That means:
-
-- restarting the API resets runtime changes in memory mode
-- file mode survives API restarts locally, but still depends on a writable filesystem
-- pilot resets remain deterministic in both modes
-- export should still be used before risky demo or pilot sessions
-
-Hosted deployment caution:
-
-- many hosted filesystems are ephemeral
-- for a real hosted pilot, use a persistent disk or move to a database later
+- `memory`: warning only
+- `file`: read/write disk checks
+- `database`: configuration and connectivity checks
 
 ## Pre-Deploy Validation
 
-Run before any demo or pilot deployment:
+Run before any serious hosted environment:
 
 - `npm run typecheck`
 - `npm test`
@@ -104,26 +98,19 @@ Run before any demo or pilot deployment:
 - `npm run validate:ocr`
 - `npm run validate:pilot`
 - `npm run validate:env`
+- `npm run validate:db`
 
-If using file mode locally, also confirm:
+## Hosted Production Caveats
 
-- `DATA_DIR` exists or can be created
-- the backend process can read and write the directory
-- deep health returns `storage.driver = file` and `ok = true`
+- `STORE_DRIVER=file` is not a durable production choice on ephemeral filesystems
+- production hosting should move toward managed Postgres
+- OCR upload storage strategy is still future work
+- auth, monitoring, backup, and rollout playbooks are still future phases
 
-Hosted pilot caution:
+## Known Gaps
 
-- if the host filesystem is ephemeral, `STORE_DRIVER=file` is not enough
-- use a persistent disk or keep the deployment in controlled demo mode until a database-backed store exists
-- the database path is still future work and is documented in `docs/DB_ADAPTER_PLAN.md`
-
-## Known Limitations
-
-- no persistent database
-- no auth
-- no billing
-- no accounting or inventory workflows
-- no POS integration
-- no supplier API sync
-- no production OCR accuracy claim
-- no production database-backed persistence yet
+- auth is not live
+- billing is not live
+- production backup flow is not fully implemented
+- structured monitoring is not live
+- OCR provider benchmark is not complete

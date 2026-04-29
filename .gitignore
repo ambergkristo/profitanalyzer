@@ -10,3 +10,5 @@ benchmarks/ocr/private-samples/
 .data/
 data/
 *.local.json
+*.private.json
+benchmarks/ocr/private-results/

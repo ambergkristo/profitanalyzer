@@ -25,8 +25,14 @@ import type {
   SupplierProductMatch
 } from "../../../../packages/core/src/index.js";
 
-export type PersistenceType = "memory" | "file";
 export type AppMode = "demo" | "pilot";
+export type PersistenceType = "memory" | "file" | "database";
+
+export interface StoreContext {
+  workspaceId: string;
+  restaurantId: string;
+  actorUserId?: string;
+}
 
 export interface StorageInfo {
   driver: PersistenceType;
@@ -34,6 +40,7 @@ export interface StorageInfo {
   dataDirConfigured: boolean;
   readable: boolean;
   writable: boolean;
+  databaseConfigured?: boolean;
   persistenceWarning: string | null;
 }
 
@@ -139,10 +146,13 @@ export interface AppStore {
     recipes: DemoDatasetDefinition["data"]["recipes"];
     dishes: DemoDatasetDefinition["data"]["dishes"];
   };
+  initialize(): Promise<void>;
+  getStoreContext(datasetId?: string): StoreContext | null;
   getStorageType(): PersistenceType;
   getStorageInfo(): StorageInfo;
   getResolvedDataset(datasetId?: string): DemoDatasetDefinition | null;
   flushDataset(datasetId: string): boolean;
+  flushDatasetAsync(datasetId: string): Promise<boolean>;
   listDatasets(): DemoDatasetSummary[];
   getDemoDatasets(): DemoDatasetSummary[];
   getMockInvoiceSampleSummaries(): MockInvoiceSampleSummary[];

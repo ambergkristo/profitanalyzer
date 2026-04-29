@@ -35,6 +35,7 @@ describe("PilotToolsPage", () => {
     vi.mocked(apiClient.getAppConfig).mockResolvedValue({
       appMode: "pilot",
       version: "0.1.0",
+      productionReadinessClaimed: false,
       storage: {
         driver: "memory",
         dataDirConfigured: false,
@@ -42,10 +43,15 @@ describe("PilotToolsPage", () => {
         writable: true,
         persistenceWarning: "This pilot build uses memory storage. Restarting the API resets data."
       },
+      workspaceContext: {
+        workspaceId: "workspace-pilot-workspace",
+        restaurantId: "pilot-workspace"
+      },
       features: {
         invoiceIntake: true,
         ocrFixture: true,
-        externalOcrConfigured: false
+        externalOcrConfigured: false,
+        databaseConfigured: false
       }
     });
     vi.mocked(apiClient.getDemoDatasets).mockResolvedValue([
@@ -70,6 +76,10 @@ describe("PilotToolsPage", () => {
         persistenceWarning: "This pilot build uses memory storage. Restarting the API resets data."
       },
       appMode: "pilot",
+      workspaceContext: {
+        workspaceId: "workspace-pilot-workspace",
+        restaurantId: "pilot-workspace"
+      },
       externalOcrConfigured: false,
       checks: [
         {

@@ -18,7 +18,11 @@
     "validate:ocr": "tsx scripts/validateOcr.ts",
     "validate:ocr:provider": "tsx scripts/validateOcrProvider.ts",
     "validate:pilot": "tsx scripts/validatePilot.ts",
-    "validate:env": "tsx scripts/validateEnv.ts"
+    "validate:env": "tsx scripts/validateEnv.ts",
+    "db:generate": "npm run db:generate -w @profit-analyzer/api",
+    "db:migrate": "npm run db:migrate -w @profit-analyzer/api",
+    "db:seed": "npm run db:seed -w @profit-analyzer/api",
+    "validate:db": "tsx scripts/validateDb.ts"
   },
   "devDependencies": {
     "@eslint/js": "^9.18.0",

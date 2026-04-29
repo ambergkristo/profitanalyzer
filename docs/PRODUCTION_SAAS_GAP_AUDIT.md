@@ -2,34 +2,48 @@
 
 ## Current Complete
 
-- core engine
-- dashboard
-- dish detail
-- simulator
+- core calculation engine
+- dashboard and decision ranking
+- dish detail and simulator
 - synthetic validation
-- invoice intake
-- OCR adapter
-- pilot mode
-- file store
-- pilot tools
+- invoice intake and review-confirm
+- OCR adapter boundary
+- onboarding and pilot tools
+- export, import, and reset
+- memory and file store drivers
+- database schema and DB store foundation
+
+## Partially Complete
+
+- Postgres target selected
+- Prisma schema, seed, and validation scaffolding added
+- DB store driver implemented behind the store boundary
+- workspace and restaurant scoping added at the data model layer
+- default user and membership placeholder model added for future auth
 
 ## Missing For Production SaaS
 
-- real DB
-- auth
-- tenant isolation
-- production deployment
-- monitoring and logging
-- storage strategy
-- backup and restore
-- security, privacy, and legal baseline
+- live database rollout validated in target hosting environment
+- auth and session model
+- protected API routes
+- real workspace access control
+- production object or file storage strategy for OCR uploads
+- monitoring and operational alerting
+- production backup and restore process
+- privacy, legal, and security baseline
 - billing and license model
-- mobile smoke tests
-- live OCR benchmark
-- onboarding hardening
+- mobile smoke tests for critical workflows
+- live OCR benchmark on realistic private invoice samples
+- onboarding hardening for real restaurant data
 
-## Interpretation
+## Strategic Interpretation
 
-The product has a strong functional core and a serious controlled pilot foundation.
+The product now has a stronger SaaS foundation than the earlier controlled pilot package.
 
-It does not yet have the infrastructure, access control, operational maturity, or legal and billing readiness required for production SaaS launch.
+It still is not production SaaS ready until:
+
+- DB runtime is proven
+- auth and access control are live
+- deployment and observability are in place
+- mobile onboarding and invoice intake are validated
+- OCR accuracy and operational reliability are benchmarked honestly

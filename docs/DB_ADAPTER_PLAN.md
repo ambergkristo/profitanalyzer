@@ -1,75 +1,77 @@
-# DB Adapter Plan
+# Database Adapter Implementation Notes
 
-## Current Status
+## Phase 12 Status
 
-The controlled pilot package supports:
+Phase 12 now includes a real database foundation:
 
-- `STORE_DRIVER=memory`
-- `STORE_DRIVER=file`
+- Prisma schema
+- Postgres target
+- `STORE_DRIVER=database`
+- `DATABASE_URL` support
+- DB seed scaffolding
+- `validate:db`
+- workspace and restaurant scoping in the data model
 
-Database persistence is not implemented yet.
+This is not yet a claim that production DB runtime is fully proven in every environment.
 
-The future seam exists conceptually through the store boundary in `apps/api/src/store`, and a placeholder adapter exists in:
+## Selected Approach
 
-- `apps/api/src/store/databaseStore.ts`
+- Postgres target
+- Prisma client and schema
+- DB adapter behind the same store boundary as `memory` and `file`
+- keep current business logic centralized, then persist state through the DB adapter
 
-That placeholder throws a clear not-implemented error on purpose.
+## Why The Adapter Wraps Existing Store Logic
 
-## Why Database Is Deferred
+The current product already has substantial tested business logic for:
 
-RM9 is closing as a controlled pilot package, not a full production SaaS rollout.
+- analytics
+- invoice parsing
+- review-confirm
+- OCR draft handling
+- alerts
+- pilot import and export
 
-Local JSON persistence is enough to prove:
+The lowest-risk Phase 12 move is:
 
-- workspace reset/export/import safety
-- pilot data editing
-- recipe and dish setup persistence across reload
-- invoice and OCR review-confirm safety with persistence enabled
+1. keep existing logic stable
+2. load persistent state into the existing store shape
+3. persist the current dataset state back into relational tables
 
-Adding a real database in this sprint would create more churn than value.
+That preserves behavior while the SaaS data layer is introduced.
 
-## Required Adapter Responsibilities
+## What The DB Layer Stores
 
-A future database store must support the same `AppStore` contract as memory and file mode.
-
-At minimum it must handle:
-
-- datasets and dataset state lookup
+- users
+- workspaces
+- workspace memberships
+- restaurants
 - ingredients
 - recipes
+- recipe ingredients
 - dishes
 - suppliers
-- invoice drafts and confirmed invoices
+- purchase invoices
+- purchase invoice lines
 - ingredient cost history
 - supplier product matches
-- price alerts
+- price change alerts
 - OCR jobs
-- reset
-- export/import
+- audit logs
 
-## Non-Negotiable Safety Rules
+It also stores JSON snapshots where needed to preserve current invoice and OCR view parity without re-implementing every derived object immediately.
 
-- no fallback from `STORE_DRIVER=database` to memory
+## Non-Negotiable Rules
+
+- no silent fallback from `database` to `memory`
 - OCR still creates drafts only
-- invoice and OCR still require `review-confirm`
-- ingredient costs still change only after confirmation
-- import validation must still run before write
-- test mode must remain deterministic without a live database
+- `review-confirm` remains mandatory
+- no ingredient-cost mutation before confirmation
+- no blind OCR import
 
-## Recommended Future Shape
+## Known Gaps
 
-When a real database sprint starts:
-
-1. Add `DATABASE_URL`
-2. Implement `createDatabaseStore(...)`
-3. Wire `STORE_DRIVER=database` only after read/write/reset/export paths are verified
-4. Add database-specific integration tests
-5. Keep `validate:pilot` and `validate:env` green without requiring database by default
-
-## What A Future Database Sprint Should Prove
-
-- persistent pilot state survives process restart without file JSON
-- export/import remain compatible
-- reset remains per-dataset and deterministic
-- invoice and OCR safety boundary is unchanged
-- hosted deployment can use durable storage without relying on ephemeral filesystem behavior
+- live DB validation is skip-aware when `DATABASE_URL` is missing
+- auth is not live yet
+- per-user actor context is only a placeholder
+- production-grade migration rollout and rollback playbooks are still future work

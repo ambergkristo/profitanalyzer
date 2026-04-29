@@ -19,6 +19,7 @@ describe("OnboardingPage", () => {
     vi.mocked(apiClient.getAppConfig).mockResolvedValue({
       appMode: "pilot",
       version: "0.1.0",
+      productionReadinessClaimed: false,
       storage: {
         driver: "file",
         dataDirConfigured: true,
@@ -26,10 +27,15 @@ describe("OnboardingPage", () => {
         writable: true,
         persistenceWarning: "File storage is active for this pilot workspace."
       },
+      workspaceContext: {
+        workspaceId: "workspace-pilot-workspace",
+        restaurantId: "pilot-workspace"
+      },
       features: {
         invoiceIntake: true,
         ocrFixture: true,
-        externalOcrConfigured: false
+        externalOcrConfigured: false,
+        databaseConfigured: false
       }
     });
     vi.mocked(apiClient.getDemoDatasets).mockResolvedValue([

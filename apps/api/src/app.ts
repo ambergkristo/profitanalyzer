@@ -76,6 +76,14 @@ export interface CreateAppOptions {
   store?: AppStore;
 }
 
+function isStoreBootstrapExempt(pathname: string) {
+  return (
+    pathname === "/health/deep" ||
+    pathname === "/app/config" ||
+    pathname === "/ocr/providers"
+  );
+}
+
 export function createApp(options: CreateAppOptions = {}) {
   const app = express();
   const dataStore = options.store ?? createStore({ env: options.env });
@@ -90,6 +98,21 @@ export function createApp(options: CreateAppOptions = {}) {
 
   app.use(cors());
   app.use(express.json());
+
+  app.use("/api", async (request, response, next) => {
+    if (isStoreBootstrapExempt(request.path)) {
+      next();
+      return;
+    }
+
+    try {
+      await dataStore.initialize();
+      next();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Store initialization failed.";
+      response.status(503).json({ message });
+    }
+  });
 
   app.get("/health", (_request, response) => {
     response.json({ ok: true, service: "profit-analyzer-api" });
@@ -120,7 +143,7 @@ export function createApp(options: CreateAppOptions = {}) {
     response.json(dataStore.getIngredients(datasetId));
   });
 
-  app.post("/api/ingredients", (request, response) => {
+  app.post("/api/ingredients", async (request, response) => {
     const body = request.body as {
       dataset?: unknown;
       name?: unknown;
@@ -160,11 +183,11 @@ export function createApp(options: CreateAppOptions = {}) {
       return;
     }
 
-    dataStore.flushDataset(dataset.id);
+    await dataStore.flushDatasetAsync(dataset.id);
     response.status(201).json(ingredient);
   });
 
-  app.patch("/api/ingredients/:id", (request, response) => {
+  app.patch("/api/ingredients/:id", async (request, response) => {
     const body = request.body as {
       dataset?: unknown;
       name?: unknown;
@@ -221,7 +244,7 @@ export function createApp(options: CreateAppOptions = {}) {
       return;
     }
 
-    dataStore.flushDataset(dataset.id);
+    await dataStore.flushDatasetAsync(dataset.id);
     response.json(ingredient);
   });
 
@@ -250,7 +273,7 @@ export function createApp(options: CreateAppOptions = {}) {
     response.json(dataStore.getRecipes(datasetId));
   });
 
-  app.post("/api/recipes", (request, response) => {
+  app.post("/api/recipes", async (request, response) => {
     const body = request.body as {
       dataset?: unknown;
       id?: unknown;
@@ -326,11 +349,11 @@ export function createApp(options: CreateAppOptions = {}) {
       return;
     }
 
-    dataStore.flushDataset(dataset.id);
+    await dataStore.flushDatasetAsync(dataset.id);
     response.status(201).json(recipe);
   });
 
-  app.patch("/api/recipes/:id", (request, response) => {
+  app.patch("/api/recipes/:id", async (request, response) => {
     const body = request.body as {
       dataset?: unknown;
       name?: unknown;
@@ -430,7 +453,7 @@ export function createApp(options: CreateAppOptions = {}) {
       return;
     }
 
-    dataStore.flushDataset(dataset.id);
+    await dataStore.flushDatasetAsync(dataset.id);
     response.json(recipe);
   });
 
@@ -444,7 +467,7 @@ export function createApp(options: CreateAppOptions = {}) {
     response.json(dataStore.getDishes(datasetId));
   });
 
-  app.post("/api/dishes", (request, response) => {
+  app.post("/api/dishes", async (request, response) => {
     const body = request.body as {
       dataset?: unknown;
       id?: unknown;
@@ -492,11 +515,11 @@ export function createApp(options: CreateAppOptions = {}) {
       return;
     }
 
-    dataStore.flushDataset(dataset.id);
+    await dataStore.flushDatasetAsync(dataset.id);
     response.status(201).json(dish);
   });
 
-  app.patch("/api/dishes/:id", (request, response) => {
+  app.patch("/api/dishes/:id", async (request, response) => {
     const body = request.body as {
       dataset?: unknown;
       name?: unknown;
@@ -561,7 +584,7 @@ export function createApp(options: CreateAppOptions = {}) {
       return;
     }
 
-    dataStore.flushDataset(dataset.id);
+    await dataStore.flushDatasetAsync(dataset.id);
     response.json(dish);
   });
 
@@ -590,7 +613,7 @@ export function createApp(options: CreateAppOptions = {}) {
     response.json(dataStore.exportDataset(dataset.id));
   });
 
-  app.post("/api/import", (request, response) => {
+  app.post("/api/import", async (request, response) => {
     const datasetId = parseDatasetId(request.query.dataset);
     const body = request.body as unknown;
     const protectedSeededDatasetIds = new Set(listDemoDatasets().map((dataset) => dataset.id));
@@ -624,8 +647,13 @@ export function createApp(options: CreateAppOptions = {}) {
       return;
     }
 
-    const sanitizedPayload = sanitizeImportedPayload(body as Parameters<typeof sanitizeImportedPayload>[0], targetDatasetId);
-    response.status(201).json(dataStore.importDataset(sanitizedPayload, targetDatasetId));
+    const sanitizedPayload = sanitizeImportedPayload(
+      body as Parameters<typeof sanitizeImportedPayload>[0],
+      targetDatasetId
+    );
+    const imported = dataStore.importDataset(sanitizedPayload, targetDatasetId);
+    await dataStore.flushDatasetAsync(imported.datasetId);
+    response.status(201).json(imported);
   });
 
   app.post("/api/import/validate", (request, response) => {
@@ -656,7 +684,7 @@ export function createApp(options: CreateAppOptions = {}) {
     response.status(validation.valid ? 200 : 400).json(validation);
   });
 
-  app.post("/api/datasets/:id/reset", (request, response) => {
+  app.post("/api/datasets/:id/reset", async (request, response) => {
     const datasetId = request.params.id;
     const summary = dataStore.resetDataset(datasetId);
 
@@ -665,10 +693,11 @@ export function createApp(options: CreateAppOptions = {}) {
       return;
     }
 
+    await dataStore.flushDatasetAsync(datasetId);
     response.json(summary);
   });
 
-  app.post("/api/invoices/parse-mock", (request, response) => {
+  app.post("/api/invoices/parse-mock", async (request, response) => {
     const body = request.body as {
       dataset?: unknown;
       sampleInvoiceId?: unknown;
@@ -693,11 +722,11 @@ export function createApp(options: CreateAppOptions = {}) {
       return;
     }
 
-    dataStore.flushDataset(dataset.id);
+    await dataStore.flushDatasetAsync(dataset.id);
     response.json(parsed);
   });
 
-  app.post("/api/invoices/manual-draft", (request, response) => {
+  app.post("/api/invoices/manual-draft", async (request, response) => {
     const body = request.body as {
       dataset?: unknown;
       supplierName?: unknown;
@@ -796,11 +825,11 @@ export function createApp(options: CreateAppOptions = {}) {
       return;
     }
 
-    dataStore.flushDataset(dataset.id);
+    await dataStore.flushDatasetAsync(dataset.id);
     response.json(draft);
   });
 
-  app.post("/api/ocr/invoices/upload", upload.single("file"), (request, response) => {
+  app.post("/api/ocr/invoices/upload", upload.single("file"), async (request, response) => {
     const body = request.body as { dataset?: unknown; provider?: unknown };
     const datasetId = parseDatasetId(request.query.dataset ?? body.dataset);
     const dataset = resolveDatasetOrRespond(datasetId, response, dataStore);
@@ -837,71 +866,67 @@ export function createApp(options: CreateAppOptions = {}) {
 
     const sanitizedFileName = sanitizeUploadedFileName(file.originalname);
 
-    void ocrRegistry
-      .parse(provider.config.id, {
+    try {
+      const { provider: resolvedProvider, result } = await ocrRegistry.parse(provider.config.id, {
         fileName: sanitizedFileName,
         mimeType: file.mimetype,
         fileSizeBytes: file.size,
         buffer: file.buffer
-      })
-      .then(({ provider: resolvedProvider, result }) => {
-        const draft = dataStore.createOcrDraft(
-          {
-            providerConfig: resolvedProvider,
-            parsedResult: result,
-            fileName: sanitizedFileName,
-            mimeType: file.mimetype,
-            fileSizeBytes: file.size
-          },
-          datasetId
-        );
+      });
+      const draft = dataStore.createOcrDraft(
+        {
+          providerConfig: resolvedProvider,
+          parsedResult: result,
+          fileName: sanitizedFileName,
+          mimeType: file.mimetype,
+          fileSizeBytes: file.size
+        },
+        datasetId
+      );
 
-        if (!draft) {
-          response.status(404).json({ message: `Unknown dataset "${datasetId}".` });
-          return;
-        }
+      if (!draft) {
+        response.status(404).json({ message: `Unknown dataset "${datasetId}".` });
+        return;
+      }
 
-        dataStore.flushDataset(dataset.id);
-        response.json(draft);
-      })
-      .catch((error: unknown) => {
-        const failureReason =
-          error instanceof Error ? error.message : "OCR parse failed.";
-        const failedJob = dataStore.createFailedOcrJob(
-          {
-            providerConfig: provider.config,
-            fileName: sanitizedFileName,
-            mimeType: file.mimetype,
-            fileSizeBytes: file.size,
-            failureReason
-          },
-          datasetId
-        );
+      await dataStore.flushDatasetAsync(dataset.id);
+      response.json(draft);
+    } catch (error: unknown) {
+      const failureReason = error instanceof Error ? error.message : "OCR parse failed.";
+      const failedJob = dataStore.createFailedOcrJob(
+        {
+          providerConfig: provider.config,
+          fileName: sanitizedFileName,
+          mimeType: file.mimetype,
+          fileSizeBytes: file.size,
+          failureReason
+        },
+        datasetId
+      );
 
-        if (error instanceof OcrProviderNotConfiguredError) {
-          dataStore.flushDataset(dataset.id);
-          response.status(503).json({
-            message: failureReason,
-            ocrJob: failedJob
-          });
-          return;
-        }
+      await dataStore.flushDatasetAsync(dataset.id);
 
-        if (error instanceof OcrProviderExecutionError) {
-          dataStore.flushDataset(dataset.id);
-          response.status(422).json({
-            message: failureReason,
-            ocrJob: failedJob
-          });
-          return;
-        }
-
-        dataStore.flushDataset(dataset.id);
-        response.status(500).json({
+      if (error instanceof OcrProviderNotConfiguredError) {
+        response.status(503).json({
           message: failureReason,
           ocrJob: failedJob
         });
+        return;
+      }
+
+      if (error instanceof OcrProviderExecutionError) {
+        response.status(422).json({
+          message: failureReason,
+          ocrJob: failedJob
+        });
+        return;
+      }
+
+      response.status(500).json({
+        message: failureReason,
+        ocrJob: failedJob
       });
+    }
   });
 
   app.get("/api/ocr/jobs", (request, response) => {
@@ -946,7 +971,7 @@ export function createApp(options: CreateAppOptions = {}) {
     response.json(invoice);
   });
 
-  app.post("/api/invoices/:id/review-confirm", (request, response) => {
+  app.post("/api/invoices/:id/review-confirm", async (request, response) => {
     const body = request.body as {
       dataset?: unknown;
       supplierId?: unknown;
@@ -1049,7 +1074,7 @@ export function createApp(options: CreateAppOptions = {}) {
         return;
       }
 
-      dataStore.flushDataset(dataset.id);
+      await dataStore.flushDatasetAsync(dataset.id);
       response.json({
         confirmationSummary: result.confirmationSummary,
         costHistory: result.costHistory,

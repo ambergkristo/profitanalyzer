@@ -6,11 +6,14 @@ const defaultVersion = "0.1.0";
 export interface AppConfigResponse {
   appMode: AppMode;
   version: string;
+  productionReadinessClaimed: false;
   storage: ReturnType<AppStore["getStorageInfo"]>;
+  workspaceContext: ReturnType<AppStore["getStoreContext"]>;
   features: {
     invoiceIntake: boolean;
     ocrFixture: boolean;
     externalOcrConfigured: boolean;
+    databaseConfigured: boolean;
   };
 }
 
@@ -18,6 +21,7 @@ export interface DeepHealthResponse {
   ok: boolean;
   storage: ReturnType<AppStore["getStorageInfo"]>;
   appMode: AppMode;
+  workspaceContext: ReturnType<AppStore["getStoreContext"]>;
   externalOcrConfigured: boolean;
   checks: Array<{
     key: string;
@@ -46,11 +50,14 @@ export function buildAppConfig(
   return {
     appMode: getAppMode(environment),
     version: getAppVersion(environment),
+    productionReadinessClaimed: false,
     storage: store.getStorageInfo(),
+    workspaceContext: store.getStoreContext(),
     features: {
       invoiceIntake: true,
       ocrFixture: true,
-      externalOcrConfigured: externalProvider?.isConfigured ?? false
+      externalOcrConfigured: externalProvider?.isConfigured ?? false,
+      databaseConfigured: store.getStorageInfo().databaseConfigured ?? false
     }
   };
 }
@@ -68,6 +75,21 @@ export function buildDeepHealth(
       key: "storage",
       status: "warn",
       message: config.storage.persistenceWarning ?? "Memory storage is active. Restarting the API resets pilot data."
+    });
+  } else if (config.storage.driver === "database") {
+    storageChecks.push({
+      key: "database_config",
+      status: config.storage.databaseConfigured ? "pass" : "fail",
+      message: config.storage.databaseConfigured
+        ? "Database store is configured."
+        : "Database store is selected, but DATABASE_URL is missing."
+    });
+    storageChecks.push({
+      key: "database_connectivity",
+      status: config.storage.readable && config.storage.writable ? "pass" : "fail",
+      message: config.storage.readable && config.storage.writable
+        ? "Database connectivity checks passed."
+        : config.storage.persistenceWarning ?? "Database connectivity checks failed."
     });
   } else {
     storageChecks.push({
@@ -90,9 +112,14 @@ export function buildDeepHealth(
     ok:
       config.storage.driver === "memory"
         ? true
+        : config.storage.driver === "database"
+          ? Boolean(config.storage.databaseConfigured) &&
+            config.storage.readable &&
+            config.storage.writable
         : config.storage.readable && config.storage.writable,
     storage: config.storage,
     appMode: config.appMode,
+    workspaceContext: config.workspaceContext,
     externalOcrConfigured: config.features.externalOcrConfigured,
     checks: [
       ...storageChecks,

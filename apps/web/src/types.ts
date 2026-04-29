@@ -75,7 +75,7 @@ export type InvoiceDraftResponse = ParsedInvoiceDraft;
 export type OcrInvoiceDraftResponse = OcrDraftResponse;
 export type InvoiceDetailResponse = StoredInvoiceView;
 export type AppMode = "demo" | "pilot";
-export type PersistenceDriver = "memory" | "file";
+export type PersistenceDriver = "memory" | "file" | "database";
 export type RecipeInputUnit = Ingredient["unit"] | "kg" | "l" | "pcs" | "pack";
 
 export interface StorageInfo {
@@ -84,17 +84,25 @@ export interface StorageInfo {
   dataDirConfigured: boolean;
   readable: boolean;
   writable: boolean;
+  databaseConfigured?: boolean;
   persistenceWarning: string | null;
 }
 
 export interface AppConfigResponse {
   appMode: AppMode;
   version: string;
+  productionReadinessClaimed: false;
   storage: StorageInfo;
+  workspaceContext: {
+    workspaceId: string;
+    restaurantId: string;
+    actorUserId?: string;
+  } | null;
   features: {
     invoiceIntake: boolean;
     ocrFixture: boolean;
     externalOcrConfigured: boolean;
+    databaseConfigured: boolean;
   };
 }
 
@@ -102,6 +110,7 @@ export interface DeepHealthResponse {
   ok: boolean;
   storage: StorageInfo;
   appMode: AppMode;
+  workspaceContext: AppConfigResponse["workspaceContext"];
   externalOcrConfigured: boolean;
   checks: Array<{
     key: string;

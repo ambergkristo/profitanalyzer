@@ -28,6 +28,7 @@ describe("Layout", () => {
     vi.mocked(apiClient.getAppConfig).mockResolvedValue({
       appMode: "demo",
       version: "0.1.0",
+      productionReadinessClaimed: false,
       storage: {
         driver: "memory",
         dataDirConfigured: false,
@@ -35,10 +36,15 @@ describe("Layout", () => {
         writable: true,
         persistenceWarning: "This demo build uses memory storage. Restarting the API resets data."
       },
+      workspaceContext: {
+        workspaceId: "workspace-mixed-restaurant",
+        restaurantId: "mixed-restaurant"
+      },
       features: {
         invoiceIntake: true,
         ocrFixture: true,
-        externalOcrConfigured: false
+        externalOcrConfigured: false,
+        databaseConfigured: false
       }
     });
 

@@ -508,6 +508,21 @@ export function createDataStore(options: CreateDataStoreOptions = {}): AppStore 
 
   return {
     restaurantData: sampleRestaurantData,
+    initialize() {
+      return Promise.resolve();
+    },
+    getStoreContext(datasetId?: string) {
+      const session = getSession(datasetId);
+
+      if (!session) {
+        return null;
+      }
+
+      return {
+        workspaceId: `workspace-${session.dataset.id}`,
+        restaurantId: session.dataset.id
+      };
+    },
     getStorageType() {
       return storageInfo.driver;
     },
@@ -519,6 +534,9 @@ export function createDataStore(options: CreateDataStoreOptions = {}): AppStore 
     },
     flushDataset(datasetId: string) {
       return getSession(datasetId) !== null;
+    },
+    flushDatasetAsync(datasetId: string) {
+      return Promise.resolve(getSession(datasetId) !== null);
     },
     listDatasets(): DemoDatasetSummary[] {
       return buildDatasetSummaries().map((dataset) => ({ ...dataset }));

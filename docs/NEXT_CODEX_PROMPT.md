@@ -5,33 +5,41 @@ C:\Users\Kasutaja\Documents\Profit analyzer
 Canonical GitHub repository:
 https://github.com/ambergkristo/profitanalyzer
 
-Current strategic state:
-- RM1-RM9 are complete as a controlled pilot and founding-partner foundation
-- the new target is production SaaS readiness
-- production SaaS readiness is not yet claimed
+Current strategic target:
+Production SaaS readiness.
 
-Next recommended sprint:
-PHASE 12 — Database + Multi-Tenant Data Model
+Current roadmap:
+- Phase 11 — Production SaaS Architecture Reset — complete
+- Phase 12 — Database + Multi-Tenant Data Model — implemented as SaaS data foundation
+- Phase 13 — Auth + Workspace Access Control — start now
+
+Sprint name:
+PHASE 13 — Auth + Workspace Access Control
 
 Primary goal:
-Implement a DB adapter behind the existing store boundary and introduce the first real tenant or workspace data model without breaking the current memory or file store flows.
+Add the first real auth and workspace access-control layer on top of the new DB foundation without weakening invoice or OCR safety.
 
 Requirements:
-- implement DB adapter behind the existing store boundary
-- evaluate and select Prisma or Postgres approach if appropriate
-- add tenant, workspace, restaurant, and user data model
-- preserve `STORE_DRIVER=memory|file` for tests and demo where useful
-- migrate ingredients, recipes, dishes, invoices, alerts, and OCR jobs into the DB model
-- add migrations and seeds
-- add a validation command if needed
-- protect against cross-workspace data leakage at the data layer
-- do not add full auth yet unless only minimal placeholder user context is needed
-- do not add billing
+- select and implement an auth/session strategy appropriate for the current stack
+- add user session flow
+- replace default store context with authenticated workspace context
+- add workspace membership enforcement
+- support owner, admin, and member roles
+- protect API routes
+- add route guards in the frontend
+- prove no cross-workspace leakage through authenticated requests
+- keep `memory` and `file` drivers usable for demo and local test workflows if practical
+- keep OCR draft-only review-confirm safety unchanged
+- keep mobile-first invoice workflow usable
+
+Important:
+- do not add billing yet
 - do not add POS integration
 - do not add accounting
 - do not add inventory management
-- keep OCR review-confirm safety
-- keep mobile-first invoice requirements
+- do not add supplier API sync
+- do not weaken review-confirm
+- do not allow blind OCR import
 
 Validation:
 
@@ -48,6 +56,7 @@ npm run validate:ocr
 npm run validate:ocr:provider
 npm run validate:pilot
 npm run validate:env
+npm run validate:db
 npm audit
 ```
 
@@ -55,7 +64,7 @@ If benchmark or audit commands exist, run them too.
 
 Git:
 
-- commit with: `docs: reset roadmap for production SaaS readiness`
+- commit with: `feat: add auth and workspace access control foundation`
 - push to `origin/main`
 - verify:
 
@@ -67,12 +76,10 @@ git rev-parse origin/main
 
 Final report must include:
 
-- what docs changed
-- new production SaaS strategy summary
-- new roadmap phases
-- explicit statement that current product is not production SaaS ready yet
-- next recommended implementation sprint
-- validation command results
+- auth strategy selected
+- workspace isolation strategy
+- protected route status
+- validation results
 - current branch
 - remote origin URL
 - latest commit

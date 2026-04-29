@@ -65,6 +65,46 @@ describe("api", () => {
     expect(body.features.externalOcrConfigured).toBe(false);
   });
 
+  it("reports database storage as unconfigured without silently falling back", async () => {
+    const response = await request(
+      buildApp({
+        env: {
+          ...process.env,
+          STORE_DRIVER: "database",
+          DATABASE_URL: ""
+        }
+      })
+    ).get("/api/app/config");
+    const body = response.body as {
+      storage: {
+        driver: string;
+        databaseConfigured?: boolean;
+      };
+      productionReadinessClaimed: boolean;
+    };
+
+    expect(response.status).toBe(200);
+    expect(body.storage.driver).toBe("database");
+    expect(body.storage.databaseConfigured).toBe(false);
+    expect(body.productionReadinessClaimed).toBe(false);
+  });
+
+  it("blocks data endpoints when database storage is selected without DATABASE_URL", async () => {
+    const response = await request(
+      buildApp({
+        env: {
+          ...process.env,
+          STORE_DRIVER: "database",
+          DATABASE_URL: ""
+        }
+      })
+    ).get("/api/analytics/overview?dataset=mixed-restaurant");
+    const body = response.body as { message: string };
+
+    expect(response.status).toBe(503);
+    expect(body.message).toContain("DATABASE_URL");
+  });
+
   it("returns deep health details without exposing secrets", async () => {
     const response = await request(buildApp()).get("/api/health/deep");
     const body = response.body as {

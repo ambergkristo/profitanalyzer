@@ -8,9 +8,16 @@
     "build": "tsup src/index.ts --format esm --target node20 --clean",
     "test": "vitest run",
     "lint": "eslint \"src/**/*.ts\" \"test/**/*.ts\"",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate deploy",
+    "db:seed": "tsx prisma/seed.ts"
+  },
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
   },
   "dependencies": {
+    "@prisma/client": "^6.7.0",
     "cors": "^2.8.5",
     "express": "^4.21.2",
     "multer": "^2.0.2"
@@ -24,6 +31,7 @@
     "@types/supertest": "^6.0.3",
     "eslint": "^9.18.0",
     "globals": "^15.14.0",
+    "prisma": "^6.7.0",
     "supertest": "^7.0.0",
     "tsup": "^8.3.5",
     "tsx": "^4.19.2",

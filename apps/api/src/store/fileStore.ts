@@ -224,6 +224,9 @@ export function createFileStore(options: FileStoreOptions): AppStore {
       persistDatasetFromStore(resolvedDatasetId);
       return true;
     },
+    flushDatasetAsync(datasetId) {
+      return Promise.resolve(this.flushDataset(datasetId));
+    },
     parseMockInvoice(sampleInvoiceId, datasetId) {
       const draft = baseStore.parseMockInvoice(sampleInvoiceId, datasetId);
       const resolvedDatasetId = resolveDatasetId(datasetId);

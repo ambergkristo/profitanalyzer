@@ -2,7 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 
 const allowedAppModes = ["demo", "pilot"] as const;
-const allowedStoreDrivers = ["memory", "file"] as const;
+const allowedStoreDrivers = ["memory", "file", "database"] as const;
 const allowedOcrProviders = ["fixture", "external_env", "disabled"] as const;
 
 function main() {
@@ -38,6 +38,10 @@ function main() {
     } catch {
       failures.push(`DATA_DIR is not readable and writable: ${resolvedDataDir}`);
     }
+  }
+
+  if (storeDriver === "database" && !process.env.DATABASE_URL?.trim()) {
+    failures.push("DATABASE_URL is required when STORE_DRIVER=database.");
   }
 
   if (ocrProvider === "external_env") {
