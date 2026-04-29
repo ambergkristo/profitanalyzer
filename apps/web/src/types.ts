@@ -76,6 +76,7 @@ export type OcrInvoiceDraftResponse = OcrDraftResponse;
 export type InvoiceDetailResponse = StoredInvoiceView;
 export type AppMode = "demo" | "pilot";
 export type PersistenceDriver = "memory" | "file";
+export type RecipeInputUnit = Ingredient["unit"] | "kg" | "l" | "pcs" | "pack";
 
 export interface StorageInfo {
   driver: PersistenceDriver;
@@ -110,6 +111,9 @@ export interface DeepHealthResponse {
 }
 
 export interface DatasetExportPayload {
+  schemaVersion: 1;
+  datasetId: string;
+  exportedFromAppVersion: string;
   dataset: import("../../../packages/core/src/index.js").DemoDatasetDefinition;
   ingredients: Ingredient[];
   recipes: Recipe[];
@@ -120,6 +124,21 @@ export interface DatasetExportPayload {
   alerts: PriceChangeAlert[];
   invoices: StoredInvoiceView[];
   ocrJobs: OcrInvoiceJob[];
+}
+
+export interface ImportValidationSummary {
+  ingredients: number;
+  recipes: number;
+  dishes: number;
+  suppliers: number;
+  invoices: number;
+}
+
+export interface ImportValidationReport {
+  valid: boolean;
+  summary: ImportValidationSummary;
+  warnings: string[];
+  errors: string[];
 }
 
 export interface ResetDatasetSummary {
@@ -164,13 +183,21 @@ export interface RecipeCreateRequest {
   id?: string;
   name: string;
   yield: number;
-  ingredients: Recipe["ingredients"];
+  ingredients: Array<{
+    ingredientId: string;
+    quantity: number;
+    unit: RecipeInputUnit;
+  }>;
 }
 
 export interface RecipeUpdateRequest {
   name?: string;
   yield?: number;
-  ingredients?: Recipe["ingredients"];
+  ingredients?: Array<{
+    ingredientId: string;
+    quantity: number;
+    unit: RecipeInputUnit;
+  }>;
 }
 
 export interface DishCreateRequest {

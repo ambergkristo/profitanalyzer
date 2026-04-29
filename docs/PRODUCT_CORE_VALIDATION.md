@@ -13,11 +13,11 @@ Implemented:
 - RM7: structured invoice cost intake, review-confirm, cost history, supplier alerts, and invoice-driven actions
 - RM8: OCR adapter boundary, fixture upload intake, and validation safety gate
 - RM8 provider pilot: env-gated external OCR provider seam, benchmark harness, and live-skip validation
-- RM9: pilot readiness foundation with app config, store boundary, onboarding, reset/export/import safety, and file-store persistence validation
+- RM9: controlled pilot package with app config, store boundary, onboarding, reset/export/import safety, recipe setup, file-store persistence validation, and env validation
 
 Not started:
 
-- full persistent pilot package hardening
+- production SaaS hardening beyond the controlled pilot package
 
 ## RM5 Validation Approach
 
@@ -256,3 +256,29 @@ It still does not prove:
 - real OCR accuracy on live supplier invoices
 - long-term operational durability under multi-user or hosted conditions
 - disciplined ongoing data maintenance by restaurant staff
+
+## Sprint 12 RM9 Controlled Pilot Note
+
+Sprint 12 closes RM9 at the controlled pilot package level:
+
+- recipe setup is editable in pilot tools
+- dish-to-recipe linkage is editable and affects analytics
+- import dry-run validation blocks broken references before workspace replacement
+- export includes schema metadata
+- `validate:env` checks app mode, store driver, data-dir safety, and OCR env readiness
+- `validate:pilot` now proves recipe edits and dish linkage survive file-store reload
+
+This proves:
+
+- a single controlled restaurant workspace can be prepared without editing JSON manually for routine setup
+- local pilot persistence, reset, export, import validation, invoice flow, and OCR fixture flow can coexist
+- the review-confirm safety model still gates all cost updates even after pilot setup hardening
+
+It still does not prove:
+
+- production SaaS durability
+- live OCR accuracy on real supplier invoices
+- willingness to pay
+- retention
+- long-term hosted persistence choice
+- real-world onboarding effort at scale

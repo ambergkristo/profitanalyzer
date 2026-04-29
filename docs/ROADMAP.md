@@ -346,7 +346,7 @@ Still out of scope after Sprint 9:
 
 ## RM9 - First Customer Ready / Pilot Package
 
-Status: partial in MAX SPRINT 11.
+Status: completed in MAX SPRINT 12 as a controlled pilot package. This is not a production SaaS claim.
 
 ### Goal
 
@@ -417,6 +417,30 @@ Built now:
 Still out of scope after Sprint 11:
 
 - database-backed persistence
+- auth or RBAC
+- billing
+- multi-tenant SaaS concerns
+- production OCR accuracy claims
+
+### Current Sprint 12 Result
+
+Built now:
+
+- pilot-tools recipe editing with ingredient lines and yield control
+- dish-to-recipe setup editing in pilot tools
+- import dry-run validation before destructive import
+- export metadata with `schemaVersion`, `datasetId`, and app version
+- deterministic `npm run validate:env`
+- DB adapter plan and placeholder seam without claiming live database support
+- updated onboarding and pilot setup flow for a controlled restaurant workspace
+
+Important note:
+
+RM9 is complete as a controlled pilot package. It is not a claim of production SaaS readiness.
+
+Still out of scope after Sprint 12:
+
+- actual database-backed persistence
 - auth or RBAC
 - billing
 - multi-tenant SaaS concerns

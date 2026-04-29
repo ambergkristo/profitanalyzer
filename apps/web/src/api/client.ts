@@ -2,7 +2,10 @@ import type {
   AppConfigResponse,
   DatasetExportPayload,
   DeepHealthResponse,
+  DishCreateRequest,
+  DishUpdateRequest,
   ImportDatasetSummary,
+  ImportValidationReport,
   InvoiceConfirmResponse,
   InvoiceDetailResponse,
   InvoiceDraftResponse,
@@ -145,30 +148,12 @@ export const apiClient = {
     getJson<DishAction[]>(buildDatasetPath("/api/analytics/actions", datasetId)),
   getDishDetail: (dishId: string, datasetId?: string) =>
     getJson<DishDetailResponse>(buildDatasetPath(`/api/analytics/dish/${dishId}`, datasetId)),
-  createDish: (
-    body: {
-      id?: string;
-      name: string;
-      recipeId: string;
-      priceCents: number;
-      salesVolume: number;
-    },
-    datasetId?: string
-  ) =>
+  createDish: (body: DishCreateRequest, datasetId?: string) =>
     postJson<import("../types.js").Dish>(buildDatasetPath("/api/dishes", datasetId), {
       ...body,
       dataset: datasetId
     }),
-  updateDish: (
-    dishId: string,
-    body: {
-      name?: string;
-      recipeId?: string;
-      priceCents?: number;
-      salesVolume?: number;
-    },
-    datasetId?: string
-  ) =>
+  updateDish: (dishId: string, body: DishUpdateRequest, datasetId?: string) =>
     patchJson<import("../types.js").Dish>(buildDatasetPath(`/api/dishes/${dishId}`, datasetId), {
       ...body,
       dataset: datasetId
@@ -183,6 +168,8 @@ export const apiClient = {
     getJson<DatasetExportPayload>(buildDatasetPath("/api/export", datasetId)),
   exportDatasetBlob: (datasetId?: string) =>
     getBlob(buildDatasetPath("/api/export", datasetId)),
+  validateImportDataset: (payload: DatasetExportPayload, datasetId?: string) =>
+    postJson<ImportValidationReport>(buildDatasetPath("/api/import/validate", datasetId), payload),
   importDataset: (payload: DatasetExportPayload, datasetId?: string) =>
     postJson<ImportDatasetSummary>(buildDatasetPath("/api/import", datasetId), payload),
   resetDataset: (datasetId: string) =>

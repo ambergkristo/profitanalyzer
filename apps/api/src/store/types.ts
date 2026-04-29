@@ -38,6 +38,9 @@ export interface StorageInfo {
 }
 
 export interface DatasetExportPayload {
+  schemaVersion: 1;
+  datasetId: string;
+  exportedFromAppVersion: string;
   dataset: DemoDatasetDefinition;
   ingredients: Ingredient[];
   recipes: DemoDatasetDefinition["data"]["recipes"];
@@ -48,6 +51,21 @@ export interface DatasetExportPayload {
   alerts: PriceChangeAlert[];
   invoices: StoredInvoiceView[];
   ocrJobs: OcrInvoiceJob[];
+}
+
+export interface ImportValidationSummary {
+  ingredients: number;
+  recipes: number;
+  dishes: number;
+  suppliers: number;
+  invoices: number;
+}
+
+export interface ImportValidationReport {
+  valid: boolean;
+  summary: ImportValidationSummary;
+  warnings: string[];
+  errors: string[];
 }
 
 export interface ResetDatasetSummary {
@@ -124,6 +142,7 @@ export interface AppStore {
   getStorageType(): PersistenceType;
   getStorageInfo(): StorageInfo;
   getResolvedDataset(datasetId?: string): DemoDatasetDefinition | null;
+  flushDataset(datasetId: string): boolean;
   listDatasets(): DemoDatasetSummary[];
   getDemoDatasets(): DemoDatasetSummary[];
   getMockInvoiceSampleSummaries(): MockInvoiceSampleSummary[];

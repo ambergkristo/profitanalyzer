@@ -25,6 +25,7 @@ npm run validate:invoice
 npm run validate:ocr
 npm run validate:ocr:provider
 npm run validate:pilot
+npm run validate:env
 ```
 
 ## Node and Ports
@@ -49,6 +50,10 @@ Optional OCR:
 - `OCR_PROVIDER_ENDPOINT`
 - `OCR_PROVIDER_TIMEOUT_MS`
 - `OCR_PROVIDER_MAX_RETRIES`
+
+Future only:
+
+- `DATABASE_URL`
 
 ## Health Endpoints
 
@@ -98,12 +103,19 @@ Run before any demo or pilot deployment:
 - `npm run validate:invoice`
 - `npm run validate:ocr`
 - `npm run validate:pilot`
+- `npm run validate:env`
 
 If using file mode locally, also confirm:
 
 - `DATA_DIR` exists or can be created
 - the backend process can read and write the directory
 - deep health returns `storage.driver = file` and `ok = true`
+
+Hosted pilot caution:
+
+- if the host filesystem is ephemeral, `STORE_DRIVER=file` is not enough
+- use a persistent disk or keep the deployment in controlled demo mode until a database-backed store exists
+- the database path is still future work and is documented in `docs/DB_ADAPTER_PLAN.md`
 
 ## Known Limitations
 
@@ -114,3 +126,4 @@ If using file mode locally, also confirm:
 - no POS integration
 - no supplier API sync
 - no production OCR accuracy claim
+- no production database-backed persistence yet

@@ -20,7 +20,11 @@ import {
   OcrProviderNotConfiguredError
 } from "./ocr/shared.js";
 import { createStore } from "./store/storeFactory.js";
-import { isValidDatasetImportPayload, sanitizeImportedPayload } from "./store/exportImport.js";
+import {
+  sanitizeImportedPayload,
+  validateDatasetImportPayload
+} from "./store/exportImport.js";
+import { normalizeRecipeIngredientEntries } from "./store/validation.js";
 import type { AppStore } from "./store/types.js";
 
 function isPositivePrice(value: unknown): value is number {
@@ -125,7 +129,8 @@ export function createApp(options: CreateAppOptions = {}) {
       id?: unknown;
     };
     const datasetId = parseDatasetId(body.dataset ?? request.query.dataset);
-    if (!resolveDatasetOrRespond(datasetId, response, dataStore)) {
+    const dataset = resolveDatasetOrRespond(datasetId, response, dataStore);
+    if (!dataset) {
       return;
     }
 
@@ -155,6 +160,7 @@ export function createApp(options: CreateAppOptions = {}) {
       return;
     }
 
+    dataStore.flushDataset(dataset.id);
     response.status(201).json(ingredient);
   });
 
@@ -166,7 +172,8 @@ export function createApp(options: CreateAppOptions = {}) {
       unit?: unknown;
     };
     const datasetId = parseDatasetId(body.dataset ?? request.query.dataset);
-    if (!resolveDatasetOrRespond(datasetId, response, dataStore)) {
+    const dataset = resolveDatasetOrRespond(datasetId, response, dataStore);
+    if (!dataset) {
       return;
     }
 
@@ -214,12 +221,14 @@ export function createApp(options: CreateAppOptions = {}) {
       return;
     }
 
+    dataStore.flushDataset(dataset.id);
     response.json(ingredient);
   });
 
   app.get("/api/ingredients/:id/cost-history", (request, response) => {
     const datasetId = parseDatasetId(request.query.dataset);
-    if (!resolveDatasetOrRespond(datasetId, response, dataStore)) {
+    const dataset = resolveDatasetOrRespond(datasetId, response, dataStore);
+    if (!dataset) {
       return;
     }
 
@@ -250,7 +259,8 @@ export function createApp(options: CreateAppOptions = {}) {
       ingredients?: unknown;
     };
     const datasetId = parseDatasetId(body.dataset ?? request.query.dataset);
-    if (!resolveDatasetOrRespond(datasetId, response, dataStore)) {
+    const dataset = resolveDatasetOrRespond(datasetId, response, dataStore);
+    if (!dataset) {
       return;
     }
 
@@ -272,11 +282,26 @@ export function createApp(options: CreateAppOptions = {}) {
         (ingredient) =>
           !isNonEmptyString(ingredient.ingredientId) ||
           !isFinitePositive(ingredient.quantity) ||
-          !isIngredientUnit(ingredient.unit)
+          !isInvoiceUnit(ingredient.unit)
       )
     ) {
       response.status(400).json({
         message: "Recipe ingredients require ingredientId, positive quantity, and a valid unit."
+      });
+      return;
+    }
+
+    const normalizedIngredients = normalizeRecipeIngredientEntries(
+      recipeIngredients.map((ingredient) => ({
+        ingredientId: ingredient.ingredientId as string,
+        quantity: ingredient.quantity as number,
+        unit: ingredient.unit as InvoiceUnit
+      }))
+    );
+
+    if (normalizedIngredients.errors.length > 0 || !normalizedIngredients.normalized) {
+      response.status(400).json({
+        message: normalizedIngredients.errors.join(" ")
       });
       return;
     }
@@ -286,11 +311,7 @@ export function createApp(options: CreateAppOptions = {}) {
         id: typeof body.id === "string" ? body.id : undefined,
         name: body.name,
         yield: body.yield,
-        ingredients: recipeIngredients.map((ingredient) => ({
-          ingredientId: ingredient.ingredientId as string,
-          quantity: ingredient.quantity as number,
-          unit: ingredient.unit as IngredientUnit
-        }))
+        ingredients: normalizedIngredients.normalized
       },
       datasetId
     );
@@ -305,6 +326,7 @@ export function createApp(options: CreateAppOptions = {}) {
       return;
     }
 
+    dataStore.flushDataset(dataset.id);
     response.status(201).json(recipe);
   });
 
@@ -316,7 +338,8 @@ export function createApp(options: CreateAppOptions = {}) {
       ingredients?: unknown;
     };
     const datasetId = parseDatasetId(body.dataset ?? request.query.dataset);
-    if (!resolveDatasetOrRespond(datasetId, response, dataStore)) {
+    const dataset = resolveDatasetOrRespond(datasetId, response, dataStore);
+    if (!dataset) {
       return;
     }
 
@@ -356,7 +379,7 @@ export function createApp(options: CreateAppOptions = {}) {
           (ingredient) =>
             !isNonEmptyString(ingredient.ingredientId) ||
             !isFinitePositive(ingredient.quantity) ||
-            !isIngredientUnit(ingredient.unit)
+            !isInvoiceUnit(ingredient.unit)
         )
       ) {
         response.status(400).json({
@@ -365,10 +388,25 @@ export function createApp(options: CreateAppOptions = {}) {
         return;
       }
 
-      recipeIngredients = typedIngredients.map((ingredient) => ({
-        ingredientId: ingredient.ingredientId as string,
-        quantity: ingredient.quantity as number,
-        unit: ingredient.unit as IngredientUnit
+      const normalizedIngredients = normalizeRecipeIngredientEntries(
+        typedIngredients.map((ingredient) => ({
+          ingredientId: ingredient.ingredientId as string,
+          quantity: ingredient.quantity as number,
+          unit: ingredient.unit as InvoiceUnit
+        }))
+      );
+
+      if (normalizedIngredients.errors.length > 0 || !normalizedIngredients.normalized) {
+        response.status(400).json({
+          message: normalizedIngredients.errors.join(" ")
+        });
+        return;
+      }
+
+      recipeIngredients = normalizedIngredients.normalized.map((ingredient) => ({
+        ingredientId: ingredient.ingredientId,
+        quantity: ingredient.quantity,
+        unit: ingredient.unit
       }));
     }
 
@@ -392,12 +430,14 @@ export function createApp(options: CreateAppOptions = {}) {
       return;
     }
 
+    dataStore.flushDataset(dataset.id);
     response.json(recipe);
   });
 
   app.get("/api/dishes", (request, response) => {
     const datasetId = parseDatasetId(request.query.dataset);
-    if (!resolveDatasetOrRespond(datasetId, response, dataStore)) {
+    const dataset = resolveDatasetOrRespond(datasetId, response, dataStore);
+    if (!dataset) {
       return;
     }
 
@@ -414,18 +454,19 @@ export function createApp(options: CreateAppOptions = {}) {
       salesVolume?: unknown;
     };
     const datasetId = parseDatasetId(body.dataset ?? request.query.dataset);
-    if (!resolveDatasetOrRespond(datasetId, response, dataStore)) {
+    const dataset = resolveDatasetOrRespond(datasetId, response, dataStore);
+    if (!dataset) {
       return;
     }
 
     if (
       !isNonEmptyString(body.name) ||
       !isNonEmptyString(body.recipeId) ||
-      !isFinitePositive(body.priceCents) ||
+      !isFiniteNonNegative(body.priceCents) ||
       !isFiniteNonNegative(body.salesVolume)
     ) {
       response.status(400).json({
-        message: "Dish requires name, recipeId, positive priceCents, and non-negative salesVolume."
+        message: "Dish requires name, recipeId, non-negative priceCents, and non-negative salesVolume."
       });
       return;
     }
@@ -451,6 +492,7 @@ export function createApp(options: CreateAppOptions = {}) {
       return;
     }
 
+    dataStore.flushDataset(dataset.id);
     response.status(201).json(dish);
   });
 
@@ -463,7 +505,8 @@ export function createApp(options: CreateAppOptions = {}) {
       salesVolume?: unknown;
     };
     const datasetId = parseDatasetId(body.dataset ?? request.query.dataset);
-    if (!resolveDatasetOrRespond(datasetId, response, dataStore)) {
+    const dataset = resolveDatasetOrRespond(datasetId, response, dataStore);
+    if (!dataset) {
       return;
     }
 
@@ -487,8 +530,8 @@ export function createApp(options: CreateAppOptions = {}) {
       return;
     }
 
-    if (body.priceCents !== undefined && !isFinitePositive(body.priceCents)) {
-      response.status(400).json({ message: "priceCents must be positive." });
+    if (body.priceCents !== undefined && !isFiniteNonNegative(body.priceCents)) {
+      response.status(400).json({ message: "priceCents must be non-negative." });
       return;
     }
 
@@ -518,12 +561,14 @@ export function createApp(options: CreateAppOptions = {}) {
       return;
     }
 
+    dataStore.flushDataset(dataset.id);
     response.json(dish);
   });
 
   app.get("/api/suppliers", (request, response) => {
     const datasetId = parseDatasetId(request.query.dataset);
-    if (!resolveDatasetOrRespond(datasetId, response, dataStore)) {
+    const dataset = resolveDatasetOrRespond(datasetId, response, dataStore);
+    if (!dataset) {
       return;
     }
 
@@ -561,20 +606,54 @@ export function createApp(options: CreateAppOptions = {}) {
         ? body.dataset.id
         : undefined);
 
-    if (!isValidDatasetImportPayload(body)) {
-      response.status(400).json({ message: "Import payload shape is invalid." });
+    const validation = validateDatasetImportPayload(body);
+
+    if (!validation.valid) {
+      response.status(400).json({
+        message: "Import payload failed validation.",
+        ...validation
+      });
       return;
     }
 
     if (targetDatasetId && protectedSeededDatasetIds.has(targetDatasetId)) {
       response.status(400).json({
-        message: "Import can only target a pilot workspace, not a seeded demo dataset."
+        message: "Import can only target a pilot workspace, not a seeded demo dataset.",
+        ...validation
       });
       return;
     }
 
-    const sanitizedPayload = sanitizeImportedPayload(body, targetDatasetId);
+    const sanitizedPayload = sanitizeImportedPayload(body as Parameters<typeof sanitizeImportedPayload>[0], targetDatasetId);
     response.status(201).json(dataStore.importDataset(sanitizedPayload, targetDatasetId));
+  });
+
+  app.post("/api/import/validate", (request, response) => {
+    const datasetId = parseDatasetId(request.query.dataset);
+    const body = request.body as unknown;
+    const protectedSeededDatasetIds = new Set(listDemoDatasets().map((dataset) => dataset.id));
+    const targetDatasetId =
+      datasetId ||
+      (typeof body === "object" &&
+      body !== null &&
+      "dataset" in body &&
+      typeof body.dataset === "object" &&
+      body.dataset !== null &&
+      "id" in body.dataset &&
+      typeof body.dataset.id === "string"
+        ? body.dataset.id
+        : undefined);
+    const validation = validateDatasetImportPayload(body);
+
+    if (targetDatasetId && protectedSeededDatasetIds.has(targetDatasetId)) {
+      validation.valid = false;
+      validation.errors = [
+        ...validation.errors,
+        "Import can only target a pilot workspace, not a seeded demo dataset."
+      ];
+    }
+
+    response.status(validation.valid ? 200 : 400).json(validation);
   });
 
   app.post("/api/datasets/:id/reset", (request, response) => {
@@ -595,7 +674,8 @@ export function createApp(options: CreateAppOptions = {}) {
       sampleInvoiceId?: unknown;
     };
     const datasetId = parseDatasetId(request.query.dataset ?? body.dataset);
-    if (!resolveDatasetOrRespond(datasetId, response, dataStore)) {
+    const dataset = resolveDatasetOrRespond(datasetId, response, dataStore);
+    if (!dataset) {
       return;
     }
 
@@ -613,6 +693,7 @@ export function createApp(options: CreateAppOptions = {}) {
       return;
     }
 
+    dataStore.flushDataset(dataset.id);
     response.json(parsed);
   });
 
@@ -625,7 +706,8 @@ export function createApp(options: CreateAppOptions = {}) {
       lines?: unknown;
     };
     const datasetId = parseDatasetId(request.query.dataset ?? body.dataset);
-    if (!resolveDatasetOrRespond(datasetId, response, dataStore)) {
+    const dataset = resolveDatasetOrRespond(datasetId, response, dataStore);
+    if (!dataset) {
       return;
     }
 
@@ -714,13 +796,15 @@ export function createApp(options: CreateAppOptions = {}) {
       return;
     }
 
+    dataStore.flushDataset(dataset.id);
     response.json(draft);
   });
 
   app.post("/api/ocr/invoices/upload", upload.single("file"), (request, response) => {
     const body = request.body as { dataset?: unknown; provider?: unknown };
     const datasetId = parseDatasetId(request.query.dataset ?? body.dataset);
-    if (!resolveDatasetOrRespond(datasetId, response, dataStore)) {
+    const dataset = resolveDatasetOrRespond(datasetId, response, dataStore);
+    if (!dataset) {
       return;
     }
 
@@ -777,6 +861,7 @@ export function createApp(options: CreateAppOptions = {}) {
           return;
         }
 
+        dataStore.flushDataset(dataset.id);
         response.json(draft);
       })
       .catch((error: unknown) => {
@@ -794,6 +879,7 @@ export function createApp(options: CreateAppOptions = {}) {
         );
 
         if (error instanceof OcrProviderNotConfiguredError) {
+          dataStore.flushDataset(dataset.id);
           response.status(503).json({
             message: failureReason,
             ocrJob: failedJob
@@ -802,6 +888,7 @@ export function createApp(options: CreateAppOptions = {}) {
         }
 
         if (error instanceof OcrProviderExecutionError) {
+          dataStore.flushDataset(dataset.id);
           response.status(422).json({
             message: failureReason,
             ocrJob: failedJob
@@ -809,6 +896,7 @@ export function createApp(options: CreateAppOptions = {}) {
           return;
         }
 
+        dataStore.flushDataset(dataset.id);
         response.status(500).json({
           message: failureReason,
           ocrJob: failedJob
@@ -818,7 +906,8 @@ export function createApp(options: CreateAppOptions = {}) {
 
   app.get("/api/ocr/jobs", (request, response) => {
     const datasetId = parseDatasetId(request.query.dataset);
-    if (!resolveDatasetOrRespond(datasetId, response, dataStore)) {
+    const dataset = resolveDatasetOrRespond(datasetId, response, dataStore);
+    if (!dataset) {
       return;
     }
 
@@ -866,7 +955,8 @@ export function createApp(options: CreateAppOptions = {}) {
       lines?: unknown;
     };
     const datasetId = parseDatasetId(request.query.dataset ?? body.dataset);
-    if (!resolveDatasetOrRespond(datasetId, response, dataStore)) {
+    const dataset = resolveDatasetOrRespond(datasetId, response, dataStore);
+    if (!dataset) {
       return;
     }
 
@@ -892,10 +982,35 @@ export function createApp(options: CreateAppOptions = {}) {
         typeof typedLine.parsedQuantity !== "number" ||
         !Number.isFinite(typedLine.parsedQuantity) ||
         typedLine.parsedQuantity <= 0 ||
-        !isInvoiceUnit(typedLine.parsedUnit) ||
-        !isPositivePrice(typedLine.parsedUnitPriceCents)
+        !isInvoiceUnit(typedLine.parsedUnit)
       ) {
         response.status(400).json({ message: "Each reviewed line must include valid id, status, quantity, unit, and unit price." });
+        return;
+      }
+
+      if (
+        typedLine.parsedUnitPriceCents !== undefined &&
+        !isPositivePrice(typedLine.parsedUnitPriceCents)
+      ) {
+        response.status(400).json({ message: "parsedUnitPriceCents must be positive when provided." });
+        return;
+      }
+
+      if (
+        typedLine.parsedLineTotalCents !== undefined &&
+        !isPositivePrice(typedLine.parsedLineTotalCents)
+      ) {
+        response.status(400).json({ message: "parsedLineTotalCents must be positive when provided." });
+        return;
+      }
+
+      if (
+        typedLine.parsedUnitPriceCents === undefined &&
+        typedLine.parsedLineTotalCents === undefined
+      ) {
+        response.status(400).json({
+          message: "Each reviewed line must include unit price or line total."
+        });
         return;
       }
 
@@ -934,6 +1049,7 @@ export function createApp(options: CreateAppOptions = {}) {
         return;
       }
 
+      dataStore.flushDataset(dataset.id);
       response.json({
         confirmationSummary: result.confirmationSummary,
         costHistory: result.costHistory,

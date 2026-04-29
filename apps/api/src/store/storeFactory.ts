@@ -1,7 +1,7 @@
 import type { AppStore } from "./types.js";
 import { createMemoryStore } from "./memoryStore.js";
 import { createFileStore } from "./fileStore.js";
-import { getAppMode } from "../config.js";
+import { getAppMode, getAppVersion } from "../config.js";
 import { getDataDir, getStoreDriver, resolveDataDir } from "./persistence.js";
 
 export interface CreateStoreOptions {
@@ -19,9 +19,13 @@ export function createStore(options: CreateStoreOptions = {}): AppStore {
       dataDir: resolveDataDir({
         ...environment,
         DATA_DIR: getDataDir(environment)
-      })
+      }),
+      exportedFromAppVersion: getAppVersion(environment)
     });
   }
 
-  return createMemoryStore({ appMode });
+  return createMemoryStore({
+    appMode,
+    exportedFromAppVersion: getAppVersion(environment)
+  });
 }

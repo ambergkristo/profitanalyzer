@@ -18,7 +18,7 @@ const steps = [
     index: "02",
     title: "Set menu baseline",
     message:
-      "Start with the sample menu, then use JSON import or future manual setup to prepare the first restaurant workspace."
+      "Start with the sample menu, then use Pilot Tools to edit ingredients, recipes, dish links, or validate a JSON import before replacing the workspace."
   },
   {
     index: "03",
@@ -67,7 +67,12 @@ export function OnboardingPage() {
   }
 
   const { config, datasets } = bootstrap.data;
-  const selectedDataset = getScenarioMeta(datasets, datasetId) ?? datasets[0];
+  const selectedDataset =
+    (datasetId ? getScenarioMeta(datasets, datasetId) : undefined) ??
+    (config.appMode === "pilot"
+      ? datasets.find((dataset) => dataset.id === "pilot-workspace")
+      : undefined) ??
+    datasets[0];
 
   return (
     <div className="space-y-6">
@@ -96,12 +101,23 @@ export function OnboardingPage() {
               <p className="mt-3 text-sm leading-6 text-text">
                 {selectedDataset?.ownerDiagnosis ?? "Choose a dataset to begin."}
               </p>
+              <p className="mt-2 text-sm leading-6 text-muted">
+                {config.storage.driver === "file"
+                  ? "Changes persist to local pilot data files."
+                  : "Changes reset when the API restarts because memory storage is active."}
+              </p>
               <div className="mt-4 flex flex-wrap gap-3">
                 <Link
                   className="rounded-full border border-accent/30 bg-accent/10 px-4 py-2 text-sm text-accent transition hover:border-accent/60"
                   to={{ pathname: "/", search: buildDatasetSearch(selectedDataset?.id) }}
                 >
-                  Open demo dashboard
+                  {config.appMode === "demo" ? "Open demo dashboard" : "Open pilot dashboard"}
+                </Link>
+                <Link
+                  className="rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-sm text-text transition hover:border-accent/30 hover:text-accent"
+                  to={{ pathname: "/pilot-tools", search: buildDatasetSearch(selectedDataset?.id) }}
+                >
+                  Start pilot workspace
                 </Link>
                 <Link
                   className="rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-sm text-text transition hover:border-accent/30 hover:text-accent"

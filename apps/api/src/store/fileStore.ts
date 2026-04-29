@@ -3,11 +3,12 @@ import path from "node:path";
 
 import { createMemoryStore } from "./memoryStore.js";
 import { type AppMode, type AppStore, type DatasetExportPayload, type StorageInfo } from "./types.js";
-import { isValidDatasetImportPayload, sanitizeImportedPayload } from "./exportImport.js";
+import { hasDatasetImportShape, sanitizeImportedPayload } from "./exportImport.js";
 
 interface FileStoreOptions {
   appMode: AppMode;
   dataDir: string;
+  exportedFromAppVersion?: string;
 }
 
 interface StoreMetadata {
@@ -60,7 +61,7 @@ function listJsonDatasetIds(directory: string) {
 function loadDatasetPayload(filePath: string): DatasetExportPayload {
   const raw = readJsonFile(filePath);
 
-  if (!isValidDatasetImportPayload(raw)) {
+  if (!hasDatasetImportShape(raw)) {
     throw new Error(`Invalid dataset payload in ${path.basename(filePath)}.`);
   }
 
@@ -75,7 +76,10 @@ function buildMetadata(datasetIds: string[]): StoreMetadata {
 }
 
 export function createFileStore(options: FileStoreOptions): AppStore {
-  const baseStore = createMemoryStore({ appMode: options.appMode });
+  const baseStore = createMemoryStore({
+    appMode: options.appMode,
+    exportedFromAppVersion: options.exportedFromAppVersion
+  });
   const datasetIds = new Set(baseStore.listDatasets().map((dataset) => dataset.id));
   const storageIssues: string[] = [];
   const baseDir = options.dataDir;
@@ -109,7 +113,7 @@ export function createFileStore(options: FileStoreOptions): AppStore {
   }
 
   function resolveDatasetId(datasetId?: string) {
-    return baseStore.getResolvedDataset(datasetId)?.id;
+    return datasetId ?? baseStore.getResolvedDataset()?.id;
   }
 
   try {
@@ -210,6 +214,16 @@ export function createFileStore(options: FileStoreOptions): AppStore {
       return "file";
     },
     getStorageInfo,
+    flushDataset(datasetId) {
+      const resolvedDatasetId = resolveDatasetId(datasetId);
+
+      if (!resolvedDatasetId || initFailed) {
+        return false;
+      }
+
+      persistDatasetFromStore(resolvedDatasetId);
+      return true;
+    },
     parseMockInvoice(sampleInvoiceId, datasetId) {
       const draft = baseStore.parseMockInvoice(sampleInvoiceId, datasetId);
       const resolvedDatasetId = resolveDatasetId(datasetId);

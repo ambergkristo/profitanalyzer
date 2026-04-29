@@ -1,23 +1,28 @@
 # Menu Profit Optimizer
 
-Menu Profit Optimizer is a restaurant decision product for margin repair, supplier-cost review, and price testing. Sprint 11 continues RM9 by adding a file-backed pilot store, storage-driver selection, minimal pilot data editing, and persistence validation without weakening the existing invoice and OCR review-confirm model.
+Menu Profit Optimizer is a restaurant decision product for margin repair, supplier-cost review, and price testing. Sprint 12 closes the controlled RM9 pilot package by adding recipe editing, safer import validation, environment validation, and DB-adapter readiness without weakening the existing invoice and OCR review-confirm model.
 
-## Sprint 11 Scope
+## Sprint 12 Scope
 
-MAX SPRINT 11 delivers:
+MAX SPRINT 12 delivers:
 
 - app mode separation with `APP_MODE=demo|pilot`
 - `STORE_DRIVER=memory|file`
 - `DATA_DIR=.data`
 - file-backed JSON store behind the existing API store boundary
+- minimal recipe editor in `/pilot-tools`
+- dish-to-recipe setup in pilot tools
+- import dry-run validation before destructive import
+- deterministic `npm run validate:env`
+- DB adapter readiness through a documented plan and placeholder seam
 - richer `GET /api/app/config`
 - richer `GET /api/health/deep`
 - dataset export, controlled import, and per-dataset reset
 - `/onboarding` route for first-run guidance
-- `/pilot-tools` route for export/reset/import safety tooling plus minimal ingredient and dish setup
+- `/pilot-tools` route for export/reset/import safety tooling plus ingredient, recipe, and dish setup
 - visible mode badge plus memory/file persistence messaging in the UI
 - deterministic `npm run validate:pilot`
-- updated pilot package, deployment, and data-setup documentation
+- updated pilot package, deployment, environment, DB-plan, and data-setup documentation
 
 Current non-goals remain explicit:
 
@@ -30,7 +35,7 @@ Current non-goals remain explicit:
 - no auth
 - no billing
 - no multi-tenant SaaS controls
-- no persistent database yet
+- no implemented database store yet
 
 ## App Modes
 
@@ -93,6 +98,7 @@ npm run validate:invoice
 npm run validate:ocr
 npm run validate:ocr:provider
 npm run validate:pilot
+npm run validate:env
 npm audit
 ```
 
@@ -121,6 +127,7 @@ npm audit
 - `GET /api/app/config`
 - `GET /api/demo/datasets`
 - `GET /api/export`
+- `POST /api/import/validate`
 - `POST /api/import`
 - `POST /api/datasets/:id/reset`
 - `GET /api/ingredients`
@@ -170,9 +177,10 @@ Most analytics, invoices, OCR, alerts, export, and cost-history endpoints suppor
 2. Optionally set `STORE_DRIVER=file` and `DATA_DIR=.data` for local persistence.
 3. Open `/onboarding`.
 4. Use `/pilot-tools` to export, import, or reset a workspace safely.
-5. Use `Pilot Data Setup` to adjust ingredients and dish pricing, or import a pilot workspace JSON.
-6. Run invoice cost intake and review-confirm.
-7. Review supplier alerts and dashboard actions.
+5. Use `Pilot Data Setup` to adjust ingredients, recipes, dish links, pricing, or validate/import a pilot workspace JSON.
+6. Open the dashboard and confirm margins update from recipe and dish edits.
+7. Run invoice cost intake and review-confirm.
+8. Review supplier alerts and dashboard actions.
 
 ## Product Notes
 
@@ -181,14 +189,17 @@ Most analytics, invoices, OCR, alerts, export, and cost-history endpoints suppor
 - Invoice, manual, sample, and OCR drafts all reuse the same confirmation boundary.
 - Fixture OCR remains the default path even when the external provider seam exists.
 - `validate:ocr:provider` skips cleanly when provider env is missing.
-- RM9 currently adds file-backed pilot persistence, not a database.
+- RM9 now closes as a controlled pilot package, not a production SaaS platform.
+- The database adapter is planned and typed, but not implemented.
 - Hosted deployments may still need persistent disk or a future database layer.
 
 ## Documentation
 
 - [docs/DEMO_READINESS.md](docs/DEMO_READINESS.md)
 - [docs/DEPLOYMENT_READINESS.md](docs/DEPLOYMENT_READINESS.md)
+- [docs/ENVIRONMENT_CONFIG.md](docs/ENVIRONMENT_CONFIG.md)
 - [docs/INVOICE_COST_INTAKE_IMPLEMENTATION.md](docs/INVOICE_COST_INTAKE_IMPLEMENTATION.md)
+- [docs/DB_ADAPTER_PLAN.md](docs/DB_ADAPTER_PLAN.md)
 - [docs/OCR_PROVIDER_SETUP.md](docs/OCR_PROVIDER_SETUP.md)
 - [docs/OCR_VISION_ADAPTER.md](docs/OCR_VISION_ADAPTER.md)
 - [docs/PILOT_DATA_SETUP.md](docs/PILOT_DATA_SETUP.md)

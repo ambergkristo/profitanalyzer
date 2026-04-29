@@ -4,6 +4,7 @@ import { createPilotWorkspaceDefinition } from "./seedStore.js";
 
 export interface CreateMemoryStoreOptions {
   appMode?: AppMode;
+  exportedFromAppVersion?: string;
 }
 
 export function createMemoryStore(options: CreateMemoryStoreOptions = {}): AppStore {
@@ -11,6 +12,7 @@ export function createMemoryStore(options: CreateMemoryStoreOptions = {}): AppSt
     options.appMode === "pilot" ? [createPilotWorkspaceDefinition()] : [];
 
   return createDataStore({
-    extraDatasets
+    extraDatasets,
+    exportedFromAppVersion: options.exportedFromAppVersion
   });
 }

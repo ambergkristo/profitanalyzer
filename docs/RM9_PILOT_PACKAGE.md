@@ -4,6 +4,8 @@
 
 The current pilot package is a controlled first-restaurant build, not a production SaaS platform.
 
+RM9 is complete at the controlled pilot package level after Sprint 12.
+
 Included now:
 
 - one workspace-oriented runtime through dataset selection
@@ -15,8 +17,11 @@ Included now:
 - OCR draft intake behind the review-confirm boundary
 - supplier alerts and invoice-driven ranked actions
 - export, import, and reset safety
-- minimal pilot data editing for ingredients and dish pricing
+- import dry-run validation before destructive import
+- minimal pilot data editing for ingredients, recipes, and dishes
 - onboarding and pilot tooling routes
+- environment validation through `npm run validate:env`
+- DB adapter plan and placeholder seam behind the store boundary
 
 Excluded now:
 
@@ -28,7 +33,7 @@ Excluded now:
 - inventory
 - POS integration
 - supplier API sync
-- persistent database
+- implemented database persistence
 - production OCR accuracy claims
 
 ## Demo Mode vs Pilot Mode
@@ -64,10 +69,11 @@ Excluded now:
 4. `npm run dev`
 5. Open `/onboarding`
 6. Open `/pilot-tools`
-7. Use `Pilot Data Setup` to adjust ingredients and dish pricing, or import a pilot dataset JSON
-8. Run invoice cost intake
-9. Confirm reviewed lines
-10. Review alerts and dashboard actions
+7. Use `Pilot Data Setup` to adjust ingredients, recipes, and dish links, or validate/import a pilot dataset JSON
+8. Open the dashboard to confirm cost and margin changes
+9. Run invoice cost intake
+10. Confirm reviewed lines
+11. Review alerts and dashboard actions
 
 ## Reset and Export
 
@@ -77,19 +83,23 @@ Excluded now:
 
 These are pilot-safety tools, not end-customer admin features.
 
-## Current Sprint 11 Result
+## Current Sprint 12 Result
 
 Built now:
 
 - file-backed JSON store behind the existing store boundary
 - persistent `pilot-workspace` support in pilot mode
 - app config and deep health storage reporting
-- pilot-tools ingredient and dish editing
+- pilot-tools ingredient, recipe, and dish editing
+- safer import flow with dry-run validation
+- export metadata with `schemaVersion`
 - deterministic file-store reload validation in `npm run validate:pilot`
+- deterministic environment validation in `npm run validate:env`
+- DB adapter plan and placeholder seam without claiming database support
 
 Still out of scope:
 
-- database-backed persistence
+- actual database-backed persistence
 - auth or RBAC
 - billing
 - production OCR accuracy claims
@@ -99,7 +109,7 @@ Still out of scope:
 Do not claim:
 
 - production OCR accuracy
-- durable storage
+- durable hosted storage without persistent disk or future DB work
 - multi-location support
 - accounting compatibility
 - inventory accuracy

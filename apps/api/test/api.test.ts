@@ -17,6 +17,7 @@ import type {
 } from "../../../packages/core/src/index.js";
 import { createApp } from "../src/app.js";
 import { createOcrProviderRegistry } from "../src/ocr/providerRegistry.js";
+import type { ImportValidationReport } from "../src/store/types.js";
 
 const buildApp = (options?: Parameters<typeof createApp>[0]) => createApp(options);
 
@@ -206,9 +207,17 @@ describe("api", () => {
   });
 
   it("exports a dataset, rejects invalid import payloads, and imports a pilot workspace safely", async () => {
-    const app = buildApp();
-    const exportResponse = await request(app).get("/api/export?dataset=mixed-restaurant");
+    const app = buildApp({
+      env: {
+        ...process.env,
+        APP_MODE: "pilot"
+      }
+    });
+    const exportResponse = await request(app).get("/api/export?dataset=pilot-workspace");
     const exported = exportResponse.body as {
+      schemaVersion: number;
+      datasetId: string;
+      exportedFromAppVersion: string;
       dataset: { id: string };
       ingredients: unknown[];
       recipes: unknown[];
@@ -216,7 +225,10 @@ describe("api", () => {
     };
 
     expect(exportResponse.status).toBe(200);
-    expect(exported.dataset.id).toBe("mixed-restaurant");
+    expect(exported.schemaVersion).toBe(1);
+    expect(exported.datasetId).toBe("pilot-workspace");
+    expect(exported.exportedFromAppVersion).toBeTruthy();
+    expect(exported.dataset.id).toBe("pilot-workspace");
 
     const invalidImportResponse = await request(app)
       .post("/api/import?dataset=pilot-workspace")
@@ -248,6 +260,81 @@ describe("api", () => {
     expect(pilotOverviewResponse.status).toBe(200);
   });
 
+  it("validates import payloads before write and reports bad references", async () => {
+    const app = buildApp({
+      env: {
+        ...process.env,
+        APP_MODE: "pilot"
+      }
+    });
+    const exportResponse = await request(app).get("/api/export?dataset=pilot-workspace");
+    const exported = exportResponse.body as {
+      dataset: { id: string; name: string; description: string };
+      ingredients: Array<{ id: string }>;
+      recipes: Array<{
+        id: string;
+        name: string;
+        yield: number;
+        ingredients: Array<{ ingredientId: string; quantity: number; unit: string }>;
+      }>;
+      dishes: Array<{
+        id: string;
+        name: string;
+        recipeId: string;
+        priceCents: number;
+        salesVolume: number;
+      }>;
+    };
+
+    const invalidValidateResponse = await request(app)
+      .post("/api/import/validate?dataset=pilot-workspace")
+      .send({
+        ...exported,
+        dataset: {
+          ...exported.dataset,
+          id: "pilot-workspace"
+        },
+        recipes: exported.recipes.map((recipe, index) =>
+          index === 0
+            ? {
+                ...recipe,
+                ingredients: recipe.ingredients.map((ingredient, ingredientIndex) =>
+                  ingredientIndex === 0
+                    ? { ...ingredient, ingredientId: "ghost-ingredient" }
+                    : ingredient
+                )
+              }
+            : recipe
+        ),
+        dishes: exported.dishes.map((dish, index) =>
+          index === 0 ? { ...dish, recipeId: "ghost-recipe" } : dish
+        )
+      });
+    const invalidValidateBody = invalidValidateResponse.body as ImportValidationReport;
+
+    expect(invalidValidateResponse.status).toBe(400);
+    expect(invalidValidateBody.valid).toBe(false);
+    expect(invalidValidateBody.errors.length).toBeGreaterThan(0);
+
+    const validValidateResponse = await request(app)
+      .post("/api/import/validate?dataset=pilot-workspace")
+      .send({
+        ...exported,
+        dataset: {
+          ...exported.dataset,
+          id: "pilot-workspace",
+          name: "Pilot Workspace",
+          description: "Validated import"
+        },
+        datasetId: "pilot-workspace"
+      });
+    const validValidateBody = validValidateResponse.body as ImportValidationReport;
+
+    expect(validValidateResponse.status).toBe(200);
+    expect(validValidateBody.valid).toBe(true);
+    expect(validValidateBody.summary.recipes).toBeGreaterThan(0);
+  });
+
   it("rejects imports that target seeded demo datasets", async () => {
     const exportResponse = await request(buildApp()).get("/api/export?dataset=mixed-restaurant");
     const exportedPayload = exportResponse.body as Record<string, unknown>;
@@ -257,7 +344,7 @@ describe("api", () => {
     const body = response.body as { message: string };
 
     expect(response.status).toBe(400);
-    expect(body.message).toContain("pilot workspace");
+    expect(body.message).toContain("Import payload failed validation.");
   });
 
   it("reports file-store config and deep health when STORE_DRIVER=file", async () => {
@@ -300,13 +387,119 @@ describe("api", () => {
       .send({ costPerUnitCents: -1 });
     const badDishResponse = await request(app)
       .patch("/api/dishes/dish-burger?dataset=mixed-restaurant")
-      .send({ priceCents: 0 });
+      .send({ priceCents: -1 });
 
     expect(badIngredientResponse.status).toBe(400);
     expect(badDishResponse.status).toBe(400);
   });
 
-  it("persists ingredient and dish edits after file-store reload", async () => {
+  it("creates and updates recipes with normalized units", async () => {
+    const app = buildApp({
+      env: {
+        ...process.env,
+        APP_MODE: "pilot"
+      }
+    });
+    const createResponse = await request(app)
+      .post("/api/recipes?dataset=pilot-workspace")
+      .send({
+        name: "Pilot Soup Base",
+        yield: 1,
+        ingredients: [
+          {
+            ingredientId: "pilot-romaine",
+            quantity: 0.5,
+            unit: "kg"
+          }
+        ]
+      });
+    const createdRecipe = createResponse.body as {
+      id: string;
+      ingredients: Array<{ quantity: number; unit: string }>;
+    };
+
+    expect(createResponse.status).toBe(201);
+    expect(createdRecipe.ingredients[0]?.quantity).toBe(500);
+    expect(createdRecipe.ingredients[0]?.unit).toBe("g");
+
+    const updateResponse = await request(app)
+      .patch(`/api/recipes/${createdRecipe.id}?dataset=pilot-workspace`)
+      .send({
+        ingredients: [
+          {
+            ingredientId: "pilot-romaine",
+            quantity: 0.75,
+            unit: "kg"
+          }
+        ]
+      });
+    const updatedRecipe = updateResponse.body as {
+      ingredients: Array<{ quantity: number }>;
+    };
+
+    expect(updateResponse.status).toBe(200);
+    expect(updatedRecipe.ingredients[0]?.quantity).toBe(750);
+  });
+
+  it("rejects invalid recipe ingredient references and invalid dish recipe references", async () => {
+    const app = buildApp({
+      env: {
+        ...process.env,
+        APP_MODE: "pilot"
+      }
+    });
+    const badRecipeResponse = await request(app)
+      .post("/api/recipes?dataset=pilot-workspace")
+      .send({
+        name: "Broken recipe",
+        yield: 1,
+        ingredients: [
+          {
+            ingredientId: "ghost-ingredient",
+            quantity: 1,
+            unit: "g"
+          }
+        ]
+      });
+    const badDishResponse = await request(app)
+      .patch("/api/dishes/pilot-dish-burger?dataset=pilot-workspace")
+      .send({
+        recipeId: "ghost-recipe"
+      });
+
+    expect(badRecipeResponse.status).toBe(400);
+    expect(badDishResponse.status).toBe(400);
+  });
+
+  it("changes analytics when a dish-linked recipe changes", async () => {
+    const app = buildApp({
+      env: {
+        ...process.env,
+        APP_MODE: "pilot"
+      }
+    });
+    const beforeResponse = await request(app).get("/api/analytics/overview?dataset=pilot-workspace");
+    const before = beforeResponse.body as OverviewMetrics;
+
+    const recipeUpdateResponse = await request(app)
+      .patch("/api/recipes/pilot-recipe-burger?dataset=pilot-workspace")
+      .send({
+        ingredients: [
+          { ingredientId: "pilot-bun", quantity: 1, unit: "piece" },
+          { ingredientId: "pilot-beef-patty", quantity: 240, unit: "g" },
+          { ingredientId: "pilot-cheddar", quantity: 25, unit: "g" }
+        ]
+      });
+
+    const afterResponse = await request(app).get("/api/analytics/overview?dataset=pilot-workspace");
+    const after = afterResponse.body as OverviewMetrics;
+
+    expect(recipeUpdateResponse.status).toBe(200);
+    expect(after.weightedAverageMarginPercent).toBeLessThan(before.weightedAverageMarginPercent);
+    expect(after.estimatedPeriodProfitCents).toBeLessThan(before.estimatedPeriodProfitCents);
+  });
+
+  it("persists recipe and dish edits after file-store reload", async () => {
     const tempDataDir = path.resolve(".tmp", "api-file-persistence-test");
     fs.rmSync(tempDataDir, { force: true, recursive: true });
 
@@ -319,53 +512,57 @@ describe("api", () => {
       };
       const app = buildApp({ env });
 
-      const ingredientUpdateResponse = await request(app)
-        .patch("/api/ingredients/pilot-romaine?dataset=pilot-workspace")
+      const recipeUpdateResponse = await request(app)
+        .patch("/api/recipes/pilot-recipe-burger?dataset=pilot-workspace")
         .send({
-          name: "Pilot Romaine Lettuce",
-          costPerUnitCents: 95,
-          unit: "g"
+          ingredients: [
+            { ingredientId: "pilot-bun", quantity: 1, unit: "piece" },
+            { ingredientId: "pilot-beef-patty", quantity: 220, unit: "g" },
+            { ingredientId: "pilot-cheddar", quantity: 25, unit: "g" }
+          ]
         });
       const dishUpdateResponse = await request(app)
         .patch("/api/dishes/pilot-dish-burger?dataset=pilot-workspace")
         .send({
+          recipeId: "pilot-recipe-burger",
           priceCents: 1590,
           salesVolume: 18
         });
 
-      expect(ingredientUpdateResponse.status).toBe(200);
+      expect(recipeUpdateResponse.status).toBe(200);
       expect(dishUpdateResponse.status).toBe(200);
 
       const reloadedApp = buildApp({ env });
-      const ingredientsResponse = await request(reloadedApp).get(
-        "/api/ingredients?dataset=pilot-workspace"
+      const recipesResponse = await request(reloadedApp).get(
+        "/api/recipes?dataset=pilot-workspace"
       );
       const dishesResponse = await request(reloadedApp).get("/api/dishes?dataset=pilot-workspace");
-      const ingredientsBody = ingredientsResponse.body as Array<{
+      const recipesBody = recipesResponse.body as Array<{
         id: string;
-        name: string;
-        costPerUnitCents: number;
+        ingredients: Array<{ ingredientId: string; quantity: number }>;
       }>;
       const dishesBody = dishesResponse.body as Array<{
         id: string;
+        recipeId: string;
         priceCents: number;
         salesVolume: number;
       }>;
 
-      expect(ingredientsResponse.status).toBe(200);
+      expect(recipesResponse.status).toBe(200);
       expect(dishesResponse.status).toBe(200);
       expect(
-        ingredientsBody.some(
-          (ingredient) =>
-            ingredient.id === "pilot-romaine" &&
-            ingredient.name === "Pilot Romaine Lettuce" &&
-            ingredient.costPerUnitCents === 95
+        recipesBody.some(
+          (recipe) =>
+            recipe.id === "pilot-recipe-burger" &&
+            recipe.ingredients.some(
+              (ingredient) =>
+                ingredient.ingredientId === "pilot-beef-patty" && ingredient.quantity === 220
+            )
         )
       ).toBe(true);
       expect(
         dishesBody.some(
-          (dish) =>
-            dish.id === "pilot-dish-burger" && dish.priceCents === 1590 && dish.salesVolume === 18
+          (dish) => dish.id === "pilot-dish-burger" && dish.recipeId === "pilot-recipe-burger" && dish.priceCents === 1590 && dish.salesVolume === 18
         )
       ).toBe(true);
     } finally {

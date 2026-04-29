@@ -169,6 +169,7 @@ function buildTargetMarginActions(
 export interface CreateDataStoreOptions {
   extraDatasets?: DemoDatasetDefinition[];
   storageInfo?: Partial<AppStore["getStorageInfo"] extends () => infer T ? T : never>;
+  exportedFromAppVersion?: string;
 }
 
 function resolveDatasetDefinition(
@@ -207,7 +208,7 @@ function createDatasetSession(
     baseline: {} as DatasetExportPayload
   };
 
-  session.baseline = serializeDatasetSession(session);
+  session.baseline = serializeDatasetSession(session, "0.1.0");
 
   return session;
 }
@@ -241,8 +242,14 @@ function createUniqueId(prefix: string, name: string, existingIds: Set<string>) 
   return candidate;
 }
 
-function serializeDatasetSession(session: DatasetSession): DatasetExportPayload {
+function serializeDatasetSession(
+  session: DatasetSession,
+  exportedFromAppVersion: string
+): DatasetExportPayload {
   return {
+    schemaVersion: 1,
+    datasetId: session.dataset.id,
+    exportedFromAppVersion,
     dataset: cloneDatasetDefinition(session.dataset),
     ingredients: session.ingredients.map((ingredient) => ({ ...ingredient })),
     recipes: session.recipes.map((recipe) => ({
@@ -396,6 +403,7 @@ export function createDataStore(options: CreateDataStoreOptions = {}): AppStore 
     ...defaultMemoryStorageInfo,
     ...(options.storageInfo ?? {})
   };
+  const exportedFromAppVersion = options.exportedFromAppVersion ?? "0.1.0";
   const defaultDatasetId = resolveDatasetDefinition(undefined, extraDatasets)?.id;
   const seededDatasetSummaries = [
     ...listDemoDatasets(),
@@ -417,6 +425,8 @@ export function createDataStore(options: CreateDataStoreOptions = {}): AppStore 
       if (!session) {
         return null;
       }
+
+      session.baseline = serializeDatasetSession(session, exportedFromAppVersion);
 
       sessions.set(resolvedId, session);
     }
@@ -506,6 +516,9 @@ export function createDataStore(options: CreateDataStoreOptions = {}): AppStore 
     },
     getResolvedDataset(datasetId?: string): DemoDatasetDefinition | null {
       return getSession(datasetId)?.dataset ?? null;
+    },
+    flushDataset(datasetId: string) {
+      return getSession(datasetId) !== null;
     },
     listDatasets(): DemoDatasetSummary[] {
       return buildDatasetSummaries().map((dataset) => ({ ...dataset }));
@@ -1162,7 +1175,7 @@ export function createDataStore(options: CreateDataStoreOptions = {}): AppStore 
         return null;
       }
 
-      return cloneExportPayload(serializeDatasetSession(session));
+      return cloneExportPayload(serializeDatasetSession(session, exportedFromAppVersion));
     },
     importDataset(payload: DatasetExportPayload, datasetId?: string): ImportDatasetSummary {
       const targetDatasetId = datasetId ?? payload.dataset.id;
