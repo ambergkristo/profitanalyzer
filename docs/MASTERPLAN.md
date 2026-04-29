@@ -2,54 +2,34 @@
 
 ## Strategic Thesis
 
-The strategy has changed.
+The product target is now production SaaS readiness.
 
-The product was shown to restaurant owners, but it still felt too incomplete for them to judge whether they genuinely need it. The new thesis is to build a product that feels complete enough to earn serious evaluation before asking high-credibility restaurant owners to judge it publicly.
+The current product is still a strong controlled pilot and founding-partner foundation, but that is no longer the end goal. Founding partner launch can still be used as the go-to-market motion, yet the product itself should be built toward SaaS production standard before any serious public push.
 
-Profit Analyzer is no longer treated as only a controlled pilot demo. It is now being built toward a founder-led launch product that can support real restaurant setup, real invoice review, and real weekly profit decisions.
+Controlled pilot is no longer the final target. It is now the validated foundation for a stricter production roadmap.
 
-## Launch Standard
+## Product Standard
 
-The app must be strong enough for real restaurant owners, chefs, and managers to use with their own menu and invoice data.
+The product is not ready until:
 
-That means the product must feel:
+- real database persistence exists
+- auth exists
+- restaurant or workspace tenancy exists
+- users can be attached to restaurants or workspaces
+- APIs are protected
+- data is isolated by workspace
+- invoice and OCR files are handled safely
+- review-confirm remains mandatory
+- mobile invoice scan and review works
+- onboarding works
+- deploy path is documented and tested
+- health and observability exists
+- backup and export strategy exists
+- privacy and security baseline exists
+- billing and lifetime-license model is defined
+- launch readiness checklist passes
 
-- complete enough to trust for real operating decisions
-- concrete enough to justify time investment
-- polished enough that the product quality does not hide the business value
-- safe enough that invoice or OCR mistakes cannot silently mutate costs
-- mobile-friendly enough that invoice intake works naturally from a phone
-
-Production SaaS readiness is still not claimed until infrastructure, auth, security, persistence, deployment, and operational controls are complete.
-
-## Launch Target
-
-The near-term launch target is:
-
-- 3-5 founding partner restaurants
-- each restaurant should have visible credibility in the restaurant scene
-- each relationship should be based on real product use, real feedback, and real economic value
-
-The goal is not shallow exposure. The goal is credible restaurant-owner advocacy if the product proves itself in actual use.
-
-## Founding Partner Offer
-
-Founding partner restaurants are offered lifetime access in exchange for:
-
-- real use of the product
-- real menu and invoice feedback
-- honest onboarding feedback
-- optional public advocacy, testimonial, or case-study permission only if the product proves real value
-
-This is not a paid endorsement program and not a fake social proof scheme.
-
-Public advocacy must only happen when:
-
-- the restaurant has used the product meaningfully
-- the restaurant believes it delivered real value
-- the restaurant explicitly permits public reference
-
-## Core Product Promise
+## Product Promise
 
 Profit Analyzer helps restaurants identify:
 
@@ -58,117 +38,78 @@ Profit Analyzer helps restaurants identify:
 - affected dishes after cost movement
 - concrete profit actions worth taking next
 
-The product promise is not generic analytics. The promise is decision clarity:
+The product promise is still decision clarity, not generic reporting.
 
-- what is leaking margin
-- what changed
-- what matters first
-- what action is worth taking this week
+## Production SaaS Readiness Direction
 
-## Product Standard Before Founding Partner Launch
+Production readiness now explicitly requires:
 
-These are non-negotiable requirements before the founding partner launch can be treated as ready:
+- real database persistence
+- auth and protected APIs
+- tenant and workspace isolation
+- safe deployment path
+- observability
+- backup and restore posture
+- billing readiness
+- privacy and security baseline
+- mobile-first onboarding and invoice handling
 
-- persistent database or safe hosted persistence
-- deployable app
-- restaurant onboarding
-- menu, dish, recipe, and ingredient setup
-- invoice upload and intake
-- review-confirm flow
-- supplier price alerts
-- decision dashboard
-- dish detail
-- simulator
-- export and backup
-- clear error handling
-- no blind OCR import
-- clear confidence and review states
-- production-grade UI
-- mobile-friendly invoice scan and review flow
+## Founding Partner Program As GTM Layer
 
-## Mobile-First Invoice Requirement
+Founding partner launch is still useful, but now it is treated as the commercial layer on top of a stronger product standard.
 
-Invoice cost intake is a core mobile workflow, not a desktop-only admin task.
+That means:
+
+- founding partners can still get lifetime access
+- founding partners can still provide real use and feedback
+- public advocacy can still happen when value is real
+- but the product should not be visibly unfinished when that motion starts
+
+## Mobile-First Requirement
+
+Mobile-first invoice intake remains a core requirement.
 
 The product must support:
 
-- opening the app on a phone
-- selecting or taking a photo of an invoice through browser file input
-- uploading image or PDF from mobile
-- converting OCR output into a review draft only
-- reviewing and confirming invoice lines from mobile
-- keeping ingredient costs unchanged until confirmation
+- phone access to the app
+- mobile file input and photo upload
+- OCR or manual draft creation only
+- mobile review-confirm before cost mutation
+- touch-friendly line editing
+- no desktop-only invoice critical path
 
-The review experience must not depend on desktop tables. Mobile invoice review must use responsive line cards with touch-friendly actions and obvious unresolved states.
+The product must not be considered production-launch ready unless:
 
-The product must not be considered founding-partner launch ready unless:
-
-- invoice scan and upload works on mobile
+- invoice upload works on mobile
 - invoice review-confirm works on mobile
-- dashboard and action views remain usable on mobile
-- no critical workflow requires a desktop-only layout
+- dashboard and actions remain usable on mobile
+- no critical workflow depends on desktop-only layout
 
-## Product Scope Boundaries
+## Non-Negotiable Safety Rules
 
-This product is:
-
-- a restaurant profit decision product
-- a menu economics layer
-- a supplier-cost change interpretation layer
-- a review-first invoice and OCR workflow
-
-This product is not, in this phase:
-
-- accounting software
-- a full inventory system
-- a POS replacement
-- a supplier ordering system
-- a blind document automation pipeline
-
-## What Must Feel Complete
-
-Before a founding partner restaurant is asked to use the product seriously, the app must feel coherent across the full loop:
-
-1. onboarding
-2. menu and cost setup
-3. invoice or OCR draft intake
-4. review-confirm
-5. supplier alert generation
-6. dashboard prioritization
-7. dish-level explanation
-8. simulator-assisted action testing
-
-If one part of that loop feels unfinished, the restaurant may judge the whole product as unfinished even if the core decision engine is strong.
-
-## Founding Partner Readiness Principles
-
-- Decision quality before feature sprawl
-- Trust before automation
-- Review before mutation
-- Mobile-first invoice handling
-- Founder-led onboarding before scaled onboarding
-- Clear output before advanced integrations
-- Data safety before aggressive OCR automation
-- Honest positioning over inflated readiness claims
+- no blind OCR import
+- no ingredient-cost mutation before review-confirm
+- no data leakage across workspaces
+- no unsafe file handling for invoices or OCR inputs
+- no public production-readiness claim before the SaaS checklist actually passes
 
 ## Honest Caveats
 
-Even after the product reaches founding partner launch quality, several risks remain unproven:
+Even after the strategy moves toward production SaaS readiness:
 
+- the current product is not production SaaS ready yet
 - willingness to pay is still not proven
 - retention is still not proven
 - OCR accuracy on real invoices is still not proven
-- onboarding effort with messy real restaurant data is still not proven
-- influencer-owner posts can create attention but do not prove product-market fit
+- influencer or partner advocacy can create attention, but it does not prove product-market fit
 
 ## Immediate Strategic Sequence
 
-The next sequence is:
-
-1. strategy reset and launch-ready masterplan
-2. production persistence and deployment foundation
-3. restaurant onboarding completion
-4. real invoice and OCR benchmark work
-5. founding partner launch package
-6. public launch surface
-7. paid SaaS readiness later
+1. production SaaS architecture reset
+2. database and multi-tenant data model
+3. auth and workspace access control
+4. production deployment and observability
+5. mobile-first restaurant onboarding
+6. production invoice and OCR pipeline
+7. billing and license readiness
+8. security, privacy, legal, and final launch gate

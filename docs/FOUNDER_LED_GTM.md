@@ -12,12 +12,14 @@ That created a problem:
 
 ## New Launch Sequence
 
-1. raise product quality to founding partner launch standard
+1. raise product quality toward production SaaS readiness
 2. secure 3-5 credible restaurant partners
 3. onboard them deeply
 4. prove value through real usage
 5. gain optional public advocacy only when earned
 6. convert credible partner proof into wider demand capture
+
+Public push should happen only after production SaaS readiness gates are met or consciously waived.
 
 ## Founding Partner Acquisition Plan
 
@@ -80,7 +82,8 @@ After real partner proof exists:
 ## Risk Controls
 
 - do not ask for praise before value is proven
-- do not claim production SaaS readiness
+- do not push publicly with visibly unfinished software
+- do not claim production SaaS readiness before the gates are actually met
 - do not claim real OCR accuracy before benchmark evidence
 - do not claim that influencer attention equals product-market fit
 
@@ -91,3 +94,5 @@ After real partner proof exists:
 - accounting or inventory completeness
 - automated invoice trustworthiness without review
 - broad market demand from a handful of partner relationships
+
+Influencer-owner posts can create attention only if the product experience is genuinely strong.

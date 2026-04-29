@@ -1,14 +1,14 @@
 # Menu Profit Optimizer
 
-Menu Profit Optimizer is a restaurant decision product for margin repair, supplier-cost review, and price testing. RM1-RM9 are complete as a controlled pilot package. The current strategic shift is to build the product to founding partner launch quality before asking influential restaurant owners to evaluate it publicly.
+Menu Profit Optimizer is a restaurant decision product for margin repair, supplier-cost review, and price testing. RM1-RM9 are complete as a controlled pilot and founding-partner foundation. The new explicit target is production SaaS readiness.
 
 ## Current Strategic Status
 
 - RM1-RM9 are complete as a controlled pilot package
-- production SaaS readiness is not claimed
-- new strategy: build to founding partner launch quality
-- next phases: Phase 10-16
-- next immediate work: strategy reset, then production persistence, deployment foundation, and stronger onboarding
+- production SaaS readiness is not claimed yet
+- new target: production SaaS readiness
+- next major phase: Phase 12 database + multi-tenant model
+- next immediate work: production SaaS architecture reset, then database, tenancy, auth, deployment, and onboarding
 
 ## Controlled Pilot Package Already Built
 
@@ -43,22 +43,24 @@ Current non-goals remain explicit:
 - no multi-tenant SaaS controls
 - no implemented database store yet
 
-## Founding Partner Launch Direction
+## Production SaaS Direction
 
-The product is now being raised from controlled pilot quality to founding partner launch quality.
+The product is now being raised from controlled pilot quality toward production SaaS readiness.
 
 That means the product must become:
 
-- complete enough for a serious restaurant owner to trust
+- database-backed
+- tenant-safe
+- authenticated
 - mobile-friendly for invoice upload and review
-- persistent and deployable
+- deployable and observable
 - strong enough for real menu and invoice onboarding
 
 It still does not mean:
 
-- production SaaS readiness
+- production SaaS readiness already exists
 - live OCR accuracy claims
-- billing, auth, or enterprise tenancy
+- auth, billing, or workspace isolation are complete today
 
 ## App Modes
 
@@ -78,10 +80,13 @@ It still does not mean:
 - pilot tooling is available for reset/export/import safety
 - file store can persist local pilot edits when enabled
 
-Founding partner launch standard adds:
+Production SaaS target adds:
 
+- database and tenancy
+- auth and protected APIs
+- deployment and observability
+- billing and license readiness
 - stronger onboarding
-- production persistence path
 - mobile-first invoice intake quality
 - real invoice benchmark work
 
@@ -222,7 +227,7 @@ Most analytics, invoices, OCR, alerts, export, and cost-history endpoints suppor
 - RM9 closes as a controlled pilot package, not a production SaaS platform.
 - The database adapter is planned and typed, but not implemented.
 - Hosted deployments may still need persistent disk or a future database layer.
-- Founding partner launch readiness now requires mobile-friendly invoice intake and review.
+- Production SaaS readiness now requires database, auth, tenancy, deployment, and mobile-friendly invoice intake and review.
 
 ## Documentation
 
@@ -231,6 +236,7 @@ Most analytics, invoices, OCR, alerts, export, and cost-history endpoints suppor
 - [docs/DEPLOYMENT_READINESS.md](docs/DEPLOYMENT_READINESS.md)
 - [docs/FOUNDING_PARTNER_PROGRAM.md](docs/FOUNDING_PARTNER_PROGRAM.md)
 - [docs/FOUNDER_LED_GTM.md](docs/FOUNDER_LED_GTM.md)
+- [docs/PRODUCTION_SAAS_GAP_AUDIT.md](docs/PRODUCTION_SAAS_GAP_AUDIT.md)
 - [docs/ENVIRONMENT_CONFIG.md](docs/ENVIRONMENT_CONFIG.md)
 - [docs/INVOICE_COST_INTAKE_IMPLEMENTATION.md](docs/INVOICE_COST_INTAKE_IMPLEMENTATION.md)
 - [docs/DB_ADAPTER_PLAN.md](docs/DB_ADAPTER_PLAN.md)

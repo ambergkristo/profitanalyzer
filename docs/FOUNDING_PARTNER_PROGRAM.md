@@ -2,7 +2,9 @@
 
 ## Purpose
 
-The founding partner program is meant to help Profit Analyzer reach real launch quality through real restaurant use.
+The founding partner program remains a GTM layer, not the final product standard.
+
+Profit Analyzer is now targeting production SaaS readiness. Founding partners are still useful, but they should be invited into a stronger product standard rather than visibly unfinished software.
 
 This is not a paid endorsement program and not a shortcut to fake credibility.
 
@@ -50,6 +52,8 @@ That offer should be tied to:
 
 It should not be positioned as payment for praise.
 
+The lifetime access promise should ultimately be represented inside the license or subscription model, not left as an undocumented handshake.
+
 ## Public Post And Case-Study Rules
 
 Public references must follow these rules:
@@ -59,6 +63,8 @@ Public references must follow these rules:
 - no public use of a restaurant name without explicit permission
 - case studies must be based on real product use
 - any testimonial must be voluntarily approved by the partner
+
+No fake endorsements, no purchased praise, and no performance claims without real usage evidence.
 
 ## Data Privacy And Trust Rules
 

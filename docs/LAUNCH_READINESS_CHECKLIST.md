@@ -1,6 +1,6 @@
 # Launch Readiness Checklist
 
-## Product
+## Product Readiness
 
 - [ ] dashboard
 - [ ] dish detail
@@ -11,49 +11,87 @@
 - [ ] onboarding
 - [ ] setup tools
 - [ ] export and backup
-- [ ] mobile-friendly invoice upload
-- [ ] mobile-friendly invoice review-confirm
-- [ ] mobile-friendly dashboard and dish detail
 
-## Technical
+## Mobile Readiness
 
-- [ ] DB or safe production persistence
-- [ ] deployment
+- [ ] mobile invoice upload
+- [ ] mobile invoice review-confirm
+- [ ] mobile line-card editing
+- [ ] mobile dashboard readability
+- [ ] mobile simulator usability
+- [ ] no desktop-only critical path
+
+## SaaS Data Readiness
+
+- [ ] production database
+- [ ] workspace or tenant model
+- [ ] restaurant data isolation
+- [ ] migration strategy
+- [ ] seed strategy
+
+## Auth And Access Readiness
+
+- [ ] user model
+- [ ] auth flow
+- [ ] protected APIs
+- [ ] workspace membership
+- [ ] role model
+- [ ] no cross-workspace leakage
+
+## Invoice And OCR Safety
+
+- [ ] OCR remains draft-only
+- [ ] review-confirm mandatory
+- [ ] confidence and warning states clear
+- [ ] cost history auditable
+- [ ] no blind import
+- [ ] real OCR benchmark completed
+
+## Deployment Readiness
+
+- [ ] deploy profile
 - [ ] env validation
-- [ ] health checks
-- [ ] backups
-- [ ] security basics
-- [ ] error handling
-- [ ] logging
+- [ ] health and deep health
+- [ ] database connectivity
+- [ ] rollout and rollback notes
 
-## Commercial
+## Monitoring And Error Handling
+
+- [ ] structured logging
+- [ ] error handling baseline
+- [ ] failure visibility
+- [ ] operational alerts or equivalent visibility
+
+## Backup And Export
+
+- [ ] export works
+- [ ] backup strategy defined
+- [ ] restore path defined
+- [ ] customer data recovery path defined
+
+## Billing And License
+
+- [ ] pricing or plan structure
+- [ ] founding-partner lifetime license terms
+- [ ] billing seam or provider direction
+- [ ] subscription model readiness
+
+## Security, Privacy, Legal
+
+- [ ] secret hygiene
+- [ ] privacy baseline
+- [ ] terms baseline
+- [ ] retention baseline
+- [ ] data export or delete process
+
+## GTM And Founding Partner Readiness
 
 - [ ] partner list
 - [ ] outreach script
 - [ ] data request template
-- [ ] lifetime license terms
-- [ ] case study permission
-- [ ] launch page
-- [ ] waitlist or demo form
+- [ ] case-study permission flow
+- [ ] public proof rules
 
-## Validation
+## Final Rule
 
-- [ ] synthetic validation
-- [ ] invoice validation
-- [ ] OCR validation
-- [ ] pilot validation
-- [ ] real invoice benchmark
-- [ ] demo audit
-- [ ] partner onboarding rehearsal
-- [ ] mobile viewport smoke test
-- [ ] mobile invoice review card layout test
-- [ ] mobile simulator layout test
-
-## Launch Rule
-
-The product must not be considered founding-partner launch ready unless:
-
-- invoice scan and upload works on mobile
-- invoice review-confirm works on mobile
-- dashboard and actions are usable on mobile
-- no critical workflow requires desktop-only layout
+The product is not production SaaS launch ready until the sections above are complete or explicitly waived with a conscious go or no-go decision.

@@ -12,11 +12,13 @@ Validated today:
 - OCR adapter safety boundary
 - controlled pilot package behavior
 
-## Important Change In Readiness Logic
+## Important Readiness Shift
 
 Controlled pilot validation is no longer the final readiness gate.
 
-The product logic and controlled pilot package are validated, but launch readiness now requires more than that.
+The current product logic is validated.
+The current pilot and founding-partner foundation is validated.
+But production SaaS readiness now requires a stricter set of gates.
 
 ## What Is Validated Now
 
@@ -35,7 +37,7 @@ The product logic and controlled pilot package are validated, but launch readine
 - no ingredient cost mutation before review-confirm
 - alerts and cost history are created only after confirmation
 
-### Controlled Pilot Package
+### Pilot Foundation
 
 - setup tools
 - file-backed persistence
@@ -43,44 +45,33 @@ The product logic and controlled pilot package are validated, but launch readine
 - environment validation
 - controlled local workflow coherence
 
-## What Launch Readiness Now Requires
+## Production SaaS Validation Gates
 
-Launch readiness now requires:
+Production SaaS validation now requires:
 
-- production persistence
-- onboarding
-- real invoice benchmark
-- partner workflow
-- deployment
-- trust, legal, and privacy basics
-
-More specifically:
-
-- database or safe hosted persistence
-- deployable frontend and backend profile
-- restaurant setup flow that works without manual JSON work
-- real invoice and OCR benchmark process
-- mobile invoice upload and review usability
-- backup and export posture
-- clearer trust and partner documentation
+- DB persistence validation
+- tenant isolation validation
+- auth and access validation
+- deployment validation
+- OCR live benchmark
+- mobile invoice workflow validation
+- backup and export validation
+- security and privacy baseline
+- billing and license model validation
 
 ## What Is Still Not Proven
 
+- production database persistence
+- auth and workspace access control
+- customer data isolation under real SaaS conditions
+- deployment and observability maturity
+- real OCR accuracy on live supplier invoices
 - willingness to pay
 - retention
-- real OCR accuracy on restaurant invoices
-- real onboarding effort with messy restaurant data
-- public advocacy repeatability
-- product-market fit
+- long-term onboarding effort
 
 ## Current Strategic Interpretation
 
-The current product is validated as a strong controlled pilot package.
+The current product is a strong controlled pilot and founding-partner foundation.
 
-It is not yet validated as a founding partner launch product until:
-
-- persistence is upgraded
-- onboarding is stronger
-- mobile invoice workflow is fully validated
-- real invoice benchmark work is completed
-- deployment and operational trust basics are in place
+It is not yet production SaaS ready until the production validation gates above are met.

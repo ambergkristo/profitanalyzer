@@ -32,145 +32,164 @@ Status: complete.
 
 Status: complete architecturally.
 
-Notes:
+Important:
 
 - fixture OCR exists
 - external provider seam exists
 - OCR remains draft-only
-- live OCR accuracy is still not claimed
+- real OCR accuracy is still not claimed
 
 ## RM9 - Controlled Pilot Package
 
-Status: complete as a controlled pilot package.
+Status: complete as controlled pilot and founding-partner foundation.
 
 Important:
 
-- this completed the controlled pilot package
-- it did not mean production SaaS readiness
-- it did not mean real OCR accuracy was proven
+- this does not mean production SaaS readiness
+- this does not mean auth, tenancy, deployment, or billing exist
+- this does not mean live OCR accuracy is proven
 
-## PHASE 10 - Strategy Reset + Launch-Ready Masterplan
-
-### Goal
-
-Reposition the project from controlled pilot to founding partner launch product.
-
-### Scope
-
-- strategy reset
-- launch-quality product standard
-- founding partner program framing
-- mobile-first invoice requirement
-- launch readiness checklist
-- founder-led GTM documentation
-
-## PHASE 11 - Production Persistence + Deployment Foundation
+## PHASE 11 - Production SaaS Architecture Reset
 
 ### Goal
 
-Move beyond memory and file store into hosted persistence and deployable architecture.
+Reposition the project from controlled pilot and founding-partner product toward explicit production SaaS readiness.
 
 ### Scope
 
-- database adapter implementation
-- migration and seed strategy
-- hosted deployment profile
-- environment validation
-- backup and export
-- production data isolation
-- health checks
+- production SaaS readiness definition
+- architectural gap audit
+- production milestone sequence
+- risk register
+- mobile-first production requirement
+- OCR safety boundary retained
 
-## PHASE 12 - Complete Restaurant Onboarding
+## PHASE 12 - Database + Multi-Tenant Data Model
 
 ### Goal
 
-Make a restaurant able to set itself up with minimal founder help.
+Move from memory and file store to real database-backed SaaS data model.
 
 ### Scope
 
-- restaurant workspace setup
+- Postgres or equivalent DB
+- Prisma or equivalent migration layer if appropriate
+- tenants, workspaces, restaurants
+- users
+- workspace membership
+- restaurant data isolation
+- ingredients, recipes, dishes, invoices, alerts, OCR jobs in DB
+- seed and migration strategy
+- export and backup path
+- keep memory and file store for tests and demo if useful
+
+## PHASE 13 - Auth + Workspace Access Control
+
+### Goal
+
+Protect the SaaS app and isolate customer data.
+
+### Scope
+
+- login and session strategy
+- user model
+- workspace membership
+- owner, admin, member roles
+- protected API routes
+- frontend auth flow
+- route guards
+- test coverage for access control
+- no data leakage across workspaces
+
+## PHASE 14 - Production Deployment + Observability
+
+### Goal
+
+Make the app deployable and operable.
+
+### Scope
+
+- deployment profile
+- frontend hosting
+- backend hosting
+- production env validation
+- database connection
+- health and deep health
+- structured logging
+- error handling
+- monitoring and semi-observability
+- backup and export process
+- rollback and readiness docs
+
+## PHASE 15 - Mobile-First Restaurant Onboarding
+
+### Goal
+
+Make a real restaurant able to onboard.
+
+### Scope
+
+- onboarding wizard
+- restaurant profile
 - menu setup
 - ingredient setup
 - recipe builder
 - dish builder
 - supplier setup
-- first invoice flow
-- onboarding progress checklist
+- invoice intake setup
+- mobile-first invoice upload and review
+- setup checklist
+- no desktop-only critical path
 
-## PHASE 13 - Real Invoice/OCR Benchmark + Reliability
-
-### Goal
-
-Validate invoice and OCR workflow with realistic invoice samples before public claims.
-
-### Scope
-
-- private benchmark workflow
-- expected JSON matching
-- provider accuracy scoring
-- OCR confidence thresholds
-- manual fallback
-- review burden scoring
-- benchmark report
-- mobile invoice upload and review validation
-
-## PHASE 14 - Founding Partner Launch Package
+## PHASE 16 - Production Invoice/OCR Pipeline
 
 ### Goal
 
-Prepare the first 3-5 influential restaurant partners.
+Make invoice and OCR workflow production-safe.
 
 ### Scope
 
-- founding partner profile criteria
-- outreach materials
-- lifetime license terms
-- onboarding checklist
-- case study permission
-- testimonial and post framework
-- data privacy terms
-- support process
+- real provider benchmark
+- file upload storage strategy
+- OCR job persistence
+- provider error handling
+- confidence thresholds
+- review-confirm audit log
+- cost history auditability
+- no blind import
+- mobile photo upload flow
+- OCR accuracy reporting
 
-## PHASE 15 - Public Launch Surface
+## PHASE 17 - Billing + License Model Readiness
 
 ### Goal
 
-Convert advocacy into demand.
+Prepare monetization and founding-partner lifetime access handling.
 
 ### Scope
 
-- landing page
-- waitlist or demo request
-- product screenshots
-- case study slots
-- pricing positioning
-- analytics tracking
-- social proof modules
+- plans
+- trial and founding-partner license model
+- billing provider seam
+- subscription status model
+- usage limits if needed
+- lifetime access terms
+- billing not required to be fully live unless feasible
 
-## PHASE 16 - Paid SaaS Readiness
+## PHASE 18 - Security, Privacy, Legal, and Launch Gate
 
 ### Goal
 
-Move from founding partner launch to paid product.
+Establish production launch baseline.
 
 ### Scope
 
-- auth
-- billing
-- subscription plans
-- role and permissions
-- database hardening
-- monitoring
-- backups
-- customer support flow
-
-## Current Strategic Rule
-
-The product is now being built toward a launch-quality founding partner standard.
-
-That means:
-
-- production SaaS readiness is still not claimed
-- launch readiness must exceed controlled pilot quality
-- mobile invoice intake is a core requirement
-- no blind OCR import is allowed
+- privacy policy draft
+- terms draft
+- data retention policy
+- case-study consent
+- security checklist
+- secret hygiene
+- data export and delete process
+- launch readiness checklist
+- production SaaS go or no-go gate

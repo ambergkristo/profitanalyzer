@@ -6,32 +6,34 @@ Canonical GitHub repository:
 https://github.com/ambergkristo/profitanalyzer
 
 Current strategic state:
-- RM1-RM9 are complete as a controlled pilot package
-- the strategy has reset toward a founding partner launch product
-- production SaaS readiness is still not claimed
+- RM1-RM9 are complete as a controlled pilot and founding-partner foundation
+- the new target is production SaaS readiness
+- production SaaS readiness is not yet claimed
 
 Next recommended sprint:
-PHASE 11 - Production Persistence + Deployment Foundation
+PHASE 12 — Database + Multi-Tenant Data Model
 
 Primary goal:
-Implement a real database-ready persistence foundation behind the existing store boundary without breaking current memory or file store support.
+Implement a DB adapter behind the existing store boundary and introduce the first real tenant or workspace data model without breaking the current memory or file store flows.
 
 Requirements:
-- implement a real database adapter behind the existing store boundary if feasible, or create a deployable database-ready implementation path
-- preserve `STORE_DRIVER=memory|file`
-- add migration and seed strategy
-- add deployment env validation and deployment docs
-- keep export and backup posture explicit
-- keep all validation commands passing
-- do not add auth
+- implement DB adapter behind the existing store boundary
+- evaluate and select Prisma or Postgres approach if appropriate
+- add tenant, workspace, restaurant, and user data model
+- preserve `STORE_DRIVER=memory|file` for tests and demo where useful
+- migrate ingredients, recipes, dishes, invoices, alerts, and OCR jobs into the DB model
+- add migrations and seeds
+- add a validation command if needed
+- protect against cross-workspace data leakage at the data layer
+- do not add full auth yet unless only minimal placeholder user context is needed
 - do not add billing
 - do not add POS integration
 - do not add accounting
 - do not add inventory management
-- do not weaken OCR or invoice review-confirm safety
-- do not allow OCR blind import
+- keep OCR review-confirm safety
+- keep mobile-first invoice requirements
 
-Validation commands to run before final response:
+Validation:
 
 ```bash
 npm install
@@ -49,16 +51,11 @@ npm run validate:env
 npm audit
 ```
 
-If benchmark or audit commands exist, run them too:
+If benchmark or audit commands exist, run them too.
 
-```bash
-npm run benchmark:ocr
-npm run audit:pilot-demo
-```
+Git:
 
-Git requirements:
-
-- commit with: `docs: reset strategy for founding partner launch`
+- commit with: `docs: reset roadmap for production SaaS readiness`
 - push to `origin/main`
 - verify:
 
@@ -70,9 +67,11 @@ git rev-parse origin/main
 
 Final report must include:
 
-- what docs or code changed
-- new persistence and deployment summary
-- whether production readiness is claimed or not
+- what docs changed
+- new production SaaS strategy summary
+- new roadmap phases
+- explicit statement that current product is not production SaaS ready yet
+- next recommended implementation sprint
 - validation command results
 - current branch
 - remote origin URL
