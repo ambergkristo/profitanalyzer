@@ -14,11 +14,13 @@ Priority order:
 
 - seeded demo datasets
 - JSON import through `/pilot-tools`
+- pilot-tools ingredient editing
+- pilot-tools dish price and sales editing
 - invoice cost intake for ongoing ingredient cost updates
 
 Not supported yet:
 
-- full menu editor
+- full recipe editor in the UI
 - spreadsheet import wizard
 - persistent database-backed onboarding
 
@@ -61,6 +63,19 @@ Recommended:
 - initial supplier product aliases if known
 - at least one recent supplier invoice for review-confirm testing
 
+## Pilot Tools Editor
+
+`/pilot-tools` now supports:
+
+- adding ingredients
+- editing ingredient name, unit, and cost
+- adding dishes linked to existing recipes
+- editing dish name, recipe link, price, and sales volume
+
+Current limitation:
+
+- recipe ingredient editing is still limited and may require JSON import or API use for larger menu changes
+
 ## Suggested First Customer Checklist
 
 - confirm restaurant name used in the dataset label
@@ -72,7 +87,7 @@ Recommended:
 
 ## Current Limitations
 
-- storage is memory-only in this sprint
+- file store is local JSON persistence, not a database
 - import is JSON-based, not a polished onboarding workflow
-- recipe and menu editing remain limited
+- recipe editing remains limited
 - OCR is still review-first and not production-accuracy validated

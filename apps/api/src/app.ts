@@ -3,7 +3,9 @@ import express from "express";
 import multer from "multer";
 
 import {
+  listDemoDatasets,
   simulateDishPriceChange,
+  type IngredientUnit,
   type InvoiceUnit
 } from "../../../packages/core/src/index.js";
 import { buildAppConfig, buildDeepHealth } from "./config.js";
@@ -48,6 +50,22 @@ function isInvoiceUnit(value: unknown): value is InvoiceUnit {
   return typeof value === "string" && ["g", "ml", "piece", "kg", "l", "pcs", "pack"].includes(value);
 }
 
+function isIngredientUnit(value: unknown): value is IngredientUnit {
+  return typeof value === "string" && ["g", "ml", "piece"].includes(value);
+}
+
+function isNonEmptyString(value: unknown): value is string {
+  return typeof value === "string" && value.trim().length > 0;
+}
+
+function isFiniteNonNegative(value: unknown): value is number {
+  return typeof value === "number" && Number.isFinite(value) && value >= 0;
+}
+
+function isFinitePositive(value: unknown): value is number {
+  return typeof value === "number" && Number.isFinite(value) && value > 0;
+}
+
 export interface CreateAppOptions {
   env?: NodeJS.ProcessEnv;
   ocrRegistry?: OcrProviderRegistry;
@@ -56,7 +74,7 @@ export interface CreateAppOptions {
 
 export function createApp(options: CreateAppOptions = {}) {
   const app = express();
-  const dataStore = options.store ?? createStore();
+  const dataStore = options.store ?? createStore({ env: options.env });
   const ocrRegistry = options.ocrRegistry ?? createOcrProviderRegistry({ env: options.env });
   const defaultOcrProvider = ocrRegistry.getDefaultProvider();
   const upload = multer({
@@ -98,6 +116,107 @@ export function createApp(options: CreateAppOptions = {}) {
     response.json(dataStore.getIngredients(datasetId));
   });
 
+  app.post("/api/ingredients", (request, response) => {
+    const body = request.body as {
+      dataset?: unknown;
+      name?: unknown;
+      costPerUnitCents?: unknown;
+      unit?: unknown;
+      id?: unknown;
+    };
+    const datasetId = parseDatasetId(body.dataset ?? request.query.dataset);
+    if (!resolveDatasetOrRespond(datasetId, response, dataStore)) {
+      return;
+    }
+
+    if (
+      !isNonEmptyString(body.name) ||
+      !isFiniteNonNegative(body.costPerUnitCents) ||
+      !isIngredientUnit(body.unit)
+    ) {
+      response.status(400).json({
+        message: "Ingredient requires name, unit, and non-negative costPerUnitCents."
+      });
+      return;
+    }
+
+    const ingredient = dataStore.createIngredient(
+      {
+        id: typeof body.id === "string" ? body.id : undefined,
+        name: body.name,
+        costPerUnitCents: body.costPerUnitCents,
+        unit: body.unit
+      },
+      datasetId
+    );
+
+    if (!ingredient) {
+      response.status(404).json({ message: `Unknown dataset "${datasetId}".` });
+      return;
+    }
+
+    response.status(201).json(ingredient);
+  });
+
+  app.patch("/api/ingredients/:id", (request, response) => {
+    const body = request.body as {
+      dataset?: unknown;
+      name?: unknown;
+      costPerUnitCents?: unknown;
+      unit?: unknown;
+    };
+    const datasetId = parseDatasetId(body.dataset ?? request.query.dataset);
+    if (!resolveDatasetOrRespond(datasetId, response, dataStore)) {
+      return;
+    }
+
+    if (
+      body.name === undefined &&
+      body.costPerUnitCents === undefined &&
+      body.unit === undefined
+    ) {
+      response.status(400).json({ message: "At least one ingredient field must be provided." });
+      return;
+    }
+
+    if (body.name !== undefined && !isNonEmptyString(body.name)) {
+      response.status(400).json({ message: "name must be a non-empty string." });
+      return;
+    }
+
+    if (body.costPerUnitCents !== undefined && !isFiniteNonNegative(body.costPerUnitCents)) {
+      response.status(400).json({ message: "costPerUnitCents must be non-negative." });
+      return;
+    }
+
+    if (body.unit !== undefined && !isIngredientUnit(body.unit)) {
+      response.status(400).json({ message: "unit must be g, ml, or piece." });
+      return;
+    }
+
+    const ingredient = dataStore.updateIngredient(
+      request.params.id,
+      {
+        name: body.name,
+        costPerUnitCents: body.costPerUnitCents,
+        unit: body.unit
+      },
+      datasetId
+    );
+
+    if (ingredient === null) {
+      response.status(404).json({ message: `Unknown dataset "${datasetId}".` });
+      return;
+    }
+
+    if (ingredient === undefined) {
+      response.status(404).json({ message: "Ingredient not found." });
+      return;
+    }
+
+    response.json(ingredient);
+  });
+
   app.get("/api/ingredients/:id/cost-history", (request, response) => {
     const datasetId = parseDatasetId(request.query.dataset);
     if (!resolveDatasetOrRespond(datasetId, response, dataStore)) {
@@ -122,6 +241,160 @@ export function createApp(options: CreateAppOptions = {}) {
     response.json(dataStore.getRecipes(datasetId));
   });
 
+  app.post("/api/recipes", (request, response) => {
+    const body = request.body as {
+      dataset?: unknown;
+      id?: unknown;
+      name?: unknown;
+      yield?: unknown;
+      ingredients?: unknown;
+    };
+    const datasetId = parseDatasetId(body.dataset ?? request.query.dataset);
+    if (!resolveDatasetOrRespond(datasetId, response, dataStore)) {
+      return;
+    }
+
+    if (!isNonEmptyString(body.name) || !isFinitePositive(body.yield) || !Array.isArray(body.ingredients)) {
+      response.status(400).json({
+        message: "Recipe requires name, positive yield, and an ingredients array."
+      });
+      return;
+    }
+
+    const recipeIngredients = body.ingredients as Array<{
+      ingredientId?: unknown;
+      quantity?: unknown;
+      unit?: unknown;
+    }>;
+
+    if (
+      recipeIngredients.some(
+        (ingredient) =>
+          !isNonEmptyString(ingredient.ingredientId) ||
+          !isFinitePositive(ingredient.quantity) ||
+          !isIngredientUnit(ingredient.unit)
+      )
+    ) {
+      response.status(400).json({
+        message: "Recipe ingredients require ingredientId, positive quantity, and a valid unit."
+      });
+      return;
+    }
+
+    const recipe = dataStore.createRecipe(
+      {
+        id: typeof body.id === "string" ? body.id : undefined,
+        name: body.name,
+        yield: body.yield,
+        ingredients: recipeIngredients.map((ingredient) => ({
+          ingredientId: ingredient.ingredientId as string,
+          quantity: ingredient.quantity as number,
+          unit: ingredient.unit as IngredientUnit
+        }))
+      },
+      datasetId
+    );
+
+    if (recipe === null) {
+      response.status(404).json({ message: `Unknown dataset "${datasetId}".` });
+      return;
+    }
+
+    if (recipe === undefined) {
+      response.status(400).json({ message: "Recipe references unknown ingredients." });
+      return;
+    }
+
+    response.status(201).json(recipe);
+  });
+
+  app.patch("/api/recipes/:id", (request, response) => {
+    const body = request.body as {
+      dataset?: unknown;
+      name?: unknown;
+      yield?: unknown;
+      ingredients?: unknown;
+    };
+    const datasetId = parseDatasetId(body.dataset ?? request.query.dataset);
+    if (!resolveDatasetOrRespond(datasetId, response, dataStore)) {
+      return;
+    }
+
+    if (body.name === undefined && body.yield === undefined && body.ingredients === undefined) {
+      response.status(400).json({ message: "At least one recipe field must be provided." });
+      return;
+    }
+
+    if (body.name !== undefined && !isNonEmptyString(body.name)) {
+      response.status(400).json({ message: "name must be a non-empty string." });
+      return;
+    }
+
+    if (body.yield !== undefined && !isFinitePositive(body.yield)) {
+      response.status(400).json({ message: "yield must be positive." });
+      return;
+    }
+
+    let recipeIngredients:
+      | Array<{ ingredientId: string; quantity: number; unit: IngredientUnit }>
+      | undefined;
+
+    if (body.ingredients !== undefined) {
+      if (!Array.isArray(body.ingredients)) {
+        response.status(400).json({ message: "ingredients must be an array." });
+        return;
+      }
+
+      const typedIngredients = body.ingredients as Array<{
+        ingredientId?: unknown;
+        quantity?: unknown;
+        unit?: unknown;
+      }>;
+
+      if (
+        typedIngredients.some(
+          (ingredient) =>
+            !isNonEmptyString(ingredient.ingredientId) ||
+            !isFinitePositive(ingredient.quantity) ||
+            !isIngredientUnit(ingredient.unit)
+        )
+      ) {
+        response.status(400).json({
+          message: "Recipe ingredients require ingredientId, positive quantity, and a valid unit."
+        });
+        return;
+      }
+
+      recipeIngredients = typedIngredients.map((ingredient) => ({
+        ingredientId: ingredient.ingredientId as string,
+        quantity: ingredient.quantity as number,
+        unit: ingredient.unit as IngredientUnit
+      }));
+    }
+
+    const recipe = dataStore.updateRecipe(
+      request.params.id,
+      {
+        name: body.name,
+        yield: body.yield,
+        ingredients: recipeIngredients
+      },
+      datasetId
+    );
+
+    if (recipe === null) {
+      response.status(404).json({ message: `Unknown dataset "${datasetId}".` });
+      return;
+    }
+
+    if (recipe === undefined) {
+      response.status(400).json({ message: "Recipe not found or ingredient references are invalid." });
+      return;
+    }
+
+    response.json(recipe);
+  });
+
   app.get("/api/dishes", (request, response) => {
     const datasetId = parseDatasetId(request.query.dataset);
     if (!resolveDatasetOrRespond(datasetId, response, dataStore)) {
@@ -129,6 +402,123 @@ export function createApp(options: CreateAppOptions = {}) {
     }
 
     response.json(dataStore.getDishes(datasetId));
+  });
+
+  app.post("/api/dishes", (request, response) => {
+    const body = request.body as {
+      dataset?: unknown;
+      id?: unknown;
+      name?: unknown;
+      recipeId?: unknown;
+      priceCents?: unknown;
+      salesVolume?: unknown;
+    };
+    const datasetId = parseDatasetId(body.dataset ?? request.query.dataset);
+    if (!resolveDatasetOrRespond(datasetId, response, dataStore)) {
+      return;
+    }
+
+    if (
+      !isNonEmptyString(body.name) ||
+      !isNonEmptyString(body.recipeId) ||
+      !isFinitePositive(body.priceCents) ||
+      !isFiniteNonNegative(body.salesVolume)
+    ) {
+      response.status(400).json({
+        message: "Dish requires name, recipeId, positive priceCents, and non-negative salesVolume."
+      });
+      return;
+    }
+
+    const dish = dataStore.createDish(
+      {
+        id: typeof body.id === "string" ? body.id : undefined,
+        name: body.name,
+        recipeId: body.recipeId,
+        priceCents: body.priceCents,
+        salesVolume: body.salesVolume
+      },
+      datasetId
+    );
+
+    if (dish === null) {
+      response.status(404).json({ message: `Unknown dataset "${datasetId}".` });
+      return;
+    }
+
+    if (dish === undefined) {
+      response.status(400).json({ message: "Dish recipeId must reference an existing recipe." });
+      return;
+    }
+
+    response.status(201).json(dish);
+  });
+
+  app.patch("/api/dishes/:id", (request, response) => {
+    const body = request.body as {
+      dataset?: unknown;
+      name?: unknown;
+      recipeId?: unknown;
+      priceCents?: unknown;
+      salesVolume?: unknown;
+    };
+    const datasetId = parseDatasetId(body.dataset ?? request.query.dataset);
+    if (!resolveDatasetOrRespond(datasetId, response, dataStore)) {
+      return;
+    }
+
+    if (
+      body.name === undefined &&
+      body.recipeId === undefined &&
+      body.priceCents === undefined &&
+      body.salesVolume === undefined
+    ) {
+      response.status(400).json({ message: "At least one dish field must be provided." });
+      return;
+    }
+
+    if (body.name !== undefined && !isNonEmptyString(body.name)) {
+      response.status(400).json({ message: "name must be a non-empty string." });
+      return;
+    }
+
+    if (body.recipeId !== undefined && !isNonEmptyString(body.recipeId)) {
+      response.status(400).json({ message: "recipeId must be a non-empty string." });
+      return;
+    }
+
+    if (body.priceCents !== undefined && !isFinitePositive(body.priceCents)) {
+      response.status(400).json({ message: "priceCents must be positive." });
+      return;
+    }
+
+    if (body.salesVolume !== undefined && !isFiniteNonNegative(body.salesVolume)) {
+      response.status(400).json({ message: "salesVolume must be non-negative." });
+      return;
+    }
+
+    const dish = dataStore.updateDish(
+      request.params.id,
+      {
+        name: body.name,
+        recipeId: body.recipeId,
+        priceCents: body.priceCents,
+        salesVolume: body.salesVolume
+      },
+      datasetId
+    );
+
+    if (dish === null) {
+      response.status(404).json({ message: `Unknown dataset "${datasetId}".` });
+      return;
+    }
+
+    if (dish === undefined) {
+      response.status(400).json({ message: "Dish not found or recipeId is invalid." });
+      return;
+    }
+
+    response.json(dish);
   });
 
   app.get("/api/suppliers", (request, response) => {
@@ -158,7 +548,7 @@ export function createApp(options: CreateAppOptions = {}) {
   app.post("/api/import", (request, response) => {
     const datasetId = parseDatasetId(request.query.dataset);
     const body = request.body as unknown;
-    const seededDatasetIds = new Set(dataStore.listDatasets().map((dataset) => dataset.id));
+    const protectedSeededDatasetIds = new Set(listDemoDatasets().map((dataset) => dataset.id));
     const targetDatasetId =
       datasetId ||
       (typeof body === "object" &&
@@ -176,7 +566,7 @@ export function createApp(options: CreateAppOptions = {}) {
       return;
     }
 
-    if (targetDatasetId && seededDatasetIds.has(targetDatasetId)) {
+    if (targetDatasetId && protectedSeededDatasetIds.has(targetDatasetId)) {
       response.status(400).json({
         message: "Import can only target a pilot workspace, not a seeded demo dataset."
       });

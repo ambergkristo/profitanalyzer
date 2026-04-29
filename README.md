@@ -1,19 +1,21 @@
 # Menu Profit Optimizer
 
-Menu Profit Optimizer is a restaurant decision product for margin repair, supplier-cost review, and price testing. Sprint 10 starts RM9 by separating demo mode from pilot mode, adding a persistence boundary, onboarding, pilot tooling, and reset/export/import safety without weakening the existing invoice and OCR review-confirm model.
+Menu Profit Optimizer is a restaurant decision product for margin repair, supplier-cost review, and price testing. Sprint 11 continues RM9 by adding a file-backed pilot store, storage-driver selection, minimal pilot data editing, and persistence validation without weakening the existing invoice and OCR review-confirm model.
 
-## Sprint 10 Scope
+## Sprint 11 Scope
 
-MAX SPRINT 10 delivers:
+MAX SPRINT 11 delivers:
 
 - app mode separation with `APP_MODE=demo|pilot`
-- `GET /api/app/config`
-- `GET /api/health/deep`
-- memory-store boundary and store factory on the API
+- `STORE_DRIVER=memory|file`
+- `DATA_DIR=.data`
+- file-backed JSON store behind the existing API store boundary
+- richer `GET /api/app/config`
+- richer `GET /api/health/deep`
 - dataset export, controlled import, and per-dataset reset
 - `/onboarding` route for first-run guidance
-- `/pilot-tools` route for export/reset/import safety tooling
-- visible mode badge and memory persistence warning in the UI
+- `/pilot-tools` route for export/reset/import safety tooling plus minimal ingredient and dish setup
+- visible mode badge plus memory/file persistence messaging in the UI
 - deterministic `npm run validate:pilot`
 - updated pilot package, deployment, and data-setup documentation
 
@@ -38,18 +40,22 @@ Current non-goals remain explicit:
 - fixture OCR remains the default OCR path
 - reset controls are useful for demos
 - scenario selector stays visible
+- memory store remains the default unless `STORE_DRIVER=file`
 
 `pilot` mode is controlled, not enterprise.
 
 - UI copy switches to pilot workspace language
+- `pilot-workspace` becomes the preferred working dataset
 - the same invoice/OCR review-confirm boundary stays active
 - pilot tooling is available for reset/export/import safety
+- file store can persist local pilot edits when enabled
 
 Important:
 
 - OCR and invoice parsing still create drafts only
 - ingredient costs still update only after `review-confirm`
 - memory storage means API restarts reset runtime changes
+- file storage writes local JSON dataset state and survives API restart
 
 ## Local Setup
 
@@ -61,6 +67,8 @@ Optional server env:
 
 ```bash
 APP_MODE=demo
+STORE_DRIVER=memory
+DATA_DIR=.data
 OCR_PROVIDER=fixture
 OCR_PROVIDER_API_KEY=
 OCR_PROVIDER_MODEL=
@@ -116,9 +124,15 @@ npm audit
 - `POST /api/import`
 - `POST /api/datasets/:id/reset`
 - `GET /api/ingredients`
+- `POST /api/ingredients`
+- `PATCH /api/ingredients/:id`
 - `GET /api/ingredients/:id/cost-history`
 - `GET /api/recipes`
+- `POST /api/recipes`
+- `PATCH /api/recipes/:id`
 - `GET /api/dishes`
+- `POST /api/dishes`
+- `PATCH /api/dishes/:id`
 - `GET /api/suppliers`
 - `GET /api/invoices/samples`
 - `GET /api/invoices/:id`
@@ -153,11 +167,12 @@ Most analytics, invoices, OCR, alerts, export, and cost-history endpoints suppor
 ## Pilot Flow
 
 1. Set `APP_MODE=pilot` on the API server if desired.
-2. Open `/onboarding`.
-3. Use `/pilot-tools` to export, import, or reset a workspace safely.
-4. Import a pilot workspace JSON or stay with seeded data.
-5. Run invoice cost intake and review-confirm.
-6. Review supplier alerts and dashboard actions.
+2. Optionally set `STORE_DRIVER=file` and `DATA_DIR=.data` for local persistence.
+3. Open `/onboarding`.
+4. Use `/pilot-tools` to export, import, or reset a workspace safely.
+5. Use `Pilot Data Setup` to adjust ingredients and dish pricing, or import a pilot workspace JSON.
+6. Run invoice cost intake and review-confirm.
+7. Review supplier alerts and dashboard actions.
 
 ## Product Notes
 
@@ -166,8 +181,8 @@ Most analytics, invoices, OCR, alerts, export, and cost-history endpoints suppor
 - Invoice, manual, sample, and OCR drafts all reuse the same confirmation boundary.
 - Fixture OCR remains the default path even when the external provider seam exists.
 - `validate:ocr:provider` skips cleanly when provider env is missing.
-- RM9 currently adds a persistence boundary, not a database.
-- Restarting the API resets runtime state while storage stays memory-based.
+- RM9 currently adds file-backed pilot persistence, not a database.
+- Hosted deployments may still need persistent disk or a future database layer.
 
 ## Documentation
 

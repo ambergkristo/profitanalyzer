@@ -28,11 +28,17 @@ describe("Layout", () => {
     vi.mocked(apiClient.getAppConfig).mockResolvedValue({
       appMode: "demo",
       version: "0.1.0",
+      storage: {
+        driver: "memory",
+        dataDirConfigured: false,
+        readable: true,
+        writable: true,
+        persistenceWarning: "This demo build uses memory storage. Restarting the API resets data."
+      },
       features: {
         invoiceIntake: true,
         ocrFixture: true,
-        externalOcrConfigured: false,
-        persistence: "memory"
+        externalOcrConfigured: false
       }
     });
 

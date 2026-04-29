@@ -7,3 +7,6 @@ coverage/
 .env.*
 !.env.example
 benchmarks/ocr/private-samples/
+.data/
+data/
+*.local.json

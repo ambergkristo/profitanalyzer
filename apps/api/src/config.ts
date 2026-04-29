@@ -6,22 +6,22 @@ const defaultVersion = "0.1.0";
 export interface AppConfigResponse {
   appMode: AppMode;
   version: string;
+  storage: ReturnType<AppStore["getStorageInfo"]>;
   features: {
     invoiceIntake: boolean;
     ocrFixture: boolean;
     externalOcrConfigured: boolean;
-    persistence: ReturnType<AppStore["getStorageType"]>;
   };
 }
 
 export interface DeepHealthResponse {
   ok: boolean;
-  storage: ReturnType<AppStore["getStorageType"]>;
+  storage: ReturnType<AppStore["getStorageInfo"]>;
   appMode: AppMode;
   externalOcrConfigured: boolean;
   checks: Array<{
     key: string;
-    status: "pass" | "warn";
+    status: "pass" | "warn" | "fail";
     message: string;
   }>;
 }
@@ -46,11 +46,11 @@ export function buildAppConfig(
   return {
     appMode: getAppMode(environment),
     version: getAppVersion(environment),
+    storage: store.getStorageInfo(),
     features: {
       invoiceIntake: true,
       ocrFixture: true,
-      externalOcrConfigured: externalProvider?.isConfigured ?? false,
-      persistence: store.getStorageType()
+      externalOcrConfigured: externalProvider?.isConfigured ?? false
     }
   };
 }
@@ -61,21 +61,41 @@ export function buildDeepHealth(
   environment: NodeJS.ProcessEnv = process.env
 ): DeepHealthResponse {
   const config = buildAppConfig(store, ocrRegistry, environment);
+  const storageChecks: DeepHealthResponse["checks"] = [];
+
+  if (config.storage.driver === "memory") {
+    storageChecks.push({
+      key: "storage",
+      status: "warn",
+      message: config.storage.persistenceWarning ?? "Memory storage is active. Restarting the API resets pilot data."
+    });
+  } else {
+    storageChecks.push({
+      key: "storage_readable",
+      status: config.storage.readable ? "pass" : "fail",
+      message: config.storage.readable
+        ? `File storage is readable at ${config.storage.dataDir}.`
+        : `File storage is not readable at ${config.storage.dataDir}.`
+    });
+    storageChecks.push({
+      key: "storage_writable",
+      status: config.storage.writable ? "pass" : "fail",
+      message: config.storage.writable
+        ? `File storage is writable at ${config.storage.dataDir}.`
+        : `File storage is not writable at ${config.storage.dataDir}.`
+    });
+  }
 
   return {
-    ok: true,
-    storage: config.features.persistence,
+    ok:
+      config.storage.driver === "memory"
+        ? true
+        : config.storage.readable && config.storage.writable,
+    storage: config.storage,
     appMode: config.appMode,
     externalOcrConfigured: config.features.externalOcrConfigured,
     checks: [
-      {
-        key: "storage",
-        status: config.features.persistence === "memory" ? "warn" : "pass",
-        message:
-          config.features.persistence === "memory"
-            ? "Memory storage is active. Restarting the API resets pilot data."
-            : "Persistent storage is active."
-      },
+      ...storageChecks,
       {
         key: "invoice_intake",
         status: "pass",

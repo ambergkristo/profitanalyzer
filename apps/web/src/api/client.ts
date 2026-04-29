@@ -8,6 +8,8 @@ import type {
   InvoiceDraftResponse,
   Ingredient,
   IngredientCostHistoryView,
+  IngredientCreateRequest,
+  IngredientUpdateRequest,
   ManualInvoiceDraftInput,
   MockInvoiceSampleSummary,
   OcrInvoiceDraftResponse,
@@ -22,6 +24,9 @@ import type {
   DishDetailResponse,
   OverviewResponse,
   PriceSimulationResponse,
+  Recipe,
+  RecipeCreateRequest,
+  RecipeUpdateRequest,
   Supplier
 } from "../types.js";
 
@@ -47,6 +52,23 @@ async function getJson<T>(path: string): Promise<T> {
 async function postJson<T>(path: string, body: unknown): Promise<T> {
   const response = await fetch(path, {
     method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify(body)
+  });
+
+  if (!response.ok) {
+    const errorBody = (await response.json().catch(() => null)) as { message?: string } | null;
+    throw new Error(errorBody?.message ?? `Request failed for ${path} with ${response.status}`);
+  }
+
+  return (await response.json()) as T;
+}
+
+async function patchJson<T>(path: string, body: unknown): Promise<T> {
+  const response = await fetch(path, {
+    method: "PATCH",
     headers: {
       "Content-Type": "application/json"
     },
@@ -95,10 +117,62 @@ export const apiClient = {
     getJson<CalculatedDish[]>(buildDatasetPath("/api/analytics/dishes", datasetId)),
   getIngredients: (datasetId?: string) =>
     getJson<Ingredient[]>(buildDatasetPath("/api/ingredients", datasetId)),
+  getRecipes: (datasetId?: string) =>
+    getJson<Recipe[]>(buildDatasetPath("/api/recipes", datasetId)),
+  getMenuDishes: (datasetId?: string) =>
+    getJson<import("../types.js").Dish[]>(buildDatasetPath("/api/dishes", datasetId)),
+  createIngredient: (body: IngredientCreateRequest, datasetId?: string) =>
+    postJson<Ingredient>(buildDatasetPath("/api/ingredients", datasetId), {
+      ...body,
+      dataset: datasetId
+    }),
+  updateIngredient: (ingredientId: string, body: IngredientUpdateRequest, datasetId?: string) =>
+    patchJson<Ingredient>(buildDatasetPath(`/api/ingredients/${ingredientId}`, datasetId), {
+      ...body,
+      dataset: datasetId
+    }),
+  createRecipe: (body: RecipeCreateRequest, datasetId?: string) =>
+    postJson<Recipe>(buildDatasetPath("/api/recipes", datasetId), {
+      ...body,
+      dataset: datasetId
+    }),
+  updateRecipe: (recipeId: string, body: RecipeUpdateRequest, datasetId?: string) =>
+    patchJson<Recipe>(buildDatasetPath(`/api/recipes/${recipeId}`, datasetId), {
+      ...body,
+      dataset: datasetId
+    }),
   getActions: (datasetId?: string) =>
     getJson<DishAction[]>(buildDatasetPath("/api/analytics/actions", datasetId)),
   getDishDetail: (dishId: string, datasetId?: string) =>
     getJson<DishDetailResponse>(buildDatasetPath(`/api/analytics/dish/${dishId}`, datasetId)),
+  createDish: (
+    body: {
+      id?: string;
+      name: string;
+      recipeId: string;
+      priceCents: number;
+      salesVolume: number;
+    },
+    datasetId?: string
+  ) =>
+    postJson<import("../types.js").Dish>(buildDatasetPath("/api/dishes", datasetId), {
+      ...body,
+      dataset: datasetId
+    }),
+  updateDish: (
+    dishId: string,
+    body: {
+      name?: string;
+      recipeId?: string;
+      priceCents?: number;
+      salesVolume?: number;
+    },
+    datasetId?: string
+  ) =>
+    patchJson<import("../types.js").Dish>(buildDatasetPath(`/api/dishes/${dishId}`, datasetId), {
+      ...body,
+      dataset: datasetId
+    }),
   getPriceChangeAlerts: (datasetId?: string) =>
     getJson<PriceChangeAlert[]>(buildDatasetPath("/api/alerts/price-changes", datasetId)),
   getOcrProviders: () => getJson<OcrProviderConfig[]>("/api/ocr/providers"),

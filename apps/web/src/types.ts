@@ -75,26 +75,36 @@ export type InvoiceDraftResponse = ParsedInvoiceDraft;
 export type OcrInvoiceDraftResponse = OcrDraftResponse;
 export type InvoiceDetailResponse = StoredInvoiceView;
 export type AppMode = "demo" | "pilot";
+export type PersistenceDriver = "memory" | "file";
+
+export interface StorageInfo {
+  driver: PersistenceDriver;
+  dataDir?: string;
+  dataDirConfigured: boolean;
+  readable: boolean;
+  writable: boolean;
+  persistenceWarning: string | null;
+}
 
 export interface AppConfigResponse {
   appMode: AppMode;
   version: string;
+  storage: StorageInfo;
   features: {
     invoiceIntake: boolean;
     ocrFixture: boolean;
     externalOcrConfigured: boolean;
-    persistence: "memory";
   };
 }
 
 export interface DeepHealthResponse {
   ok: boolean;
-  storage: "memory";
+  storage: StorageInfo;
   appMode: AppMode;
   externalOcrConfigured: boolean;
   checks: Array<{
     key: string;
-    status: "pass" | "warn";
+    status: "pass" | "warn" | "fail";
     message: string;
   }>;
 }
@@ -135,6 +145,47 @@ export interface InvoiceConfirmResponse {
   alerts: PriceChangeAlert[];
   affectedDishes: AffectedDishImpact[];
   updatedIngredients: Ingredient[];
+}
+
+export interface IngredientCreateRequest {
+  id?: string;
+  name: string;
+  costPerUnitCents: number;
+  unit: Ingredient["unit"];
+}
+
+export interface IngredientUpdateRequest {
+  name?: string;
+  costPerUnitCents?: number;
+  unit?: Ingredient["unit"];
+}
+
+export interface RecipeCreateRequest {
+  id?: string;
+  name: string;
+  yield: number;
+  ingredients: Recipe["ingredients"];
+}
+
+export interface RecipeUpdateRequest {
+  name?: string;
+  yield?: number;
+  ingredients?: Recipe["ingredients"];
+}
+
+export interface DishCreateRequest {
+  id?: string;
+  name: string;
+  recipeId: string;
+  priceCents: number;
+  salesVolume: number;
+}
+
+export interface DishUpdateRequest {
+  name?: string;
+  recipeId?: string;
+  priceCents?: number;
+  salesVolume?: number;
 }
 
 export type DishFilter = "all" | DishStatus;

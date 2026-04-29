@@ -13,7 +13,7 @@ Implemented:
 - RM7: structured invoice cost intake, review-confirm, cost history, supplier alerts, and invoice-driven actions
 - RM8: OCR adapter boundary, fixture upload intake, and validation safety gate
 - RM8 provider pilot: env-gated external OCR provider seam, benchmark harness, and live-skip validation
-- RM9: pilot readiness foundation with app config, store boundary, onboarding, and reset/export/import safety
+- RM9: pilot readiness foundation with app config, store boundary, onboarding, reset/export/import safety, and file-store persistence validation
 
 Not started:
 
@@ -233,11 +233,26 @@ This proves:
 - runtime state can be reset and exported cleanly
 - the review-confirm safety model survives the new pilot tooling
 
+## Sprint 11 RM9 Persistence Note
+
+Sprint 11 extends RM9 into a controlled local-persistence package:
+
+- `STORE_DRIVER=memory|file` is now validated
+- file-backed JSON persistence sits behind the same store boundary as memory mode
+- `validate:pilot` now proves pilot edits survive store reload and that invoice/OCR flows still work in file mode
+- pilot-tools now support minimal ingredient and dish setup without weakening any invoice or OCR safety gate
+
+This proves:
+
+- controlled local persistence works through the API store boundary
+- pilot dataset reset, export, import, and reload behavior are testable
+- review-confirm remains the only path to cost history and alerts even when persistence is enabled
+
 It still does not prove:
 
 - willingness to pay
 - retention
 - real onboarding effort
-- real restaurant data messiness at pilot scale
 - real OCR accuracy on live supplier invoices
-- persistence durability after process restart
+- long-term operational durability under multi-user or hosted conditions
+- disciplined ongoing data maintenance by restaurant staff

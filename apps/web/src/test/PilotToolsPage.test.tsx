@@ -9,6 +9,13 @@ vi.mock("../api/client.js", () => ({
     getAppConfig: vi.fn(),
     getDemoDatasets: vi.fn(),
     getDeepHealth: vi.fn(),
+    getIngredients: vi.fn(),
+    getMenuDishes: vi.fn(),
+    getRecipes: vi.fn(),
+    createIngredient: vi.fn(),
+    updateIngredient: vi.fn(),
+    createDish: vi.fn(),
+    updateDish: vi.fn(),
     exportDataset: vi.fn(),
     importDataset: vi.fn(),
     resetDataset: vi.fn()
@@ -22,11 +29,17 @@ describe("PilotToolsPage", () => {
     vi.mocked(apiClient.getAppConfig).mockResolvedValue({
       appMode: "pilot",
       version: "0.1.0",
+      storage: {
+        driver: "memory",
+        dataDirConfigured: false,
+        readable: true,
+        writable: true,
+        persistenceWarning: "This pilot build uses memory storage. Restarting the API resets data."
+      },
       features: {
         invoiceIntake: true,
         ocrFixture: true,
-        externalOcrConfigured: false,
-        persistence: "memory"
+        externalOcrConfigured: false
       }
     });
     vi.mocked(apiClient.getDemoDatasets).mockResolvedValue([
@@ -43,7 +56,13 @@ describe("PilotToolsPage", () => {
     ]);
     vi.mocked(apiClient.getDeepHealth).mockResolvedValue({
       ok: true,
-      storage: "memory",
+      storage: {
+        driver: "memory",
+        dataDirConfigured: false,
+        readable: true,
+        writable: true,
+        persistenceWarning: "This pilot build uses memory storage. Restarting the API resets data."
+      },
       appMode: "pilot",
       externalOcrConfigured: false,
       checks: [
@@ -53,6 +72,35 @@ describe("PilotToolsPage", () => {
           message: "Memory storage is active. Restarting the API resets pilot data."
         }
       ]
+    });
+    vi.mocked(apiClient.getIngredients).mockResolvedValue([]);
+    vi.mocked(apiClient.getMenuDishes).mockResolvedValue([]);
+    vi.mocked(apiClient.getRecipes).mockResolvedValue([]);
+    vi.mocked(apiClient.createIngredient).mockResolvedValue({
+      id: "ingredient-new",
+      name: "New ingredient",
+      costPerUnitCents: 120,
+      unit: "g"
+    });
+    vi.mocked(apiClient.updateIngredient).mockResolvedValue({
+      id: "ingredient-existing",
+      name: "Updated ingredient",
+      costPerUnitCents: 125,
+      unit: "g"
+    });
+    vi.mocked(apiClient.createDish).mockResolvedValue({
+      id: "dish-new",
+      name: "New dish",
+      recipeId: "recipe-1",
+      priceCents: 1200,
+      salesVolume: 10
+    });
+    vi.mocked(apiClient.updateDish).mockResolvedValue({
+      id: "dish-existing",
+      name: "Updated dish",
+      recipeId: "recipe-1",
+      priceCents: 1250,
+      salesVolume: 12
     });
     vi.mocked(apiClient.exportDataset).mockResolvedValue({
       dataset: {
@@ -107,8 +155,8 @@ describe("PilotToolsPage", () => {
       </MemoryRouter>
     );
 
-    expect(await screen.findByText("Reset, export, and validate the workspace")).toBeInTheDocument();
-    expect(await screen.findByText("Memory storage is active. Restarting the API resets pilot data.")).toBeInTheDocument();
+    expect(await screen.findByText("Set up the pilot workspace safely")).toBeInTheDocument();
+    expect(await screen.findByText("This pilot build uses memory storage. Restarting the API resets data.")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Export dataset" }));
     await waitFor(() => {

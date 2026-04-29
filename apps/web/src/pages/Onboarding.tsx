@@ -86,7 +86,7 @@ export function OnboardingPage() {
                 {config.appMode === "demo" ? "Demo mode" : "Pilot mode"}
               </span>
               <span className="rounded-full border border-warning/20 bg-warning/10 px-4 py-2 text-[11px] uppercase tracking-[0.18em] text-warning">
-                Storage {config.features.persistence}
+                Storage {config.storage.driver}
               </span>
             </>
           }

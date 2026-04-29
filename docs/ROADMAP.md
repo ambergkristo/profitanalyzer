@@ -346,7 +346,7 @@ Still out of scope after Sprint 9:
 
 ## RM9 - First Customer Ready / Pilot Package
 
-Status: partial in MAX SPRINT 10.
+Status: partial in MAX SPRINT 11.
 
 ### Goal
 
@@ -398,6 +398,25 @@ Built now:
 Still out of scope after Sprint 10:
 
 - persistent database storage
+- auth or RBAC
+- billing
+- multi-tenant SaaS concerns
+- production OCR accuracy claims
+
+### Current Sprint 11 Result
+
+Built now:
+
+- `STORE_DRIVER=memory|file` with memory remaining the default
+- `DATA_DIR` support for local file-backed pilot persistence
+- file store behind the existing store boundary
+- pilot-workspace starter data in pilot mode
+- pilot-tools ingredient and dish editing for minimal workspace setup
+- `validate:pilot` reload coverage proving persisted edits survive app recreation
+
+Still out of scope after Sprint 11:
+
+- database-backed persistence
 - auth or RBAC
 - billing
 - multi-tenant SaaS concerns

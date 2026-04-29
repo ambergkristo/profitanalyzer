@@ -1,3 +1,6 @@
+import fs from "node:fs";
+import path from "node:path";
+
 import request from "supertest";
 import { describe, expect, it } from "vitest";
 
@@ -44,8 +47,11 @@ describe("api", () => {
     const body = response.body as {
       appMode: string;
       version: string;
+      storage: {
+        driver: string;
+        persistenceWarning: string | null;
+      };
       features: {
-        persistence: string;
         externalOcrConfigured: boolean;
       };
     };
@@ -53,7 +59,8 @@ describe("api", () => {
     expect(response.status).toBe(200);
     expect(body.appMode).toBe("demo");
     expect(body.version).toBeTruthy();
-    expect(body.features.persistence).toBe("memory");
+    expect(body.storage.driver).toBe("memory");
+    expect(body.storage.persistenceWarning).toContain("memory storage");
     expect(body.features.externalOcrConfigured).toBe(false);
   });
 
@@ -61,13 +68,15 @@ describe("api", () => {
     const response = await request(buildApp()).get("/api/health/deep");
     const body = response.body as {
       ok: boolean;
-      storage: string;
+      storage: {
+        driver: string;
+      };
       checks: Array<{ key: string; message: string }>;
     };
 
     expect(response.status).toBe(200);
     expect(body.ok).toBe(true);
-    expect(body.storage).toBe("memory");
+    expect(body.storage.driver).toBe("memory");
     expect(body.checks.length).toBeGreaterThan(0);
     expect(JSON.stringify(body)).not.toContain("OCR_PROVIDER_API_KEY");
   });
@@ -249,6 +258,119 @@ describe("api", () => {
 
     expect(response.status).toBe(400);
     expect(body.message).toContain("pilot workspace");
+  });
+
+  it("reports file-store config and deep health when STORE_DRIVER=file", async () => {
+    const tempDataDir = path.resolve(".tmp", "api-file-health-test");
+    fs.rmSync(tempDataDir, { force: true, recursive: true });
+
+    try {
+      const app = buildApp({
+        env: {
+          ...process.env,
+          APP_MODE: "pilot",
+          STORE_DRIVER: "file",
+          DATA_DIR: tempDataDir
+        }
+      });
+
+      const configResponse = await request(app).get("/api/app/config");
+      const deepHealthResponse = await request(app).get("/api/health/deep");
+      const configBody = configResponse.body as {
+        storage: { driver: string; readable: boolean; writable: boolean };
+      };
+      const deepHealthBody = deepHealthResponse.body as { ok: boolean };
+
+      expect(configResponse.status).toBe(200);
+      expect(configBody.storage.driver).toBe("file");
+      expect(configBody.storage.readable).toBe(true);
+      expect(configBody.storage.writable).toBe(true);
+      expect(deepHealthResponse.status).toBe(200);
+      expect(deepHealthBody.ok).toBe(true);
+      expect(JSON.stringify(deepHealthBody)).not.toContain("OCR_PROVIDER_API_KEY");
+    } finally {
+      fs.rmSync(tempDataDir, { force: true, recursive: true });
+    }
+  });
+
+  it("validates ingredient and dish editing payloads", async () => {
+    const app = buildApp();
+    const badIngredientResponse = await request(app)
+      .patch("/api/ingredients/parmesan?dataset=mixed-restaurant")
+      .send({ costPerUnitCents: -1 });
+    const badDishResponse = await request(app)
+      .patch("/api/dishes/dish-burger?dataset=mixed-restaurant")
+      .send({ priceCents: 0 });
+
+    expect(badIngredientResponse.status).toBe(400);
+    expect(badDishResponse.status).toBe(400);
+  });
+
+  it("persists ingredient and dish edits after file-store reload", async () => {
+    const tempDataDir = path.resolve(".tmp", "api-file-persistence-test");
+    fs.rmSync(tempDataDir, { force: true, recursive: true });
+
+    try {
+      const env = {
+        ...process.env,
+        APP_MODE: "pilot",
+        STORE_DRIVER: "file",
+        DATA_DIR: tempDataDir
+      };
+      const app = buildApp({ env });
+
+      const ingredientUpdateResponse = await request(app)
+        .patch("/api/ingredients/pilot-romaine?dataset=pilot-workspace")
+        .send({
+          name: "Pilot Romaine Lettuce",
+          costPerUnitCents: 95,
+          unit: "g"
+        });
+      const dishUpdateResponse = await request(app)
+        .patch("/api/dishes/pilot-dish-burger?dataset=pilot-workspace")
+        .send({
+          priceCents: 1590,
+          salesVolume: 18
+        });
+
+      expect(ingredientUpdateResponse.status).toBe(200);
+      expect(dishUpdateResponse.status).toBe(200);
+
+      const reloadedApp = buildApp({ env });
+      const ingredientsResponse = await request(reloadedApp).get(
+        "/api/ingredients?dataset=pilot-workspace"
+      );
+      const dishesResponse = await request(reloadedApp).get("/api/dishes?dataset=pilot-workspace");
+      const ingredientsBody = ingredientsResponse.body as Array<{
+        id: string;
+        name: string;
+        costPerUnitCents: number;
+      }>;
+      const dishesBody = dishesResponse.body as Array<{
+        id: string;
+        priceCents: number;
+        salesVolume: number;
+      }>;
+
+      expect(ingredientsResponse.status).toBe(200);
+      expect(dishesResponse.status).toBe(200);
+      expect(
+        ingredientsBody.some(
+          (ingredient) =>
+            ingredient.id === "pilot-romaine" &&
+            ingredient.name === "Pilot Romaine Lettuce" &&
+            ingredient.costPerUnitCents === 95
+        )
+      ).toBe(true);
+      expect(
+        dishesBody.some(
+          (dish) =>
+            dish.id === "pilot-dish-burger" && dish.priceCents === 1590 && dish.salesVolume === 18
+        )
+      ).toBe(true);
+    } finally {
+      fs.rmSync(tempDataDir, { force: true, recursive: true });
+    }
   });
 
   it("returns OCR provider registry metadata with fixture as the default", async () => {

@@ -25,8 +25,17 @@ import type {
   SupplierProductMatch
 } from "../../../../packages/core/src/index.js";
 
-export type PersistenceType = "memory";
+export type PersistenceType = "memory" | "file";
 export type AppMode = "demo" | "pilot";
+
+export interface StorageInfo {
+  driver: PersistenceType;
+  dataDir?: string;
+  dataDirConfigured: boolean;
+  readable: boolean;
+  writable: boolean;
+  persistenceWarning: string | null;
+}
 
 export interface DatasetExportPayload {
   dataset: DemoDatasetDefinition;
@@ -65,6 +74,47 @@ export interface AnalyticsInputSnapshot {
   alerts: PriceChangeAlert[];
 }
 
+export interface IngredientCreateInput {
+  id?: string;
+  name: string;
+  costPerUnitCents: number;
+  unit: Ingredient["unit"];
+}
+
+export interface IngredientUpdateInput {
+  name?: string;
+  costPerUnitCents?: number;
+  unit?: Ingredient["unit"];
+}
+
+export interface RecipeCreateInput {
+  id?: string;
+  name: string;
+  yield: number;
+  ingredients: DemoDatasetDefinition["data"]["recipes"][number]["ingredients"];
+}
+
+export interface RecipeUpdateInput {
+  name?: string;
+  yield?: number;
+  ingredients?: DemoDatasetDefinition["data"]["recipes"][number]["ingredients"];
+}
+
+export interface DishCreateInput {
+  id?: string;
+  name: string;
+  recipeId: string;
+  priceCents: number;
+  salesVolume: number;
+}
+
+export interface DishUpdateInput {
+  name?: string;
+  recipeId?: string;
+  priceCents?: number;
+  salesVolume?: number;
+}
+
 export interface AppStore {
   restaurantData: {
     ingredients: Ingredient[];
@@ -72,6 +122,7 @@ export interface AppStore {
     dishes: DemoDatasetDefinition["data"]["dishes"];
   };
   getStorageType(): PersistenceType;
+  getStorageInfo(): StorageInfo;
   getResolvedDataset(datasetId?: string): DemoDatasetDefinition | null;
   listDatasets(): DemoDatasetSummary[];
   getDemoDatasets(): DemoDatasetSummary[];
@@ -121,6 +172,30 @@ export interface AppStore {
   } | null | undefined;
   listOcrJobs(datasetId?: string): OcrInvoiceJob[] | null;
   getInvoice(invoiceId: string, datasetId?: string): StoredInvoiceView | null;
+  createIngredient(input: IngredientCreateInput, datasetId?: string): Ingredient | null;
+  updateIngredient(
+    ingredientId: string,
+    input: IngredientUpdateInput,
+    datasetId?: string
+  ): Ingredient | null | undefined;
+  createRecipe(
+    input: RecipeCreateInput,
+    datasetId?: string
+  ): DemoDatasetDefinition["data"]["recipes"][number] | null | undefined;
+  updateRecipe(
+    recipeId: string,
+    input: RecipeUpdateInput,
+    datasetId?: string
+  ): DemoDatasetDefinition["data"]["recipes"][number] | null | undefined;
+  createDish(
+    input: DishCreateInput,
+    datasetId?: string
+  ): DemoDatasetDefinition["data"]["dishes"][number] | null | undefined;
+  updateDish(
+    dishId: string,
+    input: DishUpdateInput,
+    datasetId?: string
+  ): DemoDatasetDefinition["data"]["dishes"][number] | null | undefined;
   confirmInvoice(
     invoiceId: string,
     datasetId: string | undefined,

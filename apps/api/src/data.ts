@@ -48,8 +48,14 @@ import {
 import type {
   AnalyticsInputSnapshot,
   AppStore,
+  DishCreateInput,
+  DishUpdateInput,
   DatasetExportPayload,
+  IngredientCreateInput,
+  IngredientUpdateInput,
   ImportDatasetSummary,
+  RecipeCreateInput,
+  RecipeUpdateInput,
   ResetDatasetSummary
 } from "./store/types.js";
 
@@ -93,6 +99,27 @@ const severityOrder = {
   medium: 2,
   low: 1
 } as const;
+
+const defaultMemoryStorageInfo = {
+  driver: "memory",
+  dataDirConfigured: false,
+  readable: true,
+  writable: true,
+  persistenceWarning: "This build uses memory storage. Restarting the API resets data."
+} as const;
+
+function toDatasetSummary(dataset: DemoDatasetDefinition): DemoDatasetSummary {
+  return {
+    id: dataset.id,
+    name: dataset.name,
+    description: dataset.description,
+    profile: dataset.profile,
+    ownerDiagnosis: dataset.ownerDiagnosis,
+    expectedBehavior: dataset.expectedBehavior,
+    demoNarrative: dataset.demoNarrative,
+    validationStatus: dataset.validationStatus
+  };
+}
 
 function cloneDatasetDefinition(dataset: DemoDatasetDefinition): DemoDatasetDefinition {
   return {
@@ -139,8 +166,23 @@ function buildTargetMarginActions(
   return targets;
 }
 
-function createDatasetSession(datasetId?: string): DatasetSession | null {
-  const baseDataset = getDemoDataset(datasetId);
+export interface CreateDataStoreOptions {
+  extraDatasets?: DemoDatasetDefinition[];
+  storageInfo?: Partial<AppStore["getStorageInfo"] extends () => infer T ? T : never>;
+}
+
+function resolveDatasetDefinition(
+  datasetId: string | undefined,
+  extraDatasets: DemoDatasetDefinition[]
+): DemoDatasetDefinition | undefined {
+  return extraDatasets.find((dataset) => dataset.id === datasetId) ?? getDemoDataset(datasetId);
+}
+
+function createDatasetSession(
+  datasetId: string | undefined,
+  extraDatasets: DemoDatasetDefinition[]
+): DatasetSession | null {
+  const baseDataset = resolveDatasetDefinition(datasetId, extraDatasets);
 
   if (!baseDataset) {
     return null;
@@ -168,6 +210,35 @@ function createDatasetSession(datasetId?: string): DatasetSession | null {
   session.baseline = serializeDatasetSession(session);
 
   return session;
+}
+
+function syncDatasetData(session: DatasetSession) {
+  session.dataset = {
+    ...session.dataset,
+    data: {
+      ingredients: session.ingredients,
+      recipes: session.recipes,
+      dishes: session.dishes
+    }
+  };
+}
+
+function createUniqueId(prefix: string, name: string, existingIds: Set<string>) {
+  const base =
+    normalizeName(name)
+      .replaceAll(" ", "-")
+      .replace(/[^a-z0-9-]+/g, "")
+      .replace(/-+/g, "-")
+      .replace(/^-|-$/g, "") || prefix;
+  let candidate = `${prefix}-${base}`;
+  let index = 2;
+
+  while (existingIds.has(candidate)) {
+    candidate = `${prefix}-${base}-${index}`;
+    index += 1;
+  }
+
+  return candidate;
 }
 
 function serializeDatasetSession(session: DatasetSession): DatasetExportPayload {
@@ -317,19 +388,31 @@ function createSessionFromExportPayload(
   return session;
 }
 
-export function createDataStore(): AppStore {
+export function createDataStore(options: CreateDataStoreOptions = {}): AppStore {
   const sessions = new Map<string, DatasetSession>();
   const sampleInvoices = getMockInvoiceSamples();
+  const extraDatasets = options.extraDatasets ?? [];
+  const storageInfo = {
+    ...defaultMemoryStorageInfo,
+    ...(options.storageInfo ?? {})
+  };
+  const defaultDatasetId = resolveDatasetDefinition(undefined, extraDatasets)?.id;
+  const seededDatasetSummaries = [
+    ...listDemoDatasets(),
+    ...extraDatasets
+      .filter((dataset) => !listDemoDatasets().some((candidate) => candidate.id === dataset.id))
+      .map((dataset) => toDatasetSummary(dataset))
+  ];
 
   function getSession(datasetId?: string) {
-    const resolvedId = datasetId ?? getDemoDataset()?.id;
+    const resolvedId = datasetId ?? defaultDatasetId;
 
     if (!resolvedId) {
       return null;
     }
 
     if (!sessions.has(resolvedId)) {
-      const session = createDatasetSession(resolvedId);
+      const session = createDatasetSession(resolvedId, extraDatasets);
 
       if (!session) {
         return null;
@@ -339,6 +422,20 @@ export function createDataStore(): AppStore {
     }
 
     return sessions.get(resolvedId) ?? null;
+  }
+
+  function buildDatasetSummaries() {
+    const knownDatasets = new Map(
+      seededDatasetSummaries.map((dataset) => [dataset.id, { ...dataset } satisfies DemoDatasetSummary])
+    );
+
+    for (const session of sessions.values()) {
+      if (!knownDatasets.has(session.dataset.id)) {
+        knownDatasets.set(session.dataset.id, toDatasetSummary(session.dataset));
+      }
+    }
+
+    return [...knownDatasets.values()];
   }
 
   function ensureSupplier(session: DatasetSession, supplierName: string) {
@@ -402,16 +499,19 @@ export function createDataStore(): AppStore {
   return {
     restaurantData: sampleRestaurantData,
     getStorageType() {
-      return "memory" as const;
+      return storageInfo.driver;
+    },
+    getStorageInfo() {
+      return { ...storageInfo };
     },
     getResolvedDataset(datasetId?: string): DemoDatasetDefinition | null {
       return getSession(datasetId)?.dataset ?? null;
     },
     listDatasets(): DemoDatasetSummary[] {
-      return listDemoDatasets();
+      return buildDatasetSummaries().map((dataset) => ({ ...dataset }));
     },
     getDemoDatasets(): DemoDatasetSummary[] {
-      return listDemoDatasets();
+      return buildDatasetSummaries().map((dataset) => ({ ...dataset }));
     },
     getMockInvoiceSampleSummaries(): MockInvoiceSampleSummary[] {
       return listMockInvoiceSampleSummaries();
@@ -797,6 +897,171 @@ export function createDataStore(): AppStore {
         qualityReport: record.qualityReport
       };
     },
+    createIngredient(input: IngredientCreateInput, datasetId?: string) {
+      const session = getSession(datasetId);
+
+      if (!session) {
+        return null;
+      }
+
+      const existingIds = new Set(session.ingredients.map((ingredient) => ingredient.id));
+      const ingredient: Ingredient = {
+        id: input.id && !existingIds.has(input.id)
+          ? input.id
+          : createUniqueId("ingredient", input.name, existingIds),
+        name: input.name.trim(),
+        costPerUnitCents: input.costPerUnitCents,
+        unit: input.unit
+      };
+
+      session.ingredients = [...session.ingredients, ingredient];
+      syncDatasetData(session);
+
+      return ingredient;
+    },
+    updateIngredient(ingredientId: string, input: IngredientUpdateInput, datasetId?: string) {
+      const session = getSession(datasetId);
+
+      if (!session) {
+        return null;
+      }
+
+      const currentIngredient = session.ingredients.find((ingredient) => ingredient.id === ingredientId);
+
+      if (!currentIngredient) {
+        return undefined;
+      }
+
+      const updatedIngredient: Ingredient = {
+        ...currentIngredient,
+        name: input.name?.trim() || currentIngredient.name,
+        costPerUnitCents: input.costPerUnitCents ?? currentIngredient.costPerUnitCents,
+        unit: input.unit ?? currentIngredient.unit
+      };
+
+      session.ingredients = session.ingredients.map((ingredient) =>
+        ingredient.id === ingredientId ? updatedIngredient : ingredient
+      );
+      syncDatasetData(session);
+
+      return updatedIngredient;
+    },
+    createRecipe(input: RecipeCreateInput, datasetId?: string) {
+      const session = getSession(datasetId);
+
+      if (!session) {
+        return null;
+      }
+
+      const ingredientIds = new Set(session.ingredients.map((ingredient) => ingredient.id));
+      if (input.ingredients.some((ingredient) => !ingredientIds.has(ingredient.ingredientId))) {
+        return undefined;
+      }
+
+      const existingIds = new Set(session.recipes.map((recipe) => recipe.id));
+      const recipe: DemoDatasetDefinition["data"]["recipes"][number] = {
+        id: input.id && !existingIds.has(input.id)
+          ? input.id
+          : createUniqueId("recipe", input.name, existingIds),
+        name: input.name.trim(),
+        yield: input.yield,
+        ingredients: input.ingredients.map((ingredient) => ({ ...ingredient }))
+      };
+
+      session.recipes = [...session.recipes, recipe];
+      syncDatasetData(session);
+
+      return recipe;
+    },
+    updateRecipe(recipeId: string, input: RecipeUpdateInput, datasetId?: string) {
+      const session = getSession(datasetId);
+
+      if (!session) {
+        return null;
+      }
+
+      const currentRecipe = session.recipes.find((recipe) => recipe.id === recipeId);
+
+      if (!currentRecipe) {
+        return undefined;
+      }
+
+      const ingredientIds = new Set(session.ingredients.map((ingredient) => ingredient.id));
+      if (input.ingredients?.some((ingredient) => !ingredientIds.has(ingredient.ingredientId))) {
+        return undefined;
+      }
+
+      const updatedRecipe: DemoDatasetDefinition["data"]["recipes"][number] = {
+        ...currentRecipe,
+        name: input.name?.trim() || currentRecipe.name,
+        yield: input.yield ?? currentRecipe.yield,
+        ingredients: input.ingredients
+          ? input.ingredients.map((ingredient) => ({ ...ingredient }))
+          : currentRecipe.ingredients.map((ingredient) => ({ ...ingredient }))
+      };
+
+      session.recipes = session.recipes.map((recipe) => (recipe.id === recipeId ? updatedRecipe : recipe));
+      syncDatasetData(session);
+
+      return updatedRecipe;
+    },
+    createDish(input: DishCreateInput, datasetId?: string) {
+      const session = getSession(datasetId);
+
+      if (!session) {
+        return null;
+      }
+
+      if (!session.recipes.some((recipe) => recipe.id === input.recipeId)) {
+        return undefined;
+      }
+
+      const existingIds = new Set(session.dishes.map((dish) => dish.id));
+      const dish: DemoDatasetDefinition["data"]["dishes"][number] = {
+        id: input.id && !existingIds.has(input.id)
+          ? input.id
+          : createUniqueId("dish", input.name, existingIds),
+        name: input.name.trim(),
+        recipeId: input.recipeId,
+        priceCents: input.priceCents,
+        salesVolume: input.salesVolume
+      };
+
+      session.dishes = [...session.dishes, dish];
+      syncDatasetData(session);
+
+      return dish;
+    },
+    updateDish(dishId: string, input: DishUpdateInput, datasetId?: string) {
+      const session = getSession(datasetId);
+
+      if (!session) {
+        return null;
+      }
+
+      const currentDish = session.dishes.find((dish) => dish.id === dishId);
+
+      if (!currentDish) {
+        return undefined;
+      }
+
+      if (input.recipeId && !session.recipes.some((recipe) => recipe.id === input.recipeId)) {
+        return undefined;
+      }
+
+      const updatedDish: DemoDatasetDefinition["data"]["dishes"][number] = {
+        ...currentDish,
+        name: input.name?.trim() || currentDish.name,
+        recipeId: input.recipeId ?? currentDish.recipeId,
+        priceCents: input.priceCents ?? currentDish.priceCents,
+        salesVolume: input.salesVolume ?? currentDish.salesVolume
+      };
+
+      session.dishes = session.dishes.map((dish) => (dish.id === dishId ? updatedDish : dish));
+      syncDatasetData(session);
+
+      return updatedDish;
+    },
     confirmInvoice(
       invoiceId: string,
       datasetId: string | undefined,
@@ -841,14 +1106,7 @@ export function createDataStore(): AppStore {
       });
 
       session.ingredients = result.updatedIngredients.map((ingredient) => ({ ...ingredient }));
-      session.dataset = {
-        ...session.dataset,
-        data: {
-          ingredients: session.ingredients,
-          recipes: session.recipes,
-          dishes: session.dishes
-        }
-      };
+      syncDatasetData(session);
       session.costHistory = [...session.costHistory, ...result.costHistory];
       session.alerts = [...session.alerts, ...result.alerts];
 
@@ -878,7 +1136,7 @@ export function createDataStore(): AppStore {
       const existingSession = sessions.get(datasetId);
       const nextSession = existingSession?.baseline
         ? createSessionFromExportPayload(existingSession.baseline, datasetId)
-        : createDatasetSession(datasetId);
+        : createDatasetSession(datasetId, extraDatasets);
 
       if (!nextSession) {
         return null;

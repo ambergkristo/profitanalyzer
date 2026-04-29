@@ -23,12 +23,16 @@ export function Layout() {
   const isDemoMode = appMode === "demo";
 
   useEffect(() => {
-    if (!datasetId && datasets.data?.[0]?.id) {
+    if (!datasetId && datasets.data?.length) {
       const nextParams = new URLSearchParams(searchParams);
-      nextParams.set("dataset", datasets.data[0].id);
+      const preferredDatasetId =
+        appMode === "pilot"
+          ? datasets.data.find((dataset) => dataset.id === "pilot-workspace")?.id ?? datasets.data[0].id
+          : datasets.data[0].id;
+      nextParams.set("dataset", preferredDatasetId);
       setSearchParams(nextParams, { replace: true });
     }
-  }, [datasetId, datasets.data, searchParams, setSearchParams]);
+  }, [appMode, datasetId, datasets.data, searchParams, setSearchParams]);
 
   const selectedDataset = datasets.data ? getScenarioMeta(datasets.data, datasetId) : undefined;
 
@@ -88,7 +92,7 @@ export function Layout() {
                           {config.data.appMode === "demo" ? "Demo mode" : "Pilot mode"}
                         </span>
                         <span className="rounded-full border border-white/10 px-4 py-2 text-[11px] uppercase tracking-[0.18em] text-muted">
-                          Storage {config.data.features.persistence}
+                          Storage {config.data.storage.driver}
                         </span>
                         {config.data.features.externalOcrConfigured ? (
                           <span className="rounded-full border border-profit/20 bg-profit/10 px-4 py-2 text-[11px] uppercase tracking-[0.18em] text-profit">
@@ -142,11 +146,11 @@ export function Layout() {
                   </nav>
                 </div>
               </Panel>
-              {config.data?.features.persistence === "memory" ? (
+              {config.data?.storage.persistenceWarning ? (
                 <Panel className="rounded-tile border-warning/25 bg-warning/[0.08] px-4 py-4" tone="warning">
                   <p className="text-[11px] uppercase tracking-[0.2em] text-warning">Persistence warning</p>
                   <p className="mt-2 text-sm leading-6 text-text">
-                    This {config.data.appMode === "pilot" ? "pilot" : "demo"} build uses memory storage. Restarting the API resets data.
+                    {config.data.storage.persistenceWarning}
                   </p>
                 </Panel>
               ) : null}

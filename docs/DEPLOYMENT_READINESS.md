@@ -38,6 +38,8 @@ npm run validate:pilot
 Core:
 
 - `APP_MODE=demo|pilot`
+- `STORE_DRIVER=memory|file`
+- `DATA_DIR=.data`
 
 Optional OCR:
 
@@ -67,13 +69,22 @@ Optional OCR:
 
 ## Storage Warning
 
-Current storage is memory-only.
+Current storage can run in two local modes:
+
+- `memory`: default, resets on API restart
+- `file`: local JSON persistence under `DATA_DIR`
 
 That means:
 
-- restarting the API resets runtime changes
-- pilot resets are deterministic
-- export should be used before risky demo or pilot sessions
+- restarting the API resets runtime changes in memory mode
+- file mode survives API restarts locally, but still depends on a writable filesystem
+- pilot resets remain deterministic in both modes
+- export should still be used before risky demo or pilot sessions
+
+Hosted deployment caution:
+
+- many hosted filesystems are ephemeral
+- for a real hosted pilot, use a persistent disk or move to a database later
 
 ## Pre-Deploy Validation
 
@@ -87,6 +98,12 @@ Run before any demo or pilot deployment:
 - `npm run validate:invoice`
 - `npm run validate:ocr`
 - `npm run validate:pilot`
+
+If using file mode locally, also confirm:
+
+- `DATA_DIR` exists or can be created
+- the backend process can read and write the directory
+- deep health returns `storage.driver = file` and `ok = true`
 
 ## Known Limitations
 

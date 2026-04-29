@@ -2,11 +2,12 @@
 
 ## Summary
 
-- App mode demo; persistence memory; external OCR configured false.
-- Deep health returned 3 checks with storage memory.
-- Export returned dataset mixed-restaurant; invalid import returned HTTP 400; pilot import returned HTTP 201.
-- Reset returned HTTP 200 and cleared 1 invoices plus 6 alerts.
-- Overview after reset shows 0 supplier alerts; invoice parse after reset returned HTTP 200.
-- Fixture OCR after reset returned HTTP 200 with source ocr_future.
-- Pilot foundation is ready for a controlled workspace: config endpoint, deep health, export/import boundary, reset safety, invoice intake, and OCR fixture remain operational.
+- Default app mode demo; storage memory; external OCR configured false.
+- Pilot mode file store initialized successfully with readable=true and writable=true for local persistence validation.
+- Memory export returned dataset mixed-restaurant; invalid import returned HTTP 400; pilot import in file mode succeeded.
+- File store persisted ingredient and dish edits, then restored them correctly after a full app reload using a temporary data directory.
+- Invoice confirmation in file mode survived reload and continued to expose persisted supplier alerts plus ingredient cost history.
+- Fixture OCR upload still worked with file storage, and OCR job metadata remained available after reload without mutating costs before confirmation.
+- File-store reset restored the mixed restaurant baseline and cleared persisted alerts and cost-history records after a reload.
+- Pilot persistence foundation is ready for controlled local use: memory mode remains the default, file mode preserves pilot edits, and invoice/OCR safety gates remain intact.
 
