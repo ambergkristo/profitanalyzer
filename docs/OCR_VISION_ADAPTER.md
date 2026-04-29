@@ -7,6 +7,7 @@ Close RM8 at the provider-pilot level without breaking the RM7 trust boundary.
 The product flow stays:
 
 1. Upload image or PDF
+2. Mobile browser file input or camera-style capture path is allowed
 2. OCR provider parses the file into a draft
 3. Quality gate evaluates the result
 4. User reviews the draft
@@ -145,6 +146,20 @@ Accepted mime types:
 - `image/webp`
 - `application/pdf`
 
+## Mobile-First Invoice Requirement
+
+The OCR and invoice intake workflow must work naturally on mobile web.
+
+For founding partner launch quality:
+
+- user must be able to open the app on a phone
+- user must be able to upload invoice image or PDF from mobile
+- browser file input with camera capture is acceptable for first release
+- OCR still creates a draft only
+- review-confirm must be usable on a phone
+
+The product must not be treated as launch ready if invoice capture and review only work comfortably on desktop.
+
 ## OCR Quality Gate
 
 Core quality evaluation lives in `packages/core/src/ocr.ts`.
@@ -226,6 +241,15 @@ Safety rules:
 - ignored lines never update costs
 - repeated confirmation is blocked
 - pre-confirm analytics and cost history remain unchanged
+
+## Mobile Validation Direction
+
+Future validation should include:
+
+- mobile viewport upload smoke test
+- mobile OCR draft review layout test
+- mobile unresolved-line handling test
+- mobile confirm CTA visibility test
 
 ## Live-Skip Validation
 

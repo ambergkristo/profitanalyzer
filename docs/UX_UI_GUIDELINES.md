@@ -11,7 +11,8 @@ Design objective: compress complex margin data into fast, confident actions.
 - Action first, data second
 - Three-click decision path
 - No Excel feel
-- Mobile usable
+- Mobile-first invoice flow
+- Mobile usable across core flows
 - Premium dashboard atmosphere
 - Signal-rich but not cluttered
 - Every warning must lead to a next action
@@ -86,6 +87,10 @@ Rules:
 - Use stacked cards over wide tables where possible
 - Preserve decision signal before detailed line items
 - Critical actions must be reachable with one thumb
+- No horizontal scrolling as the primary interaction
+- Dashboard KPI cards must stack cleanly
+- Dish detail and simulator must remain usable inside a narrow viewport
+- Expandable panels such as cost history must collapse cleanly on mobile
 
 ## Core Components
 
@@ -119,19 +124,29 @@ Rules:
 - Support phone photo upload as the primary path.
 - Present upload as a cost-intake action, not accounting admin.
 - Emphasize the user outcome: updated ingredient costs and margin alerts.
+- Browser file input with camera capture is acceptable for the first launch-quality version.
 
 ### Invoice Review View
 
-- Review screen must be table-like but not Excel-like.
-- Rows should show raw product name, parsed quantity or unit, parsed price, matched ingredient, and confidence.
+- Review screen must not depend on desktop tables.
+- On mobile, invoice lines should render as responsive line cards.
+- Each line should show raw product name, parsed quantity or unit, parsed price, matched ingredient, and confidence.
 - Problem rows must be visually highlighted.
 - Confidence must be visible but not overly technical.
+- Unresolved rows must be obvious on small screens.
+- Touch targets for confirm, ignore, and ingredient selection must be large enough for thumb use.
 - Main user actions:
   - confirm supplier
   - confirm invoice date
   - confirm or correct parsed rows
   - confirm ingredient matches
   - save cost updates
+
+Primary CTA rule:
+
+- the confirm CTA must stay visually obvious
+- unresolved-line count must stay clear
+- the user must understand that no cost changes happen before confirmation
 
 ### Price Change Alerts View
 
@@ -155,6 +170,16 @@ After invoice confirmation, show an immediate summary:
 - price changes detected
 - dishes affected
 - top actions
+
+## Mobile Validation Requirements
+
+Before founding partner launch, the product should pass:
+
+- mobile viewport smoke test
+- invoice upload flow on mobile viewport
+- invoice review card layout test
+- simulator mobile layout test
+- dashboard mobile layout test
 
 ## Premium Feel Requirements
 

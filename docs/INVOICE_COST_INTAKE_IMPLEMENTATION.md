@@ -19,6 +19,17 @@ Sprint 6 closes the deterministic RM7 workflow:
 
 The workflow is intentionally review-first. Parsed invoice lines do not update current ingredient costs until the user confirms them.
 
+## Mobile-First Invoice Requirement
+
+Invoice cost intake is a core mobile workflow.
+
+The practical requirement is:
+
+- a restaurant owner or kitchen manager should be able to upload an invoice from a phone
+- OCR or manual intake should still create a draft only
+- invoice lines should be reviewable and editable on mobile
+- no ingredient cost should update before confirmation
+
 ## Mock Parser Architecture
 
 The mock parser lives in `packages/core/src/invoices.ts`.
@@ -46,6 +57,18 @@ This keeps RM7 deterministic and testable before OCR variance enters the workflo
 - Manual structured drafts never bypass review-confirm.
 - OCR-created drafts never bypass review-confirm.
 - Unit mismatch remains a review problem until the user changes the line or ignores it.
+
+## Review UI Expectations
+
+The review UI should not depend on desktop tables as the primary pattern.
+
+Mobile expectations:
+
+- responsive invoice line cards
+- touch-friendly confirm and ignore controls
+- visible unresolved-line states
+- readable confidence and warning labels
+- clear primary confirm CTA
 
 ## Cost History Model
 
@@ -137,6 +160,7 @@ This keeps invoice cost intake connected to the same action layer the dashboard 
 - No supplier API sync
 - No automated supplier normalization beyond deterministic string matching
 - No accounting, inventory, or POS workflows
+- mobile camera capture is still browser-based rather than native
 
 ## Why Real OCR Is Still Deferred
 

@@ -2,446 +2,175 @@
 
 ## RM1 - Core Engine + Basic UI
 
-### Goal
-
-Working system that calculates dish cost and margin from manually entered data.
-
-### Scope
-
-- Ingredient, Recipe, RecipeIngredient, and Dish models
-- Cost calculation logic
-- Margin calculation
-- Basic API
-- Simple dish table UI
-
-### Exit Criteria
-
-- User can input dishes manually
-- System shows correct dish cost and margin
-- Calculations are deterministic and test-covered
-
-### Validation Check
-
-Manual check: create dishes manually, verify cost and margin results against hand calculations, and confirm deterministic outputs across repeated runs.
+Status: complete.
 
 ## RM2 - Dashboard + Core Insights
 
-Status: completed in MAX SPRINT 2.
-
-### Goal
-
-Turn cost and margin data into owner-facing decisions.
-
-### Scope
-
-- KPI cards
-- Basic alerts
-- Top 3 recommendations
-- Rule-based decision output
-- Low margin and loss flags
-
-### Exit Criteria
-
-- Dashboard shows actionable insights
-- User can see what to fix first
-- Recommendations include expected impact and confidence
-
-### Validation Check
-
-Manual check: with seeded data, the dashboard surfaces the top problem dishes and shows ranked actions with impact and confidence.
+Status: complete.
 
 ## RM3 - Dish Detail + Cost Breakdown
 
-Status: completed in MAX SPRINT 2.
-
-### Goal
-
-Explain why a dish is profitable, risky, or loss-making.
-
-### Scope
-
-- Ingredient breakdown
-- Cost visualization
-- Margin explanation
-- Cost driver highlighting
-- Simple margin trend placeholder if needed
-
-### Exit Criteria
-
-- User can open a dish and understand the main cost drivers
-- Dish detail supports decision-making, not just data display
-
-### Validation Check
-
-Manual check: open a flagged dish and explain the result using the detail view without external notes.
+Status: complete.
 
 ## RM4 - Price Simulator
 
-Status: completed in MAX SPRINT 2.
-
-### Goal
-
-Allow the user to test price changes instantly.
-
-### Scope
-
-- Price slider
-- Real-time margin update
-- Profit impact estimation
-- Before or after comparison
-
-### Exit Criteria
-
-- User can simulate a price change instantly
-- UI shows margin and estimated profit delta
-
-### Validation Check
-
-Manual check: simulate 0.50 EUR, 1.00 EUR, and 2.00 EUR price changes and confirm instant recalculation of margin and profit delta.
+Status: complete.
 
 ## RM5 - Synthetic Restaurant Validation
 
-Status: completed in MAX SPRINT 3.
+Status: complete.
 
-### Goal
+## RM6 - Premium Decision UX
 
-Validate the decision engine with realistic simulated restaurant datasets before customer interviews become mandatory.
-
-### Scope
-
-- High-margin restaurant dataset
-- Low-margin restaurant dataset
-- Mixed restaurant dataset
-- 15-30 dishes per dataset
-- Ingredients, quantities, yields, prices, and sales volume
-- Stress cases:
-  - ingredient cost spike
-  - high-sales low-margin bestseller
-  - low-sales high-margin dish
-  - missing yield
-  - partial recipe data
-  - 0.50 EUR, 1.00 EUR, and 2.00 EUR price changes
-
-### Exit Criteria
-
-- Each dataset produces 3-5 plausible actions
-- At least one action per dataset shows meaningful profit impact
-- Recommendation ranking is stable and explainable
-- Partial data still produces useful output with lower confidence
-- Engine does not collapse when input data is imperfect
-
-### Validation Check
-
-Manual check: run all three restaurant datasets through the engine, verify action quality, and compare ranking stability across stress scenarios.
-
-## RM6 - UX Polish + Decision-First Interface
-
-Status: completed in MAX SPRINT 4.
-
-### Goal
-
-Make the product feel premium, fast, and decision-first.
-
-### Scope
-
-- Apply full visual design system
-- Dark premium dashboard
-- KPI cards
-- Action cards
-- Heat-colored dish table
-- No default Tailwind look
-- No Excel-like primary screens
-- Mobile-first improvements
-
-### Exit Criteria
-
-- UI looks production-grade
-- Main user path is clear
-- Important actions are visible without digging
-
-### Validation Check
-
-Manual check: complete the main dashboard-to-dish-detail-to-simulator flow on desktop and mobile without relying on spreadsheet-like layouts.
+Status: complete.
 
 ## RM7 - Invoice Scan Cost Intake
 
-Status: completed in MAX SPRINT 6.
+Status: complete.
 
-### Goal
+## RM8 - OCR/Vision Adapter Boundary
 
-Turn supplier invoice data into confirmed ingredient cost updates and price-change alerts.
+Status: complete architecturally.
+
+Notes:
+
+- fixture OCR exists
+- external provider seam exists
+- OCR remains draft-only
+- live OCR accuracy is still not claimed
+
+## RM9 - Controlled Pilot Package
+
+Status: complete as a controlled pilot package.
 
 Important:
 
-This milestone starts with a mocked or structured parser. Real OCR or vision integration still does not belong here.
+- this completed the controlled pilot package
+- it did not mean production SaaS readiness
+- it did not mean real OCR accuracy was proven
 
-### Scope
-
-- Supplier model
-- PurchaseInvoice model
-- PurchaseInvoiceLine model
-- IngredientCostHistory model
-- SupplierProductMatch or IngredientAlias model
-- Mock parsed invoice input
-- Review and confirm workflow
-- Ingredient matching suggestions
-- Confirm screen
-- Cost update service
-- Price-change alert service
-- Affected dish recalculation trigger
-
-### Required Workflow
-
-1. User submits a sample invoice or mocked parsed invoice.
-2. System creates a structured invoice draft.
-3. System shows invoice review screen.
-4. User confirms supplier, date, invoice lines, quantities, units, prices, and ingredient matches.
-5. System writes cost history only for confirmed lines.
-6. System updates `Ingredient` current effective cost only after confirmation.
-7. System creates price-change alerts.
-8. Dashboard shows affected dishes and recommended actions.
-
-### Exit Criteria
-
-- User can review parsed invoice lines before saving
-- Unknown or low-confidence lines do not update costs automatically
-- Confirmed invoice lines create `IngredientCostHistory` records
-- `Ingredient` current cost updates only after confirmation
-- Price-change alerts are created
-- Affected dishes are recalculated or flagged
-- Dashboard shows at least one invoice-driven action card
-
-### Validation Check
-
-Manual check: load a mocked invoice, correct low-confidence lines, confirm the draft, verify cost history creation, and confirm the dashboard surfaces invoice-driven actions.
-
-### Current Sprint 6 Result
-
-Built now:
-
-- sample invoice selection through `/invoices`
-- manual structured invoice entry through `/invoices`
-- deterministic mock and manual invoice draft creation
-- review-confirm workflow that updates current ingredient cost only after review
-- `IngredientCostHistory` records and dish-detail cost-history visibility
-- supplier product match creation and refresh
-- supplier price-change alerts and dedicated `/alerts` view
-- invoice-driven action integration inside the ranked dashboard action stack
-- dashboard overview supplier alert counts and latest supplier alerts
-
-Still out of scope for RM7:
-
-- any real OCR or image ingestion work
-- photo upload
-- supplier API sync
-- accounting, inventory, or POS workflows
-
-## RM8 - Real OCR/Vision Adapter
-
-Status: completed in MAX SPRINT 8 for the safe adapter boundary. Real provider accuracy remains unvalidated until a live provider is configured and benchmarked.
+## PHASE 10 - Strategy Reset + Launch-Ready Masterplan
 
 ### Goal
 
-Add real phone photo or image-based invoice parsing after the review-confirm cost intake workflow is stable.
+Reposition the project from controlled pilot to founding partner launch product.
 
 ### Scope
 
-- Image upload handling
-- OCR or vision adapter interface
-- Raw text capture
-- Field extraction for:
-  - supplier
-  - invoice number
-  - invoice date
-  - product name
-  - quantity
-  - unit
-  - unit price or line total
-- Confidence scoring
-- Needs-review status for uncertain fields
-- Error handling for poor image quality
+- strategy reset
+- launch-quality product standard
+- founding partner program framing
+- mobile-first invoice requirement
+- launch readiness checklist
+- founder-led GTM documentation
 
-### Exit Criteria
-
-- System can process a simple one-page supplier invoice image
-- Parsed fields are shown in the existing review screen
-- Low-confidence fields are clearly marked
-- No OCR result can update ingredient costs without user confirmation
-- Existing mock parser tests still pass
-
-### Validation Check
-
-Manual check: submit a simple invoice image, verify parsed fields flow into the existing review screen, and confirm low-confidence fields require review before any cost update.
-
-### Current Sprint 7 Result
-
-Built now:
-
-- provider-neutral OCR adapter types and normalization helpers
-- fixture OCR adapter with clean, blurry, cropped, and generic outputs
-- in-memory upload intake through `POST /api/ocr/invoices/upload`
-- OCR job state and job lookup endpoint
-- frontend `Photo/OCR Upload` mode inside `/invoices`
-- OCR confidence and warning visibility in the existing review UI
-- OCR drafts reusing the RM7 review-confirm endpoint and downstream cost history / alert / action flow
-- deterministic `npm run validate:ocr`
-
-Still out of scope for RM8:
-
-- any external paid OCR provider integration
-- camera capture
-- mobile-native photo workflows
-- blind auto-import
-- supplier API sync
-
-### Current Sprint 8 Result
-
-Built now:
-
-- OCR provider registry with fixture default and external env seam
-- `GET /api/ocr/providers` for provider discovery in UI and validation
-- quality gate with quick-review, careful-review, and manual-entry guidance
-- hardened upload validation for mime type, file size, provider selection, and dataset selection
-- observable OCR job lifecycle with provider, quality, and failure metadata
-- fixture provider remaining the default path in local development
-- external provider stub that stays disabled unless env configuration is present
-- `validate:ocr` coverage for provider registry, upload hardening, quality gate, and pre-confirm safety
-
-Important note:
-
-RM8 is complete as an adapter-safe product slice. It does not mean live production OCR accuracy has been validated.
-
-Still out of scope after Sprint 8:
-
-- live paid provider accuracy benchmarking
-- camera capture
-- production file storage and retention
-- supplier API sync
-- blind auto-import
-
-### Current Sprint 9 Result
-
-Built now:
-
-- real `external_env` provider adapter behind the existing provider registry
-- server-side env configuration for OpenAI-compatible Responses API calls
-- provider response parser and schema normalization into the existing OCR draft shape
-- deterministic offline provider tests with mocked responses
-- `validate:ocr:provider` live-skip validation
-- OCR provider benchmark scaffolding and deterministic skip reporting when env is missing
-- fixture OCR remaining the default path even with the external provider pilot in place
-
-Important note:
-
-RM8 is complete at the adapter and provider-pilot level. It still does not prove production OCR accuracy.
-
-Still out of scope after Sprint 9:
-
-- real invoice OCR accuracy at scale
-- provider cost and latency benchmarking under production load
-- camera capture
-- production file storage and retention
-- supplier API sync
-- blind auto-import
-
-## RM9 - First Customer Ready / Pilot Package
-
-Status: completed in MAX SPRINT 12 as a controlled pilot package. This is not a production SaaS claim.
+## PHASE 11 - Production Persistence + Deployment Foundation
 
 ### Goal
 
-Prepare the product for a first controlled restaurant pilot.
+Move beyond memory and file store into hosted persistence and deployable architecture.
 
 ### Scope
 
-- Persistence boundary
-- Demo mode vs pilot mode separation
-- Basic onboarding
-- Pilot tools
-- Export or import safety
-- Reset controls
-- Deployment readiness
-- Controlled pilot workspace handling
-- Seed data
-- Basic error states
-- Pilot checklist
-- Manual fallback flow for bad invoice scans
+- database adapter implementation
+- migration and seed strategy
+- hosted deployment profile
+- environment validation
+- backup and export
+- production data isolation
+- health checks
 
-### Exit Criteria
+## PHASE 12 - Complete Restaurant Onboarding
 
-- One restaurant workspace can be prepared safely
-- User can export, reset, and re-import controlled data
-- User can see dashboard insights
-- User can simulate price changes
-- User can test invoice cost intake
-- System can produce a credible weekly profit action summary
-- App mode and storage warnings are explicit
+### Goal
 
-### Validation Check
+Make a restaurant able to set itself up with minimal founder help.
 
-Manual check: onboard one pilot restaurant, complete the manual data flow, run the dashboard and simulator, test invoice cost intake, and produce a weekly profit action summary.
+### Scope
 
-### Current Sprint 10 Result
+- restaurant workspace setup
+- menu setup
+- ingredient setup
+- recipe builder
+- dish builder
+- supplier setup
+- first invoice flow
+- onboarding progress checklist
 
-Built now:
+## PHASE 13 - Real Invoice/OCR Benchmark + Reliability
 
-- store boundary and store factory in `apps/api/src/store`
-- app config endpoint and deep health endpoint
-- demo mode vs pilot mode concept with `APP_MODE`
-- frontend mode badge and memory-persistence warning
-- onboarding route at `/onboarding`
-- pilot tooling route at `/pilot-tools`
-- controlled dataset export, import, and reset endpoints
-- deterministic `npm run validate:pilot`
-- deployment, pilot package, and pilot data setup docs
+### Goal
 
-Still out of scope after Sprint 10:
+Validate invoice and OCR workflow with realistic invoice samples before public claims.
 
-- persistent database storage
-- auth or RBAC
+### Scope
+
+- private benchmark workflow
+- expected JSON matching
+- provider accuracy scoring
+- OCR confidence thresholds
+- manual fallback
+- review burden scoring
+- benchmark report
+- mobile invoice upload and review validation
+
+## PHASE 14 - Founding Partner Launch Package
+
+### Goal
+
+Prepare the first 3-5 influential restaurant partners.
+
+### Scope
+
+- founding partner profile criteria
+- outreach materials
+- lifetime license terms
+- onboarding checklist
+- case study permission
+- testimonial and post framework
+- data privacy terms
+- support process
+
+## PHASE 15 - Public Launch Surface
+
+### Goal
+
+Convert advocacy into demand.
+
+### Scope
+
+- landing page
+- waitlist or demo request
+- product screenshots
+- case study slots
+- pricing positioning
+- analytics tracking
+- social proof modules
+
+## PHASE 16 - Paid SaaS Readiness
+
+### Goal
+
+Move from founding partner launch to paid product.
+
+### Scope
+
+- auth
 - billing
-- multi-tenant SaaS concerns
-- production OCR accuracy claims
+- subscription plans
+- role and permissions
+- database hardening
+- monitoring
+- backups
+- customer support flow
 
-### Current Sprint 11 Result
+## Current Strategic Rule
 
-Built now:
+The product is now being built toward a launch-quality founding partner standard.
 
-- `STORE_DRIVER=memory|file` with memory remaining the default
-- `DATA_DIR` support for local file-backed pilot persistence
-- file store behind the existing store boundary
-- pilot-workspace starter data in pilot mode
-- pilot-tools ingredient and dish editing for minimal workspace setup
-- `validate:pilot` reload coverage proving persisted edits survive app recreation
+That means:
 
-Still out of scope after Sprint 11:
-
-- database-backed persistence
-- auth or RBAC
-- billing
-- multi-tenant SaaS concerns
-- production OCR accuracy claims
-
-### Current Sprint 12 Result
-
-Built now:
-
-- pilot-tools recipe editing with ingredient lines and yield control
-- dish-to-recipe setup editing in pilot tools
-- import dry-run validation before destructive import
-- export metadata with `schemaVersion`, `datasetId`, and app version
-- deterministic `npm run validate:env`
-- DB adapter plan and placeholder seam without claiming live database support
-- updated onboarding and pilot setup flow for a controlled restaurant workspace
-
-Important note:
-
-RM9 is complete as a controlled pilot package. It is not a claim of production SaaS readiness.
-
-Still out of scope after Sprint 12:
-
-- actual database-backed persistence
-- auth or RBAC
-- billing
-- multi-tenant SaaS concerns
-- production OCR accuracy claims
+- production SaaS readiness is still not claimed
+- launch readiness must exceed controlled pilot quality
+- mobile invoice intake is a core requirement
+- no blind OCR import is allowed

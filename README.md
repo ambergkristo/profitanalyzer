@@ -1,10 +1,16 @@
 # Menu Profit Optimizer
 
-Menu Profit Optimizer is a restaurant decision product for margin repair, supplier-cost review, and price testing. Sprint 12 closes the controlled RM9 pilot package by adding recipe editing, safer import validation, environment validation, and DB-adapter readiness without weakening the existing invoice and OCR review-confirm model.
+Menu Profit Optimizer is a restaurant decision product for margin repair, supplier-cost review, and price testing. RM1-RM9 are complete as a controlled pilot package. The current strategic shift is to build the product to founding partner launch quality before asking influential restaurant owners to evaluate it publicly.
 
-## Sprint 12 Scope
+## Current Strategic Status
 
-MAX SPRINT 12 delivers:
+- RM1-RM9 are complete as a controlled pilot package
+- production SaaS readiness is not claimed
+- new strategy: build to founding partner launch quality
+- next phases: Phase 10-16
+- next immediate work: strategy reset, then production persistence, deployment foundation, and stronger onboarding
+
+## Controlled Pilot Package Already Built
 
 - app mode separation with `APP_MODE=demo|pilot`
 - `STORE_DRIVER=memory|file`
@@ -37,6 +43,23 @@ Current non-goals remain explicit:
 - no multi-tenant SaaS controls
 - no implemented database store yet
 
+## Founding Partner Launch Direction
+
+The product is now being raised from controlled pilot quality to founding partner launch quality.
+
+That means the product must become:
+
+- complete enough for a serious restaurant owner to trust
+- mobile-friendly for invoice upload and review
+- persistent and deployable
+- strong enough for real menu and invoice onboarding
+
+It still does not mean:
+
+- production SaaS readiness
+- live OCR accuracy claims
+- billing, auth, or enterprise tenancy
+
 ## App Modes
 
 `demo` mode is the default.
@@ -54,6 +77,13 @@ Current non-goals remain explicit:
 - the same invoice/OCR review-confirm boundary stays active
 - pilot tooling is available for reset/export/import safety
 - file store can persist local pilot edits when enabled
+
+Founding partner launch standard adds:
+
+- stronger onboarding
+- production persistence path
+- mobile-first invoice intake quality
+- real invoice benchmark work
 
 Important:
 
@@ -189,17 +219,23 @@ Most analytics, invoices, OCR, alerts, export, and cost-history endpoints suppor
 - Invoice, manual, sample, and OCR drafts all reuse the same confirmation boundary.
 - Fixture OCR remains the default path even when the external provider seam exists.
 - `validate:ocr:provider` skips cleanly when provider env is missing.
-- RM9 now closes as a controlled pilot package, not a production SaaS platform.
+- RM9 closes as a controlled pilot package, not a production SaaS platform.
 - The database adapter is planned and typed, but not implemented.
 - Hosted deployments may still need persistent disk or a future database layer.
+- Founding partner launch readiness now requires mobile-friendly invoice intake and review.
 
 ## Documentation
 
+- [docs/MASTERPLAN.md](docs/MASTERPLAN.md)
 - [docs/DEMO_READINESS.md](docs/DEMO_READINESS.md)
 - [docs/DEPLOYMENT_READINESS.md](docs/DEPLOYMENT_READINESS.md)
+- [docs/FOUNDING_PARTNER_PROGRAM.md](docs/FOUNDING_PARTNER_PROGRAM.md)
+- [docs/FOUNDER_LED_GTM.md](docs/FOUNDER_LED_GTM.md)
 - [docs/ENVIRONMENT_CONFIG.md](docs/ENVIRONMENT_CONFIG.md)
 - [docs/INVOICE_COST_INTAKE_IMPLEMENTATION.md](docs/INVOICE_COST_INTAKE_IMPLEMENTATION.md)
 - [docs/DB_ADAPTER_PLAN.md](docs/DB_ADAPTER_PLAN.md)
+- [docs/LAUNCH_READINESS_CHECKLIST.md](docs/LAUNCH_READINESS_CHECKLIST.md)
+- [docs/NEXT_CODEX_PROMPT.md](docs/NEXT_CODEX_PROMPT.md)
 - [docs/OCR_PROVIDER_SETUP.md](docs/OCR_PROVIDER_SETUP.md)
 - [docs/OCR_VISION_ADAPTER.md](docs/OCR_VISION_ADAPTER.md)
 - [docs/PILOT_DATA_SETUP.md](docs/PILOT_DATA_SETUP.md)
