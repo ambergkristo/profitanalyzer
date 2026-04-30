@@ -6,10 +6,15 @@ import { DashboardPage } from "./pages/Dashboard.js";
 import { DishDetailPage } from "./pages/DishDetail.js";
 import { DishesPage } from "./pages/Dishes.js";
 import { InvoicesPage } from "./pages/Invoices.js";
+import { LoginPage } from "./pages/Login.js";
 import { OnboardingPage } from "./pages/Onboarding.js";
 import { PilotToolsPage } from "./pages/PilotTools.js";
 
 const router = createBrowserRouter([
+  {
+    path: "/login",
+    element: <LoginPage />
+  },
   {
     path: "/",
     element: <Layout />,

@@ -47,6 +47,10 @@ describe("PilotToolsPage", () => {
         workspaceId: "workspace-pilot-workspace",
         restaurantId: "pilot-workspace"
       },
+      auth: {
+        mode: "dev",
+        required: true
+      },
       features: {
         invoiceIntake: true,
         ocrFixture: true,
@@ -81,6 +85,10 @@ describe("PilotToolsPage", () => {
         restaurantId: "pilot-workspace"
       },
       externalOcrConfigured: false,
+      auth: {
+        mode: "dev",
+        required: true
+      },
       checks: [
         {
           key: "storage",

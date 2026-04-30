@@ -4,11 +4,13 @@ import path from "node:path";
 const allowedAppModes = ["demo", "pilot"] as const;
 const allowedStoreDrivers = ["memory", "file", "database"] as const;
 const allowedOcrProviders = ["fixture", "external_env", "disabled"] as const;
+const allowedAuthModes = ["disabled", "dev"] as const;
 
 function main() {
   const appMode = process.env.APP_MODE?.trim() || "demo";
   const storeDriver = process.env.STORE_DRIVER?.trim() || "memory";
   const ocrProvider = process.env.OCR_PROVIDER?.trim() || "fixture";
+  const authMode = process.env.AUTH_MODE?.trim() || "dev";
   const dataDir = process.env.DATA_DIR?.trim() || ".data";
   const failures: string[] = [];
   const warnings: string[] = [];
@@ -25,8 +27,16 @@ function main() {
     failures.push(`OCR_PROVIDER must be one of: ${allowedOcrProviders.join(", ")}.`);
   }
 
+  if (!allowedAuthModes.includes(authMode as (typeof allowedAuthModes)[number])) {
+    failures.push(`AUTH_MODE must be one of: ${allowedAuthModes.join(", ")}.`);
+  }
+
   if (appMode === "pilot" && storeDriver === "memory") {
     warnings.push("APP_MODE=pilot with STORE_DRIVER=memory means data resets when the API restarts.");
+  }
+
+  if (appMode === "pilot" && authMode === "disabled") {
+    warnings.push("APP_MODE=pilot with AUTH_MODE=disabled weakens workspace access control.");
   }
 
   if (storeDriver === "file") {
@@ -59,6 +69,7 @@ function main() {
     console.log(`appMode=${appMode}`);
     console.log(`storeDriver=${storeDriver}`);
     console.log(`ocrProvider=${ocrProvider}`);
+    console.log(`authMode=${authMode}`);
     for (const failure of failures) {
       console.log(` - ${failure}`);
     }
@@ -70,6 +81,7 @@ function main() {
   console.log(`appMode=${appMode}`);
   console.log(`storeDriver=${storeDriver}`);
   console.log(`ocrProvider=${ocrProvider}`);
+  console.log(`authMode=${authMode}`);
   if (warnings.length === 0) {
     console.log("warnings=none");
     return;

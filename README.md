@@ -1,14 +1,15 @@
 # Menu Profit Optimizer
 
-Menu Profit Optimizer is a restaurant profit product for dish-margin analysis, supplier cost change review, invoice intake, and concrete pricing actions.
+Menu Profit Optimizer is a restaurant profit product for dish-margin analysis, supplier cost change review, invoice intake, OCR draft review, and concrete pricing actions.
 
 RM1-RM9 are complete as a controlled pilot and founding-partner foundation. The strategic target is now production SaaS readiness, but production readiness is not claimed yet.
 
 ## Current Status
 
 - RM1-RM9: complete as controlled pilot / founding-partner foundation
-- Phase 11: complete as strategy and architecture reset
-- Phase 12: database and multi-tenant data foundation is in progress
+- Phase 11: complete as production SaaS strategy reset
+- Phase 12: complete as database and multi-tenant data foundation
+- Phase 13: complete as auth and workspace access foundation
 - production SaaS readiness: not claimed
 - OCR safety boundary: unchanged
 
@@ -19,8 +20,9 @@ The current product already includes:
 - invoice intake and review-confirm
 - OCR adapter boundary with fixture default and external seam
 - onboarding and pilot tools
-- `STORE_DRIVER=memory|file`
-- new `STORE_DRIVER=database` foundation
+- `STORE_DRIVER=memory|file|database`
+- Prisma/Postgres-oriented database layer
+- auth/session foundation with workspace roles
 - mobile-friendly invoice review flow
 
 ## Safety Rules
@@ -35,7 +37,7 @@ The current product already includes:
 
 - `memory`: default local/demo mode
 - `file`: local JSON persistence under `DATA_DIR`
-- `database`: Postgres-oriented Prisma-backed store foundation behind the same store boundary
+- `database`: Postgres-oriented Prisma-backed store
 
 Important:
 
@@ -44,12 +46,31 @@ Important:
 - `STORE_DRIVER=database` does not silently fall back to memory
 - if `DATABASE_URL` is missing, DB validation skips and DB runtime reports a clear configuration failure
 
+## Auth Modes
+
+- `AUTH_MODE=dev`: local dev-session auth with server-generated session tokens and hashed token storage
+- `AUTH_MODE=disabled`: allowed for demo mode only; pilot mode warns and protected routes reject access
+
+Current auth scope:
+
+- `POST /api/auth/dev-login`
+- `GET /api/auth/me`
+- `POST /api/auth/logout`
+- `POST /api/auth/context`
+- owner/admin/member RBAC on protected restaurant data endpoints
+- demo mode remains usable without login
+
+This is a production-oriented auth foundation, not production-complete auth yet. It is suitable for local validation, protected-route wiring, workspace scoping, and Phase 14 handoff, but it is not the final production identity solution.
+
 ## Environment
 
 Example `.env` values:
 
 ```bash
 APP_MODE=demo
+AUTH_MODE=dev
+SESSION_SECRET=
+APP_BASE_URL=http://localhost:5173
 STORE_DRIVER=memory
 DATA_DIR=.data
 DATABASE_URL=
@@ -92,6 +113,7 @@ npm run validate:ocr:provider
 npm run validate:pilot
 npm run validate:env
 npm run validate:db
+npm run validate:auth
 npm audit
 ```
 
@@ -107,10 +129,12 @@ Local URLs:
 - backend: `http://localhost:3001`
 - deep health: `http://localhost:3001/api/health/deep`
 - app config: `http://localhost:3001/api/app/config`
+- login: `http://localhost:5173/login`
 
 ## Main Routes
 
 - `/`
+- `/login`
 - `/onboarding`
 - `/dishes`
 - `/dishes/:dishId`
@@ -123,6 +147,10 @@ Local URLs:
 - `GET /api/app/config`
 - `GET /api/health/deep`
 - `GET /api/demo/datasets`
+- `POST /api/auth/dev-login`
+- `GET /api/auth/me`
+- `POST /api/auth/logout`
+- `POST /api/auth/context`
 - `GET /api/export`
 - `POST /api/import/validate`
 - `POST /api/import`
@@ -148,23 +176,25 @@ Local URLs:
 - `GET /api/analytics/overview`
 - `GET /api/analytics/actions`
 
-## What Phase 12 Added
+## What Phase 13 Added
 
-- Prisma schema for workspace, restaurant, user, membership, ingredients, recipes, dishes, suppliers, invoices, lines, cost history, supplier matches, alerts, OCR jobs, and audit logs
-- Postgres-targeted DB driver behind the existing store boundary
-- tenant-aware `StoreContext` foundation
-- DB seed and migration scaffolding
-- `validate:db`
-- DB-aware app config and deep health reporting
+- dev-session auth foundation with hashed session tokens
+- `User`, `WorkspaceMembership`, `AuthSession`, and authenticated workspace context wiring
+- protected restaurant-data routes in non-demo mode
+- owner/admin/member role enforcement for key mutations
+- auth-aware app config and deep health reporting
+- minimal login screen, logout flow, and workspace indicator
+- audit log foundation for key protected mutations
+- `validate:auth`
 
 ## What Is Still Not Claimed
 
 - production SaaS readiness
-- live auth and protected APIs
-- live tenant-isolated user sessions
+- production-complete auth provider, invite flow, or hardened session lifecycle
+- live DB runtime validation in every target environment
 - live OCR accuracy benchmark on real restaurant invoices
 - billing readiness
-- production backup/observability maturity
+- production backup and observability maturity
 
 ## Documentation
 
@@ -174,7 +204,7 @@ Local URLs:
 - [docs/ENVIRONMENT_CONFIG.md](docs/ENVIRONMENT_CONFIG.md)
 - [docs/DEPLOYMENT_READINESS.md](docs/DEPLOYMENT_READINESS.md)
 - [docs/PRODUCTION_SAAS_GAP_AUDIT.md](docs/PRODUCTION_SAAS_GAP_AUDIT.md)
-- [docs/DB_ADAPTER_PLAN.md](docs/DB_ADAPTER_PLAN.md)
 - [docs/DATABASE_MODEL.md](docs/DATABASE_MODEL.md)
+- [docs/AUTH_ACCESS_CONTROL.md](docs/AUTH_ACCESS_CONTROL.md)
 - [docs/NEXT_CODEX_PROMPT.md](docs/NEXT_CODEX_PROMPT.md)
 - [docs/PRODUCT_CORE_VALIDATION.md](docs/PRODUCT_CORE_VALIDATION.md)

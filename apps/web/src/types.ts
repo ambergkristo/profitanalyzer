@@ -77,6 +77,8 @@ export type InvoiceDetailResponse = StoredInvoiceView;
 export type AppMode = "demo" | "pilot";
 export type PersistenceDriver = "memory" | "file" | "database";
 export type RecipeInputUnit = Ingredient["unit"] | "kg" | "l" | "pcs" | "pack";
+export type AuthMode = "disabled" | "dev";
+export type WorkspaceRole = "owner" | "admin" | "member";
 
 export interface StorageInfo {
   driver: PersistenceDriver;
@@ -98,6 +100,10 @@ export interface AppConfigResponse {
     restaurantId: string;
     actorUserId?: string;
   } | null;
+  auth: {
+    mode: AuthMode;
+    required: boolean;
+  };
   features: {
     invoiceIntake: boolean;
     ocrFixture: boolean;
@@ -112,11 +118,41 @@ export interface DeepHealthResponse {
   appMode: AppMode;
   workspaceContext: AppConfigResponse["workspaceContext"];
   externalOcrConfigured: boolean;
+  auth: AppConfigResponse["auth"];
   checks: Array<{
     key: string;
     status: "pass" | "warn" | "fail";
     message: string;
   }>;
+}
+
+export interface AuthWorkspaceMembership {
+  workspaceId: string;
+  workspaceName: string;
+  role: WorkspaceRole;
+  restaurants: Array<{
+    restaurantId: string;
+    restaurantName: string;
+  }>;
+}
+
+export interface AuthUserProfile {
+  id: string;
+  email: string;
+  name: string;
+  createdAt: string;
+}
+
+export interface AuthMeResponse {
+  user: AuthUserProfile;
+  workspaces: AuthWorkspaceMembership[];
+  activeWorkspaceId: string;
+  activeRestaurantId: string;
+}
+
+export interface DevLoginResponse {
+  token: string;
+  me: AuthMeResponse;
 }
 
 export interface DatasetExportPayload {

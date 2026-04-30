@@ -21,6 +21,23 @@ import type { ImportValidationReport } from "../src/store/types.js";
 
 const buildApp = (options?: Parameters<typeof createApp>[0]) => createApp(options);
 
+async function login(
+  app: ReturnType<typeof createApp>,
+  email: string,
+  workspaceId?: string,
+  role?: "owner" | "admin" | "member"
+) {
+  const response = await request(app).post("/api/auth/dev-login").send({
+    email,
+    workspaceId,
+    role
+  });
+  const body = response.body as { token: string };
+
+  expect(response.status).toBe(200);
+  return body.token;
+}
+
 describe("api", () => {
   it("returns health response", async () => {
     const response = await request(buildApp()).get("/health");
@@ -41,6 +58,95 @@ describe("api", () => {
     ]);
     expect(body[0]).toHaveProperty("ownerDiagnosis");
     expect(body[0]).toHaveProperty("demoNarrative");
+  });
+
+  it("creates a dev auth session and returns workspace membership context", async () => {
+    const app = buildApp({
+      env: {
+        ...process.env,
+        APP_MODE: "pilot",
+        AUTH_MODE: "dev"
+      }
+    });
+
+    const loginResponse = await request(app).post("/api/auth/dev-login").send({
+      email: "owner@example.com",
+      workspaceId: "workspace-pilot-workspace"
+    });
+    const loginBody = loginResponse.body as {
+      token: string;
+      me: {
+        activeWorkspaceId: string;
+        activeRestaurantId: string;
+        workspaces: Array<{ workspaceId: string }>;
+      };
+    };
+
+    expect(loginResponse.status).toBe(200);
+    expect(loginBody.token).toBeTruthy();
+    expect(loginBody.me.activeWorkspaceId).toBe("workspace-pilot-workspace");
+    expect(loginBody.me.activeRestaurantId).toBe("pilot-workspace");
+
+    const meResponse = await request(app)
+      .get("/api/auth/me")
+      .set("Authorization", `Bearer ${loginBody.token}`);
+    const meBody = meResponse.body as {
+      activeRestaurantId: string;
+      workspaces: Array<{ workspaceId: string }>;
+    };
+
+    expect(meResponse.status).toBe(200);
+    expect(meBody.activeRestaurantId).toBe("pilot-workspace");
+    expect(meBody.workspaces[0]?.workspaceId).toBe("workspace-pilot-workspace");
+  });
+
+  it("requires auth in pilot mode but keeps demo mode open", async () => {
+    const pilotApp = buildApp({
+      env: {
+        ...process.env,
+        APP_MODE: "pilot",
+        AUTH_MODE: "dev"
+      }
+    });
+    const pilotResponse = await request(pilotApp).get("/api/analytics/overview?dataset=pilot-workspace");
+    expect(pilotResponse.status).toBe(401);
+
+    const demoResponse = await request(buildApp()).get("/api/analytics/overview?dataset=mixed-restaurant");
+    expect(demoResponse.status).toBe(200);
+  });
+
+  it("enforces role-based protection and workspace scoping in pilot mode", async () => {
+    const app = buildApp({
+      env: {
+        ...process.env,
+        APP_MODE: "pilot",
+        AUTH_MODE: "dev"
+      }
+    });
+
+    const memberToken = await login(app, "member@example.com", "workspace-mixed-restaurant", "member");
+    const adminToken = await login(app, "admin@example.com", "workspace-mixed-restaurant", "admin");
+
+    const forbiddenOverview = await request(app)
+      .get("/api/analytics/overview?dataset=high-margin-bistro")
+      .set("Authorization", `Bearer ${memberToken}`);
+    expect(forbiddenOverview.status).toBe(403);
+
+    const memberReset = await request(app)
+      .post("/api/datasets/mixed-restaurant/reset")
+      .set("Authorization", `Bearer ${memberToken}`)
+      .send({});
+    expect(memberReset.status).toBe(403);
+
+    const adminIngredient = await request(app)
+      .post("/api/ingredients?dataset=mixed-restaurant")
+      .set("Authorization", `Bearer ${adminToken}`)
+      .send({
+        name: "Admin Auth Ingredient",
+        costPerUnitCents: 5,
+        unit: "g"
+      });
+    expect(adminIngredient.status).toBe(201);
   });
 
   it("returns app config with demo defaults and memory persistence", async () => {
@@ -253,7 +359,10 @@ describe("api", () => {
         APP_MODE: "pilot"
       }
     });
-    const exportResponse = await request(app).get("/api/export?dataset=pilot-workspace");
+    const token = await login(app, "owner@example.com", "workspace-pilot-workspace", "owner");
+    const exportResponse = await request(app)
+      .get("/api/export?dataset=pilot-workspace")
+      .set("Authorization", `Bearer ${token}`);
     const exported = exportResponse.body as {
       schemaVersion: number;
       datasetId: string;
@@ -272,12 +381,14 @@ describe("api", () => {
 
     const invalidImportResponse = await request(app)
       .post("/api/import?dataset=pilot-workspace")
+      .set("Authorization", `Bearer ${token}`)
       .send({ dataset: { id: "pilot-workspace" } });
 
     expect(invalidImportResponse.status).toBe(400);
 
     const importResponse = await request(app)
       .post("/api/import?dataset=pilot-workspace")
+      .set("Authorization", `Bearer ${token}`)
       .send({
         ...exported,
         dataset: {
@@ -296,7 +407,9 @@ describe("api", () => {
     expect(importBody.datasetId).toBe("pilot-workspace");
     expect(importBody.dishCount).toBeGreaterThan(0);
 
-    const pilotOverviewResponse = await request(app).get("/api/analytics/overview?dataset=pilot-workspace");
+    const pilotOverviewResponse = await request(app)
+      .get("/api/analytics/overview?dataset=pilot-workspace")
+      .set("Authorization", `Bearer ${token}`);
     expect(pilotOverviewResponse.status).toBe(200);
   });
 
@@ -307,7 +420,10 @@ describe("api", () => {
         APP_MODE: "pilot"
       }
     });
-    const exportResponse = await request(app).get("/api/export?dataset=pilot-workspace");
+    const token = await login(app, "owner@example.com", "workspace-pilot-workspace", "owner");
+    const exportResponse = await request(app)
+      .get("/api/export?dataset=pilot-workspace")
+      .set("Authorization", `Bearer ${token}`);
     const exported = exportResponse.body as {
       dataset: { id: string; name: string; description: string };
       ingredients: Array<{ id: string }>;
@@ -328,6 +444,7 @@ describe("api", () => {
 
     const invalidValidateResponse = await request(app)
       .post("/api/import/validate?dataset=pilot-workspace")
+      .set("Authorization", `Bearer ${token}`)
       .send({
         ...exported,
         dataset: {
@@ -358,6 +475,7 @@ describe("api", () => {
 
     const validValidateResponse = await request(app)
       .post("/api/import/validate?dataset=pilot-workspace")
+      .set("Authorization", `Bearer ${token}`)
       .send({
         ...exported,
         dataset: {
@@ -440,8 +558,10 @@ describe("api", () => {
         APP_MODE: "pilot"
       }
     });
+    const token = await login(app, "owner@example.com", "workspace-pilot-workspace", "owner");
     const createResponse = await request(app)
       .post("/api/recipes?dataset=pilot-workspace")
+      .set("Authorization", `Bearer ${token}`)
       .send({
         name: "Pilot Soup Base",
         yield: 1,
@@ -464,6 +584,7 @@ describe("api", () => {
 
     const updateResponse = await request(app)
       .patch(`/api/recipes/${createdRecipe.id}?dataset=pilot-workspace`)
+      .set("Authorization", `Bearer ${token}`)
       .send({
         ingredients: [
           {
@@ -488,8 +609,10 @@ describe("api", () => {
         APP_MODE: "pilot"
       }
     });
+    const token = await login(app, "owner@example.com", "workspace-pilot-workspace", "owner");
     const badRecipeResponse = await request(app)
       .post("/api/recipes?dataset=pilot-workspace")
+      .set("Authorization", `Bearer ${token}`)
       .send({
         name: "Broken recipe",
         yield: 1,
@@ -503,6 +626,7 @@ describe("api", () => {
       });
     const badDishResponse = await request(app)
       .patch("/api/dishes/pilot-dish-burger?dataset=pilot-workspace")
+      .set("Authorization", `Bearer ${token}`)
       .send({
         recipeId: "ghost-recipe"
       });
@@ -518,11 +642,15 @@ describe("api", () => {
         APP_MODE: "pilot"
       }
     });
-    const beforeResponse = await request(app).get("/api/analytics/overview?dataset=pilot-workspace");
+    const token = await login(app, "owner@example.com", "workspace-pilot-workspace", "owner");
+    const beforeResponse = await request(app)
+      .get("/api/analytics/overview?dataset=pilot-workspace")
+      .set("Authorization", `Bearer ${token}`);
     const before = beforeResponse.body as OverviewMetrics;
 
     const recipeUpdateResponse = await request(app)
       .patch("/api/recipes/pilot-recipe-burger?dataset=pilot-workspace")
+      .set("Authorization", `Bearer ${token}`)
       .send({
         ingredients: [
           { ingredientId: "pilot-bun", quantity: 1, unit: "piece" },
@@ -531,7 +659,9 @@ describe("api", () => {
         ]
       });
 
-    const afterResponse = await request(app).get("/api/analytics/overview?dataset=pilot-workspace");
+    const afterResponse = await request(app)
+      .get("/api/analytics/overview?dataset=pilot-workspace")
+      .set("Authorization", `Bearer ${token}`);
     const after = afterResponse.body as OverviewMetrics;
 
     expect(recipeUpdateResponse.status).toBe(200);
@@ -551,9 +681,11 @@ describe("api", () => {
         DATA_DIR: tempDataDir
       };
       const app = buildApp({ env });
+      const token = await login(app, "owner@example.com", "workspace-pilot-workspace", "owner");
 
       const recipeUpdateResponse = await request(app)
         .patch("/api/recipes/pilot-recipe-burger?dataset=pilot-workspace")
+        .set("Authorization", `Bearer ${token}`)
         .send({
           ingredients: [
             { ingredientId: "pilot-bun", quantity: 1, unit: "piece" },
@@ -563,6 +695,7 @@ describe("api", () => {
         });
       const dishUpdateResponse = await request(app)
         .patch("/api/dishes/pilot-dish-burger?dataset=pilot-workspace")
+        .set("Authorization", `Bearer ${token}`)
         .send({
           recipeId: "pilot-recipe-burger",
           priceCents: 1590,
@@ -573,10 +706,13 @@ describe("api", () => {
       expect(dishUpdateResponse.status).toBe(200);
 
       const reloadedApp = buildApp({ env });
+      const reloadedToken = await login(reloadedApp, "owner@example.com", "workspace-pilot-workspace", "owner");
       const recipesResponse = await request(reloadedApp).get(
         "/api/recipes?dataset=pilot-workspace"
-      );
-      const dishesResponse = await request(reloadedApp).get("/api/dishes?dataset=pilot-workspace");
+      ).set("Authorization", `Bearer ${reloadedToken}`);
+      const dishesResponse = await request(reloadedApp)
+        .get("/api/dishes?dataset=pilot-workspace")
+        .set("Authorization", `Bearer ${reloadedToken}`);
       const recipesBody = recipesResponse.body as Array<{
         id: string;
         ingredients: Array<{ ingredientId: string; quantity: number }>;

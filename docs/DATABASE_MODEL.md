@@ -9,6 +9,7 @@ Phase 12 introduces the first production-oriented SaaS data model behind the exi
 - `User`
 - `Workspace`
 - `WorkspaceMembership`
+- `AuthSession`
 - `Restaurant`
 
 Current Phase 12 behavior:
@@ -16,6 +17,7 @@ Current Phase 12 behavior:
 - one placeholder user is seeded for default ownership
 - one workspace is created per dataset-backed restaurant
 - restaurant-owned business data is scoped by `workspaceId` and `restaurantId`
+- authenticated app requests now derive `workspaceId`, `restaurantId`, and `actorUserId` through `StoreContext`
 
 ## Restaurant-Owned Entities
 
@@ -55,8 +57,14 @@ npm run validate:db
 - if `DATABASE_URL` is missing, `validate:db` prints `SKIPPED_DATABASE_VALIDATION`
 - if `DATABASE_URL` exists, validation checks DB connectivity, seed viability, store load, and scoped analytics access
 
+## Access Rule
+
+- protected app routes must derive context from membership, not from arbitrary client-supplied workspace IDs
+- demo mode may still use a safe default dataset context for product demonstration
+- non-demo mode should resolve restaurant data through authenticated workspace membership
+
 ## Known Gaps
 
-- auth is not connected to the user or membership model yet
+- auth currently uses a dev-session flow, not the final production identity provider
 - full DB parity for every operational helper should continue to be verified in later phases
 - migration rollout policy and production backup strategy are still later work

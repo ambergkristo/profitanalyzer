@@ -31,6 +31,10 @@ describe("OnboardingPage", () => {
         workspaceId: "workspace-pilot-workspace",
         restaurantId: "pilot-workspace"
       },
+      auth: {
+        mode: "dev",
+        required: true
+      },
       features: {
         invoiceIntake: true,
         ocrFixture: true,

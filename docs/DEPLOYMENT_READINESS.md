@@ -41,6 +41,9 @@ npm run validate:db
 Core:
 
 - `APP_MODE=demo|pilot`
+- `AUTH_MODE=dev|disabled`
+- `SESSION_SECRET=`
+- `APP_BASE_URL=http://localhost:5173`
 - `STORE_DRIVER=memory|file|database`
 - `DATA_DIR=.data`
 - `DATABASE_URL=` when `STORE_DRIVER=database`
@@ -78,6 +81,7 @@ OCR:
 - `GET /health`
 - `GET /api/health/deep`
 - `GET /api/app/config`
+- `GET /api/auth/me` after login
 
 `/api/health/deep` must be treated as a readiness signal for storage:
 
@@ -99,17 +103,19 @@ Run before any serious hosted environment:
 - `npm run validate:pilot`
 - `npm run validate:env`
 - `npm run validate:db`
+- `npm run validate:auth`
 
 ## Hosted Production Caveats
 
 - `STORE_DRIVER=file` is not a durable production choice on ephemeral filesystems
 - production hosting should move toward managed Postgres
 - OCR upload storage strategy is still future work
-- auth, monitoring, backup, and rollout playbooks are still future phases
+- the current auth layer is a production-shaped foundation, not the final customer identity system
+- monitoring, backup, and rollout playbooks are still future phases
 
 ## Known Gaps
 
-- auth is not live
+- production-complete auth is not live
 - billing is not live
 - production backup flow is not fully implemented
 - structured monitoring is not live

@@ -34,6 +34,16 @@ function toMarkdown(report: Record<string, string>) {
 `;
 }
 
+async function login(app: ReturnType<typeof createApp>, email: string, workspaceId?: string) {
+  const response = await request(app).post("/api/auth/dev-login").send({ email, workspaceId });
+
+  if (response.status !== 200) {
+    throw new Error(`Pilot validation auth failed for ${email}.`);
+  }
+
+  return response.body.token as string;
+}
+
 async function main() {
   const failures: string[] = [];
   const memoryEnv = {
@@ -72,9 +82,11 @@ async function main() {
     failures
   );
 
+  const pilotMemoryToken = await login(pilotMemoryApp, "owner@example.com", "workspace-pilot-workspace");
   const invalidImportResponse = await request(pilotMemoryApp)
-    .post("/api/import?dataset=pilot-workspace")
-    .send({ dataset: { id: "pilot-workspace" } });
+      .post("/api/import?dataset=pilot-workspace")
+      .set("Authorization", `Bearer ${pilotMemoryToken}`)
+      .send({ dataset: { id: "pilot-workspace" } });
   assertCondition(invalidImportResponse.status === 400, "Invalid import payload should be rejected.", failures);
 
   const tempDataDir = path.resolve(".tmp", "validate-pilot-store");
@@ -90,6 +102,8 @@ async function main() {
 
   try {
     const fileApp = createApp({ env: fileEnv });
+    const pilotFileToken = await login(fileApp, "owner@example.com", "workspace-pilot-workspace");
+    const mixedFileToken = await login(fileApp, "mixed-owner@example.com", "workspace-mixed-restaurant");
     const fileConfigResponse = await request(fileApp).get("/api/app/config");
     const fileHealthResponse = await request(fileApp).get("/api/health/deep");
     const datasetsResponse = await request(fileApp).get("/api/demo/datasets");
@@ -110,10 +124,12 @@ async function main() {
 
     const pilotOverviewBeforeEditResponse = await request(fileApp).get(
       "/api/analytics/overview?dataset=pilot-workspace"
-    );
+    ).set("Authorization", `Bearer ${pilotFileToken}`);
     const pilotOverviewBeforeEdit = pilotOverviewBeforeEditResponse.body as OverviewMetrics;
 
-    const pilotExportResponse = await request(pilotMemoryApp).get("/api/export?dataset=pilot-workspace");
+    const pilotExportResponse = await request(pilotMemoryApp)
+      .get("/api/export?dataset=pilot-workspace")
+      .set("Authorization", `Bearer ${pilotMemoryToken}`);
     assertCondition(pilotExportResponse.status === 200, "Pilot export should succeed in memory mode.", failures);
 
     const exportedPayload = pilotExportResponse.body as {
@@ -126,7 +142,7 @@ async function main() {
       ...exportedPayload,
       dataset: {
         ...exportedPayload.dataset,
-        id: "pilot-import-workspace"
+        id: "pilot-workspace"
       },
       recipes: exportedPayload.recipes.map((recipe, index) =>
         index === 0
@@ -146,7 +162,8 @@ async function main() {
     };
 
     const invalidImportValidateResponse = await request(fileApp)
-      .post("/api/import/validate?dataset=pilot-import-workspace")
+      .post("/api/import/validate?dataset=pilot-workspace")
+      .set("Authorization", `Bearer ${pilotFileToken}`)
       .send(invalidReferencePayload);
     assertCondition(
       invalidImportValidateResponse.status === 400,
@@ -164,26 +181,29 @@ async function main() {
       ...exportedPayload,
       dataset: {
         ...exportedPayload.dataset,
-        id: "pilot-import-workspace",
-        name: "Pilot Import Workspace",
+        id: "pilot-workspace",
+        name: "Pilot Workspace",
         description: "Imported pilot workspace for persistence validation"
       },
-      datasetId: "pilot-import-workspace"
+      datasetId: "pilot-workspace"
     };
 
     const validImportValidateResponse = await request(fileApp)
-      .post("/api/import/validate?dataset=pilot-import-workspace")
+      .post("/api/import/validate?dataset=pilot-workspace")
+      .set("Authorization", `Bearer ${pilotFileToken}`)
       .send(validImportPayload);
     assertCondition(validImportValidateResponse.status === 200, "Valid import dry-run should pass.", failures);
     assertCondition(validImportValidateResponse.body.valid === true, "Valid import should be marked valid.", failures);
 
     const pilotImportResponse = await request(fileApp)
-      .post("/api/import?dataset=pilot-import-workspace")
+      .post("/api/import?dataset=pilot-workspace")
+      .set("Authorization", `Bearer ${pilotFileToken}`)
       .send(validImportPayload);
     assertCondition(pilotImportResponse.status === 201, "Pilot workspace import should succeed in file mode.", failures);
 
     const recipeUpdateResponse = await request(fileApp)
       .patch("/api/recipes/pilot-recipe-burger?dataset=pilot-workspace")
+      .set("Authorization", `Bearer ${pilotFileToken}`)
       .send({
         yield: 1,
         ingredients: [
@@ -196,6 +216,7 @@ async function main() {
 
     const dishUpdateResponse = await request(fileApp)
       .patch("/api/dishes/pilot-dish-burger?dataset=pilot-workspace")
+      .set("Authorization", `Bearer ${pilotFileToken}`)
       .send({
         recipeId: "pilot-recipe-burger",
         priceCents: 1590,
@@ -205,7 +226,7 @@ async function main() {
 
     const pilotOverviewAfterEditResponse = await request(fileApp).get(
       "/api/analytics/overview?dataset=pilot-workspace"
-    );
+    ).set("Authorization", `Bearer ${pilotFileToken}`);
     const pilotOverviewAfterEdit = pilotOverviewAfterEditResponse.body as OverviewMetrics;
     assertCondition(
       pilotOverviewAfterEdit.estimatedPeriodProfitCents !==
@@ -216,41 +237,45 @@ async function main() {
 
     const mixedInvoiceDraftResponse = await request(fileApp)
       .post("/api/invoices/parse-mock?dataset=mixed-restaurant")
+      .set("Authorization", `Bearer ${mixedFileToken}`)
       .send({ sampleInvoiceId: "normal-supplier-invoice" });
     assertCondition(mixedInvoiceDraftResponse.status === 200, "File-store invoice parsing should work.", failures);
+    if (mixedInvoiceDraftResponse.status === 200) {
+      const mixedInvoiceDraft = mixedInvoiceDraftResponse.body as {
+        invoiceDraft: { id: string; supplierId: string; invoiceDate: string; invoiceNumber?: string };
+        lines: Array<{
+          id: string;
+          matchedIngredientId?: string;
+          parsedQuantity: number;
+          parsedUnit: string;
+          parsedUnitPriceCents?: number;
+          parsedLineTotalCents?: number;
+        }>;
+      };
 
-    const mixedInvoiceDraft = mixedInvoiceDraftResponse.body as {
-      invoiceDraft: { id: string; supplierId: string; invoiceDate: string; invoiceNumber?: string };
-      lines: Array<{
-        id: string;
-        matchedIngredientId?: string;
-        parsedQuantity: number;
-        parsedUnit: string;
-        parsedUnitPriceCents?: number;
-        parsedLineTotalCents?: number;
-      }>;
-    };
-
-    const mixedConfirmResponse = await request(fileApp)
-      .post(`/api/invoices/${mixedInvoiceDraft.invoiceDraft.id}/review-confirm?dataset=mixed-restaurant`)
-      .send({
-        supplierId: mixedInvoiceDraft.invoiceDraft.supplierId,
-        invoiceDate: mixedInvoiceDraft.invoiceDraft.invoiceDate,
-        invoiceNumber: mixedInvoiceDraft.invoiceDraft.invoiceNumber,
-        lines: mixedInvoiceDraft.lines.map((line) => ({
-          lineId: line.id,
-          reviewStatus: "confirmed",
-          matchedIngredientId: line.matchedIngredientId,
-          parsedQuantity: line.parsedQuantity,
-          parsedUnit: line.parsedUnit,
-          parsedUnitPriceCents: line.parsedUnitPriceCents ?? 1,
-          parsedLineTotalCents: line.parsedLineTotalCents
-        }))
-      });
-    assertCondition(mixedConfirmResponse.status === 200, "Invoice confirmation should work in file mode.", failures);
+      const mixedConfirmResponse = await request(fileApp)
+        .post(`/api/invoices/${mixedInvoiceDraft.invoiceDraft.id}/review-confirm?dataset=mixed-restaurant`)
+        .set("Authorization", `Bearer ${mixedFileToken}`)
+        .send({
+          supplierId: mixedInvoiceDraft.invoiceDraft.supplierId,
+          invoiceDate: mixedInvoiceDraft.invoiceDraft.invoiceDate,
+          invoiceNumber: mixedInvoiceDraft.invoiceDraft.invoiceNumber,
+          lines: mixedInvoiceDraft.lines.map((line) => ({
+            lineId: line.id,
+            reviewStatus: "confirmed",
+            matchedIngredientId: line.matchedIngredientId,
+            parsedQuantity: line.parsedQuantity,
+            parsedUnit: line.parsedUnit,
+            parsedUnitPriceCents: line.parsedUnitPriceCents ?? 1,
+            parsedLineTotalCents: line.parsedLineTotalCents
+          }))
+        });
+      assertCondition(mixedConfirmResponse.status === 200, "Invoice confirmation should work in file mode.", failures);
+    }
 
     const ocrResponse = await request(fileApp)
       .post("/api/ocr/invoices/upload?dataset=mixed-restaurant")
+      .set("Authorization", `Bearer ${mixedFileToken}`)
       .attach("file", Buffer.from("fixture"), {
         filename: "clean-invoice-photo.jpg",
         contentType: "image/jpeg"
@@ -258,24 +283,26 @@ async function main() {
     assertCondition(ocrResponse.status === 200, "Fixture OCR should work in file mode.", failures);
 
     const reloadedFileApp = createApp({ env: fileEnv });
+    const reloadedPilotToken = await login(reloadedFileApp, "owner@example.com", "workspace-pilot-workspace");
+    const reloadedMixedToken = await login(reloadedFileApp, "mixed-owner@example.com", "workspace-mixed-restaurant");
     const persistedPilotRecipesResponse = await request(reloadedFileApp).get(
       "/api/recipes?dataset=pilot-workspace"
-    );
+    ).set("Authorization", `Bearer ${reloadedPilotToken}`);
     const persistedPilotDishesResponse = await request(reloadedFileApp).get(
       "/api/dishes?dataset=pilot-workspace"
-    );
+    ).set("Authorization", `Bearer ${reloadedPilotToken}`);
     const persistedPilotOverviewResponse = await request(reloadedFileApp).get(
       "/api/analytics/overview?dataset=pilot-workspace"
-    );
+    ).set("Authorization", `Bearer ${reloadedPilotToken}`);
     const persistedMixedOverviewResponse = await request(reloadedFileApp).get(
       "/api/analytics/overview?dataset=mixed-restaurant"
-    );
+    ).set("Authorization", `Bearer ${reloadedMixedToken}`);
     const persistedHistoryResponse = await request(reloadedFileApp).get(
       "/api/ingredients/parmesan/cost-history?dataset=mixed-restaurant"
-    );
+    ).set("Authorization", `Bearer ${reloadedMixedToken}`);
     const persistedOcrJobsResponse = await request(reloadedFileApp).get(
       "/api/ocr/jobs?dataset=mixed-restaurant"
-    );
+    ).set("Authorization", `Bearer ${reloadedMixedToken}`);
 
     const persistedPilotRecipes = persistedPilotRecipesResponse.body as Array<{
       id: string;
@@ -341,23 +368,27 @@ async function main() {
 
     const pilotResetResponse = await request(reloadedFileApp)
       .post("/api/datasets/pilot-workspace/reset")
+      .set("Authorization", `Bearer ${reloadedPilotToken}`)
       .send({});
     const mixedResetResponse = await request(reloadedFileApp)
       .post("/api/datasets/mixed-restaurant/reset")
+      .set("Authorization", `Bearer ${reloadedMixedToken}`)
       .send({});
     assertCondition(pilotResetResponse.status === 200, "Pilot workspace reset should succeed.", failures);
     assertCondition(mixedResetResponse.status === 200, "Mixed dataset reset should succeed.", failures);
 
     const postResetReloadedApp = createApp({ env: fileEnv });
+    const postResetPilotToken = await login(postResetReloadedApp, "owner@example.com", "workspace-pilot-workspace");
+    const postResetMixedToken = await login(postResetReloadedApp, "mixed-owner@example.com", "workspace-mixed-restaurant");
     const postResetRecipeResponse = await request(postResetReloadedApp).get(
       "/api/recipes?dataset=pilot-workspace"
-    );
+    ).set("Authorization", `Bearer ${postResetPilotToken}`);
     const postResetOverviewResponse = await request(postResetReloadedApp).get(
       "/api/analytics/overview?dataset=mixed-restaurant"
-    );
+    ).set("Authorization", `Bearer ${postResetMixedToken}`);
     const postResetHistoryResponse = await request(postResetReloadedApp).get(
       "/api/ingredients/parmesan/cost-history?dataset=mixed-restaurant"
-    );
+    ).set("Authorization", `Bearer ${postResetMixedToken}`);
     const postResetRecipeBody = postResetRecipeResponse.body as Array<{
       id: string;
       ingredients: Array<{ ingredientId: string; quantity: number }>;

@@ -1,7 +1,9 @@
 import type {
   AppConfigResponse,
+  AuthMeResponse,
   DatasetExportPayload,
   DeepHealthResponse,
+  DevLoginResponse,
   DishCreateRequest,
   DishUpdateRequest,
   ImportDatasetSummary,
@@ -33,6 +35,12 @@ import type {
   Supplier
 } from "../types.js";
 
+const AUTH_TOKEN_STORAGE_KEY = "profit-analyzer-auth-token";
+const AUTH_CHANGE_EVENT = "profit-analyzer-auth-change";
+
+let authToken =
+  typeof window !== "undefined" ? window.localStorage.getItem(AUTH_TOKEN_STORAGE_KEY) : null;
+
 export function buildDatasetPath(path: string, datasetId?: string): string {
   if (!datasetId) {
     return path;
@@ -43,7 +51,9 @@ export function buildDatasetPath(path: string, datasetId?: string): string {
 }
 
 async function getJson<T>(path: string): Promise<T> {
-  const response = await fetch(path);
+  const response = await fetch(path, {
+    headers: buildAuthHeaders()
+  });
   if (!response.ok) {
     const body = (await response.json().catch(() => null)) as { message?: string } | null;
     throw new Error(body?.message ?? `Request failed for ${path} with ${response.status}`);
@@ -56,7 +66,8 @@ async function postJson<T>(path: string, body: unknown): Promise<T> {
   const response = await fetch(path, {
     method: "POST",
     headers: {
-      "Content-Type": "application/json"
+      "Content-Type": "application/json",
+      ...buildAuthHeaders()
     },
     body: JSON.stringify(body)
   });
@@ -73,7 +84,8 @@ async function patchJson<T>(path: string, body: unknown): Promise<T> {
   const response = await fetch(path, {
     method: "PATCH",
     headers: {
-      "Content-Type": "application/json"
+      "Content-Type": "application/json",
+      ...buildAuthHeaders()
     },
     body: JSON.stringify(body)
   });
@@ -87,7 +99,9 @@ async function patchJson<T>(path: string, body: unknown): Promise<T> {
 }
 
 async function getBlob(path: string): Promise<Blob> {
-  const response = await fetch(path);
+  const response = await fetch(path, {
+    headers: buildAuthHeaders()
+  });
   if (!response.ok) {
     const errorBody = (await response.json().catch(() => null)) as { message?: string } | null;
     throw new Error(errorBody?.message ?? `Request failed for ${path} with ${response.status}`);
@@ -99,6 +113,7 @@ async function getBlob(path: string): Promise<Blob> {
 async function postFormData<T>(path: string, body: FormData): Promise<T> {
   const response = await fetch(path, {
     method: "POST",
+    headers: buildAuthHeaders(),
     body
   });
 
@@ -110,8 +125,53 @@ async function postFormData<T>(path: string, body: FormData): Promise<T> {
   return (await response.json()) as T;
 }
 
+function buildAuthHeaders(): Record<string, string> {
+  return authToken
+    ? {
+        Authorization: `Bearer ${authToken}`
+      }
+    : {};
+}
+
+function dispatchAuthChange() {
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event(AUTH_CHANGE_EVENT));
+  }
+}
+
+function setStoredAuthToken(token: string) {
+  authToken = token;
+  if (typeof window !== "undefined") {
+    window.localStorage.setItem(AUTH_TOKEN_STORAGE_KEY, token);
+  }
+  dispatchAuthChange();
+}
+
+function clearStoredAuthToken() {
+  authToken = null;
+  if (typeof window !== "undefined") {
+    window.localStorage.removeItem(AUTH_TOKEN_STORAGE_KEY);
+  }
+  dispatchAuthChange();
+}
+
 export const apiClient = {
+  getStoredAuthToken: () => authToken,
+  authChangeEvent: AUTH_CHANGE_EVENT,
   getAppConfig: () => getJson<AppConfigResponse>("/api/app/config"),
+  devLogin: async (body: { email: string; workspaceId?: string; role?: "owner" | "admin" | "member" }) => {
+    const result = await postJson<DevLoginResponse>("/api/auth/dev-login", body);
+    setStoredAuthToken(result.token);
+    return result;
+  },
+  getAuthMe: () => getJson<AuthMeResponse>("/api/auth/me"),
+  logout: async () => {
+    await postJson<{ ok: true }>("/api/auth/logout", {});
+    clearStoredAuthToken();
+  },
+  setAuthContext: async (body: { workspaceId: string; restaurantId: string }) =>
+    postJson<AuthMeResponse>("/api/auth/context", body),
+  clearStoredAuthToken,
   getDeepHealth: () => getJson<DeepHealthResponse>("/api/health/deep"),
   getDemoDatasets: () => getJson<DemoDatasetSummary[]>("/api/demo/datasets"),
   getOverview: (datasetId?: string) =>

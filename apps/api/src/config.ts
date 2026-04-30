@@ -1,4 +1,6 @@
 import type { AppMode, AppStore } from "./store/types.js";
+import type { AuthMode } from "./auth/types.js";
+import type { AuthService } from "./auth/service.js";
 import type { OcrProviderRegistry } from "./ocr/providerRegistry.js";
 
 const defaultVersion = "0.1.0";
@@ -9,6 +11,10 @@ export interface AppConfigResponse {
   productionReadinessClaimed: false;
   storage: ReturnType<AppStore["getStorageInfo"]>;
   workspaceContext: ReturnType<AppStore["getStoreContext"]>;
+  auth: {
+    mode: AuthMode;
+    required: boolean;
+  };
   features: {
     invoiceIntake: boolean;
     ocrFixture: boolean;
@@ -23,6 +29,7 @@ export interface DeepHealthResponse {
   appMode: AppMode;
   workspaceContext: ReturnType<AppStore["getStoreContext"]>;
   externalOcrConfigured: boolean;
+  auth: AppConfigResponse["auth"];
   checks: Array<{
     key: string;
     status: "pass" | "warn" | "fail";
@@ -40,6 +47,7 @@ export function getAppVersion(environment: NodeJS.ProcessEnv = process.env): str
 
 export function buildAppConfig(
   store: AppStore,
+  authService: AuthService,
   ocrRegistry: OcrProviderRegistry,
   environment: NodeJS.ProcessEnv = process.env
 ): AppConfigResponse {
@@ -53,6 +61,10 @@ export function buildAppConfig(
     productionReadinessClaimed: false,
     storage: store.getStorageInfo(),
     workspaceContext: store.getStoreContext(),
+    auth: {
+      mode: authService.getMode(),
+      required: authService.isAuthRequired()
+    },
     features: {
       invoiceIntake: true,
       ocrFixture: true,
@@ -64,10 +76,11 @@ export function buildAppConfig(
 
 export function buildDeepHealth(
   store: AppStore,
+  authService: AuthService,
   ocrRegistry: OcrProviderRegistry,
   environment: NodeJS.ProcessEnv = process.env
 ): DeepHealthResponse {
-  const config = buildAppConfig(store, ocrRegistry, environment);
+  const config = buildAppConfig(store, authService, ocrRegistry, environment);
   const storageChecks: DeepHealthResponse["checks"] = [];
 
   if (config.storage.driver === "memory") {
@@ -121,8 +134,18 @@ export function buildDeepHealth(
     appMode: config.appMode,
     workspaceContext: config.workspaceContext,
     externalOcrConfigured: config.features.externalOcrConfigured,
+    auth: config.auth,
     checks: [
       ...storageChecks,
+      {
+        key: "auth_mode",
+        status: config.auth.required ? "pass" : config.appMode === "demo" ? "warn" : "fail",
+        message: config.auth.required
+          ? `Auth mode ${config.auth.mode} is active.`
+          : config.appMode === "demo"
+            ? "Demo mode allows no-auth access."
+            : "Auth is disabled outside demo mode."
+      },
       {
         key: "invoice_intake",
         status: "pass",

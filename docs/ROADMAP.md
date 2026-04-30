@@ -77,6 +77,8 @@ Move from memory and file store toward real database-backed SaaS data foundation
 
 ## PHASE 13 - Auth + Workspace Access Control
 
+Status: complete as auth and workspace access foundation.
+
 ### Goal
 
 Protect the SaaS app and isolate customer data through authenticated workspace context.
@@ -90,7 +92,16 @@ Protect the SaaS app and isolate customer data through authenticated workspace c
 - frontend auth flow and route guards
 - cross-workspace leakage tests
 
+### Honest Current Position
+
+- the app now has real protected-route behavior, workspace membership, and basic RBAC
+- demo mode still intentionally bypasses auth for product demonstration
+- the current `dev-login` flow is a local and deployment-foundation auth layer, not the final production identity product
+- production SaaS readiness is still not claimed at the end of this phase alone
+
 ## PHASE 14 - Production Deployment + Observability
+
+Status: next.
 
 ### Goal
 

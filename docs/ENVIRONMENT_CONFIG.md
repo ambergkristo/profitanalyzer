@@ -9,6 +9,9 @@ This is not a claim that production SaaS readiness already exists.
 ## Core Variables
 
 - `APP_MODE=demo|pilot`
+- `AUTH_MODE=dev|disabled`
+- `SESSION_SECRET=`
+- `APP_BASE_URL=http://localhost:5173`
 - `STORE_DRIVER=memory|file|database`
 - `DATA_DIR=.data`
 - `DATABASE_URL=`
@@ -30,6 +33,7 @@ This is not a claim that production SaaS readiness already exists.
 
 ```bash
 APP_MODE=demo
+AUTH_MODE=disabled
 STORE_DRIVER=memory
 DATA_DIR=.data
 OCR_PROVIDER=fixture
@@ -39,6 +43,7 @@ OCR_PROVIDER=fixture
 
 ```bash
 APP_MODE=pilot
+AUTH_MODE=dev
 STORE_DRIVER=file
 DATA_DIR=.data
 OCR_PROVIDER=fixture
@@ -48,6 +53,7 @@ OCR_PROVIDER=fixture
 
 ```bash
 APP_MODE=pilot
+AUTH_MODE=dev
 STORE_DRIVER=database
 DATABASE_URL=postgresql://user:password@localhost:5432/profit_analyzer
 OCR_PROVIDER=fixture
@@ -84,6 +90,8 @@ npm run validate:env
 This checks:
 
 - valid `APP_MODE`
+- valid `AUTH_MODE`
+- warns if `APP_MODE=pilot` and `AUTH_MODE=disabled`
 - valid `STORE_DRIVER`
 - writable `DATA_DIR` when `STORE_DRIVER=file`
 - presence of `DATABASE_URL` when `STORE_DRIVER=database`
@@ -98,5 +106,5 @@ This configuration layer does not mean:
 
 - production SaaS readiness is complete
 - DB runtime was validated in the current environment
-- auth or billing exists
+- production-complete auth or billing exists
 - live OCR accuracy is proven

@@ -32,6 +32,17 @@ Phase 12 introduces:
 - workspace and restaurant context foundations
 - data-model isolation rules at the store layer
 
+## What Phase 13 Adds To Validation
+
+Phase 13 introduces:
+
+- `validate:auth`
+- dev-session auth coverage
+- protected route checks in non-demo mode
+- role-based access validation for owner, admin, and member
+- cross-workspace denial checks at the access layer
+- demo-mode bypass validation so product demos still work without login
+
 ## Production SaaS Validation Gates
 
 Production SaaS readiness now requires:
@@ -49,8 +60,8 @@ Production SaaS readiness now requires:
 ## What Is Still Not Proven
 
 - live Postgres deployment in the target environment
-- auth and protected API access
-- true cross-workspace isolation under authenticated traffic
+- hardened production identity lifecycle beyond dev login
+- authenticated isolation under a live DB in a production-like deployment
 - production backup and restore maturity
 - live OCR accuracy on real restaurant invoices
 - mobile smoke coverage for the full invoice flow

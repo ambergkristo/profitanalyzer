@@ -31,10 +31,11 @@
 
 - workspace
 - restaurant
-- user placeholder
+- user
 - workspace membership
 - restaurant-scoped business entities
-- future authenticated actor context
+- authenticated actor context
+- session model
 
 ### OCR
 
@@ -49,6 +50,15 @@
 - database as separate managed service
 - production env validation as a gate
 - health and deep health endpoints
+
+### Auth Direction
+
+- `AUTH_MODE=dev|disabled`
+- server-generated dev session tokens with hashed server-side storage
+- workspace membership based access checks
+- owner, admin, member roles
+- authenticated `StoreContext` for protected routes
+- final production identity provider selection remains later work
 
 ### Observability Direction
 
@@ -78,9 +88,8 @@ The DB adapter is additive:
 ## Production Gaps Still Open
 
 - database runtime is not yet universally validated in this local environment without `DATABASE_URL`
-- auth is not live
-- workspace access control is not live
-- protected APIs are not live
+- production-complete auth provider, invite flow, and hardened session lifecycle are not live
+- auth works today as a dev-session and RBAC foundation, not final customer identity
 - billing is not live
 - production object or file storage strategy is not finalized
 - monitoring and alerting are not live

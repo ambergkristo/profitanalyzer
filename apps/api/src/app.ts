@@ -9,6 +9,14 @@ import {
   type InvoiceUnit
 } from "../../../packages/core/src/index.js";
 import { buildAppConfig, buildDeepHealth } from "./config.js";
+import { createAuditService } from "./audit/service.js";
+import { createAuthService } from "./auth/service.js";
+import {
+  getRequestAuthContext,
+  requireAccess,
+  resolveScopedDatasetId,
+  readBearerToken
+} from "./auth/middleware.js";
 import {
   createOcrProviderRegistry,
   isAllowedMimeType,
@@ -26,6 +34,7 @@ import {
 } from "./store/exportImport.js";
 import { normalizeRecipeIngredientEntries } from "./store/validation.js";
 import type { AppStore } from "./store/types.js";
+import type { AuthService } from "./auth/service.js";
 
 function isPositivePrice(value: unknown): value is number {
   return typeof value === "number" && Number.isFinite(value) && value > 0;
@@ -35,15 +44,55 @@ function parseDatasetId(value: unknown): string | undefined {
   return typeof value === "string" && value.trim().length > 0 ? value : undefined;
 }
 
-function resolveDatasetOrRespond(
-  datasetId: string | undefined,
-  response: express.Response,
-  dataStore: AppStore
+function getRouteParam(value: string | string[] | undefined): string | undefined {
+  if (typeof value === "string" && value.trim().length > 0) {
+    return value;
+  }
+
+  if (Array.isArray(value)) {
+    const first = value.find((item) => item.trim().length > 0);
+    return first;
+  }
+
+  return undefined;
+}
+
+function getScopedDatasetId(
+  request: express.Request,
+  requestedDatasetId: string | undefined,
+  response: express.Response
 ) {
-  const dataset = dataStore.getResolvedDataset(datasetId);
+  const scoped = resolveScopedDatasetId(request, requestedDatasetId);
+  if (scoped === "forbidden") {
+    response.status(403).json({ message: "You do not have access to that workspace context." });
+    return null;
+  }
+
+  return scoped;
+}
+
+function resolveDatasetOrRespond(
+  requestOrDatasetId: express.Request | string | undefined,
+  datasetIdOrResponse: string | express.Response | undefined,
+  responseOrStore: express.Response | AppStore,
+  maybeStore?: AppStore
+) {
+  const request =
+    typeof requestOrDatasetId === "object" && requestOrDatasetId !== null && "path" in requestOrDatasetId
+      ? requestOrDatasetId
+      : undefined;
+  const datasetId = request ? (datasetIdOrResponse as string | undefined) : (requestOrDatasetId as string | undefined);
+  const response = (request ? responseOrStore : datasetIdOrResponse) as express.Response;
+  const dataStore = (request ? maybeStore : responseOrStore) as AppStore;
+  const scopedDatasetId = request ? getScopedDatasetId(request, datasetId, response) : datasetId;
+  if (scopedDatasetId === null) {
+    return null;
+  }
+
+  const dataset = dataStore.getResolvedDataset(scopedDatasetId);
 
   if (!dataset) {
-    response.status(404).json({ message: `Unknown dataset "${datasetId}".` });
+    response.status(404).json({ message: `Unknown dataset "${scopedDatasetId}".` });
     return null;
   }
 
@@ -70,23 +119,54 @@ function isFinitePositive(value: unknown): value is number {
   return typeof value === "number" && Number.isFinite(value) && value > 0;
 }
 
+async function recordAudit(
+  auditService: ReturnType<typeof createAuditService>,
+  dataStore: AppStore,
+  request: express.Request,
+  datasetId: string,
+  action: string,
+  entityType: string,
+  entityId?: string,
+  metadata?: Record<string, unknown>
+) {
+  const authContext = getRequestAuthContext(request);
+  const storeContext = dataStore.getStoreContext(datasetId);
+  if (!storeContext) {
+    return;
+  }
+
+  await auditService.record({
+    workspaceId: authContext?.activeWorkspaceId ?? storeContext.workspaceId,
+    restaurantId: authContext?.activeRestaurantId ?? storeContext.restaurantId,
+    actorUserId: authContext?.actorUserId ?? storeContext.actorUserId,
+    action,
+    entityType,
+    entityId,
+    metadata
+  });
+}
+
 export interface CreateAppOptions {
   env?: NodeJS.ProcessEnv;
   ocrRegistry?: OcrProviderRegistry;
   store?: AppStore;
+  authService?: AuthService;
 }
 
 function isStoreBootstrapExempt(pathname: string) {
   return (
     pathname === "/health/deep" ||
     pathname === "/app/config" ||
-    pathname === "/ocr/providers"
+    pathname === "/ocr/providers" ||
+    pathname.startsWith("/auth/")
   );
 }
 
 export function createApp(options: CreateAppOptions = {}) {
   const app = express();
   const dataStore = options.store ?? createStore({ env: options.env });
+  const authService = options.authService ?? createAuthService({ env: options.env, store: dataStore });
+  const auditService = createAuditService(options.env);
   const ocrRegistry = options.ocrRegistry ?? createOcrProviderRegistry({ env: options.env });
   const defaultOcrProvider = ocrRegistry.getDefaultProvider();
   const upload = multer({
@@ -98,6 +178,13 @@ export function createApp(options: CreateAppOptions = {}) {
 
   app.use(cors());
   app.use(express.json());
+
+  const memberAccess = requireAccess(authService, dataStore, options.env, {
+    minimumRole: "member"
+  });
+  const adminAccess = requireAccess(authService, dataStore, options.env, {
+    minimumRole: "admin"
+  });
 
   app.use("/api", async (request, response, next) => {
     if (isStoreBootstrapExempt(request.path)) {
@@ -119,11 +206,87 @@ export function createApp(options: CreateAppOptions = {}) {
   });
 
   app.get("/api/health/deep", (_request, response) => {
-    response.json(buildDeepHealth(dataStore, ocrRegistry, options.env));
+    response.json(buildDeepHealth(dataStore, authService, ocrRegistry, options.env));
   });
 
   app.get("/api/app/config", (_request, response) => {
-    response.json(buildAppConfig(dataStore, ocrRegistry, options.env));
+    response.json(buildAppConfig(dataStore, authService, ocrRegistry, options.env));
+  });
+
+  app.post("/api/auth/dev-login", async (request, response) => {
+    const body = request.body as { email?: unknown; workspaceId?: unknown; role?: unknown };
+
+    if (!isNonEmptyString(body.email)) {
+      response.status(400).json({ message: "email is required." });
+      return;
+    }
+
+    try {
+      const result = await authService.devLogin({
+        email: body.email,
+        workspaceId: isNonEmptyString(body.workspaceId) ? body.workspaceId : undefined,
+        role:
+          body.role === "owner" || body.role === "admin" || body.role === "member"
+            ? body.role
+            : undefined
+      });
+
+      response.json(result);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Login failed.";
+      response.status(400).json({ message });
+    }
+  });
+
+  app.get("/api/auth/me", async (request, response) => {
+    const token = readBearerToken(request);
+    if (!token) {
+      response.status(401).json({ message: "Authentication is required." });
+      return;
+    }
+
+    const me = await authService.getMe(token);
+    if (!me) {
+      response.status(401).json({ message: "Session is invalid or expired." });
+      return;
+    }
+
+    response.json(me);
+  });
+
+  app.post("/api/auth/logout", async (request, response) => {
+    const token = readBearerToken(request);
+    if (token) {
+      await authService.logout(token);
+    }
+
+    response.json({ ok: true });
+  });
+
+  app.post("/api/auth/context", async (request, response) => {
+    const token = readBearerToken(request);
+    if (!token) {
+      response.status(401).json({ message: "Authentication is required." });
+      return;
+    }
+
+    const body = request.body as { workspaceId?: unknown; restaurantId?: unknown };
+    if (!isNonEmptyString(body.workspaceId) || !isNonEmptyString(body.restaurantId)) {
+      response.status(400).json({ message: "workspaceId and restaurantId are required." });
+      return;
+    }
+
+    const me = await authService.setActiveContext(token, {
+      workspaceId: body.workspaceId,
+      restaurantId: body.restaurantId
+    });
+
+    if (!me) {
+      response.status(403).json({ message: "You do not have access to that workspace context." });
+      return;
+    }
+
+    response.json(me);
   });
 
   app.get("/api/demo/datasets", (_request, response) => {
@@ -134,16 +297,17 @@ export function createApp(options: CreateAppOptions = {}) {
     response.json(ocrRegistry.getProviders());
   });
 
-  app.get("/api/ingredients", (request, response) => {
+  app.get("/api/ingredients", memberAccess, (request, response) => {
     const datasetId = parseDatasetId(request.query.dataset);
-    if (!resolveDatasetOrRespond(datasetId, response, dataStore)) {
+    const dataset = resolveDatasetOrRespond(request, datasetId, response, dataStore);
+    if (!dataset) {
       return;
     }
 
-    response.json(dataStore.getIngredients(datasetId));
+    response.json(dataStore.getIngredients(dataset.id));
   });
 
-  app.post("/api/ingredients", async (request, response) => {
+  app.post("/api/ingredients", adminAccess, async (request, response) => {
     const body = request.body as {
       dataset?: unknown;
       name?: unknown;
@@ -152,7 +316,7 @@ export function createApp(options: CreateAppOptions = {}) {
       id?: unknown;
     };
     const datasetId = parseDatasetId(body.dataset ?? request.query.dataset);
-    const dataset = resolveDatasetOrRespond(datasetId, response, dataStore);
+    const dataset = resolveDatasetOrRespond(request, datasetId, response, dataStore);
     if (!dataset) {
       return;
     }
@@ -175,7 +339,7 @@ export function createApp(options: CreateAppOptions = {}) {
         costPerUnitCents: body.costPerUnitCents,
         unit: body.unit
       },
-      datasetId
+      dataset.id
     );
 
     if (!ingredient) {
@@ -184,10 +348,14 @@ export function createApp(options: CreateAppOptions = {}) {
     }
 
     await dataStore.flushDatasetAsync(dataset.id);
+    await recordAudit(auditService, dataStore, request, dataset.id, "ingredient_create", "ingredient", ingredient.id, {
+      name: ingredient.name
+    });
     response.status(201).json(ingredient);
   });
 
-  app.patch("/api/ingredients/:id", async (request, response) => {
+  app.patch("/api/ingredients/:id", adminAccess, async (request, response) => {
+    const ingredientId = getRouteParam(request.params.id);
     const body = request.body as {
       dataset?: unknown;
       name?: unknown;
@@ -195,7 +363,7 @@ export function createApp(options: CreateAppOptions = {}) {
       unit?: unknown;
     };
     const datasetId = parseDatasetId(body.dataset ?? request.query.dataset);
-    const dataset = resolveDatasetOrRespond(datasetId, response, dataStore);
+    const dataset = resolveDatasetOrRespond(request, datasetId, response, dataStore);
     if (!dataset) {
       return;
     }
@@ -224,14 +392,19 @@ export function createApp(options: CreateAppOptions = {}) {
       return;
     }
 
+    if (!ingredientId) {
+      response.status(400).json({ message: "Ingredient id is required." });
+      return;
+    }
+
     const ingredient = dataStore.updateIngredient(
-      request.params.id,
+      ingredientId,
       {
         name: body.name,
         costPerUnitCents: body.costPerUnitCents,
         unit: body.unit
       },
-      datasetId
+      dataset.id
     );
 
     if (ingredient === null) {
@@ -245,17 +418,26 @@ export function createApp(options: CreateAppOptions = {}) {
     }
 
     await dataStore.flushDatasetAsync(dataset.id);
+    await recordAudit(auditService, dataStore, request, dataset.id, "ingredient_update", "ingredient", ingredient.id, {
+      name: ingredient.name
+    });
     response.json(ingredient);
   });
 
-  app.get("/api/ingredients/:id/cost-history", (request, response) => {
+  app.get("/api/ingredients/:id/cost-history", memberAccess, (request, response) => {
+    const ingredientId = getRouteParam(request.params.id);
     const datasetId = parseDatasetId(request.query.dataset);
-    const dataset = resolveDatasetOrRespond(datasetId, response, dataStore);
+    const dataset = resolveDatasetOrRespond(request, datasetId, response, dataStore);
     if (!dataset) {
       return;
     }
 
-    const history = dataStore.getIngredientCostHistory(request.params.id, datasetId);
+    if (!ingredientId) {
+      response.status(400).json({ message: "Ingredient id is required." });
+      return;
+    }
+
+    const history = dataStore.getIngredientCostHistory(ingredientId, dataset.id);
     if (!history) {
       response.status(404).json({ message: "Ingredient not found." });
       return;
@@ -264,16 +446,17 @@ export function createApp(options: CreateAppOptions = {}) {
     response.json(history);
   });
 
-  app.get("/api/recipes", (request, response) => {
+  app.get("/api/recipes", memberAccess, (request, response) => {
     const datasetId = parseDatasetId(request.query.dataset);
-    if (!resolveDatasetOrRespond(datasetId, response, dataStore)) {
+    const dataset = resolveDatasetOrRespond(request, datasetId, response, dataStore);
+    if (!dataset) {
       return;
     }
 
-    response.json(dataStore.getRecipes(datasetId));
+    response.json(dataStore.getRecipes(dataset.id));
   });
 
-  app.post("/api/recipes", async (request, response) => {
+  app.post("/api/recipes", adminAccess, async (request, response) => {
     const body = request.body as {
       dataset?: unknown;
       id?: unknown;
@@ -282,7 +465,7 @@ export function createApp(options: CreateAppOptions = {}) {
       ingredients?: unknown;
     };
     const datasetId = parseDatasetId(body.dataset ?? request.query.dataset);
-    const dataset = resolveDatasetOrRespond(datasetId, response, dataStore);
+    const dataset = resolveDatasetOrRespond(request, datasetId, response, dataStore);
     if (!dataset) {
       return;
     }
@@ -336,7 +519,7 @@ export function createApp(options: CreateAppOptions = {}) {
         yield: body.yield,
         ingredients: normalizedIngredients.normalized
       },
-      datasetId
+      dataset.id
     );
 
     if (recipe === null) {
@@ -350,10 +533,14 @@ export function createApp(options: CreateAppOptions = {}) {
     }
 
     await dataStore.flushDatasetAsync(dataset.id);
+    await recordAudit(auditService, dataStore, request, dataset.id, "recipe_create", "recipe", recipe.id, {
+      name: recipe.name
+    });
     response.status(201).json(recipe);
   });
 
-  app.patch("/api/recipes/:id", async (request, response) => {
+  app.patch("/api/recipes/:id", adminAccess, async (request, response) => {
+    const recipeId = getRouteParam(request.params.id);
     const body = request.body as {
       dataset?: unknown;
       name?: unknown;
@@ -361,7 +548,7 @@ export function createApp(options: CreateAppOptions = {}) {
       ingredients?: unknown;
     };
     const datasetId = parseDatasetId(body.dataset ?? request.query.dataset);
-    const dataset = resolveDatasetOrRespond(datasetId, response, dataStore);
+    const dataset = resolveDatasetOrRespond(request, datasetId, response, dataStore);
     if (!dataset) {
       return;
     }
@@ -433,14 +620,19 @@ export function createApp(options: CreateAppOptions = {}) {
       }));
     }
 
+    if (!recipeId) {
+      response.status(400).json({ message: "Recipe id is required." });
+      return;
+    }
+
     const recipe = dataStore.updateRecipe(
-      request.params.id,
+      recipeId,
       {
         name: body.name,
         yield: body.yield,
         ingredients: recipeIngredients
       },
-      datasetId
+      dataset.id
     );
 
     if (recipe === null) {
@@ -454,20 +646,23 @@ export function createApp(options: CreateAppOptions = {}) {
     }
 
     await dataStore.flushDatasetAsync(dataset.id);
+    await recordAudit(auditService, dataStore, request, dataset.id, "recipe_update", "recipe", recipe.id, {
+      name: recipe.name
+    });
     response.json(recipe);
   });
 
-  app.get("/api/dishes", (request, response) => {
+  app.get("/api/dishes", memberAccess, (request, response) => {
     const datasetId = parseDatasetId(request.query.dataset);
-    const dataset = resolveDatasetOrRespond(datasetId, response, dataStore);
+    const dataset = resolveDatasetOrRespond(request, datasetId, response, dataStore);
     if (!dataset) {
       return;
     }
 
-    response.json(dataStore.getDishes(datasetId));
+    response.json(dataStore.getDishes(dataset.id));
   });
 
-  app.post("/api/dishes", async (request, response) => {
+  app.post("/api/dishes", adminAccess, async (request, response) => {
     const body = request.body as {
       dataset?: unknown;
       id?: unknown;
@@ -477,7 +672,7 @@ export function createApp(options: CreateAppOptions = {}) {
       salesVolume?: unknown;
     };
     const datasetId = parseDatasetId(body.dataset ?? request.query.dataset);
-    const dataset = resolveDatasetOrRespond(datasetId, response, dataStore);
+    const dataset = resolveDatasetOrRespond(request, datasetId, response, dataStore);
     if (!dataset) {
       return;
     }
@@ -502,7 +697,7 @@ export function createApp(options: CreateAppOptions = {}) {
         priceCents: body.priceCents,
         salesVolume: body.salesVolume
       },
-      datasetId
+      dataset.id
     );
 
     if (dish === null) {
@@ -516,10 +711,14 @@ export function createApp(options: CreateAppOptions = {}) {
     }
 
     await dataStore.flushDatasetAsync(dataset.id);
+    await recordAudit(auditService, dataStore, request, dataset.id, "dish_create", "dish", dish.id, {
+      name: dish.name
+    });
     response.status(201).json(dish);
   });
 
-  app.patch("/api/dishes/:id", async (request, response) => {
+  app.patch("/api/dishes/:id", adminAccess, async (request, response) => {
+    const dishId = getRouteParam(request.params.id);
     const body = request.body as {
       dataset?: unknown;
       name?: unknown;
@@ -528,7 +727,7 @@ export function createApp(options: CreateAppOptions = {}) {
       salesVolume?: unknown;
     };
     const datasetId = parseDatasetId(body.dataset ?? request.query.dataset);
-    const dataset = resolveDatasetOrRespond(datasetId, response, dataStore);
+    const dataset = resolveDatasetOrRespond(request, datasetId, response, dataStore);
     if (!dataset) {
       return;
     }
@@ -563,15 +762,20 @@ export function createApp(options: CreateAppOptions = {}) {
       return;
     }
 
+    if (!dishId) {
+      response.status(400).json({ message: "Dish id is required." });
+      return;
+    }
+
     const dish = dataStore.updateDish(
-      request.params.id,
+      dishId,
       {
         name: body.name,
         recipeId: body.recipeId,
         priceCents: body.priceCents,
         salesVolume: body.salesVolume
       },
-      datasetId
+      dataset.id
     );
 
     if (dish === null) {
@@ -585,26 +789,29 @@ export function createApp(options: CreateAppOptions = {}) {
     }
 
     await dataStore.flushDatasetAsync(dataset.id);
+    await recordAudit(auditService, dataStore, request, dataset.id, "dish_update", "dish", dish.id, {
+      name: dish.name
+    });
     response.json(dish);
   });
 
-  app.get("/api/suppliers", (request, response) => {
+  app.get("/api/suppliers", memberAccess, (request, response) => {
     const datasetId = parseDatasetId(request.query.dataset);
-    const dataset = resolveDatasetOrRespond(datasetId, response, dataStore);
+    const dataset = resolveDatasetOrRespond(request, datasetId, response, dataStore);
     if (!dataset) {
       return;
     }
 
-    response.json(dataStore.getSuppliers(datasetId));
+    response.json(dataStore.getSuppliers(dataset.id));
   });
 
   app.get("/api/invoices/samples", (_request, response) => {
     response.json(dataStore.getMockInvoiceSampleSummaries());
   });
 
-  app.get("/api/export", (request, response) => {
+  app.get("/api/export", adminAccess, (request, response) => {
     const datasetId = parseDatasetId(request.query.dataset);
-    const dataset = resolveDatasetOrRespond(datasetId, response, dataStore);
+    const dataset = resolveDatasetOrRespond(request, datasetId, response, dataStore);
 
     if (!dataset) {
       return;
@@ -613,7 +820,7 @@ export function createApp(options: CreateAppOptions = {}) {
     response.json(dataStore.exportDataset(dataset.id));
   });
 
-  app.post("/api/import", async (request, response) => {
+  app.post("/api/import", adminAccess, async (request, response) => {
     const datasetId = parseDatasetId(request.query.dataset);
     const body = request.body as unknown;
     const protectedSeededDatasetIds = new Set(listDemoDatasets().map((dataset) => dataset.id));
@@ -651,12 +858,22 @@ export function createApp(options: CreateAppOptions = {}) {
       body as Parameters<typeof sanitizeImportedPayload>[0],
       targetDatasetId
     );
-    const imported = dataStore.importDataset(sanitizedPayload, targetDatasetId);
+    const scopedDatasetId = getScopedDatasetId(request, targetDatasetId, response);
+    if (scopedDatasetId === null) {
+      return;
+    }
+
+    const imported = dataStore.importDataset(sanitizedPayload, scopedDatasetId);
     await dataStore.flushDatasetAsync(imported.datasetId);
+    await recordAudit(auditService, dataStore, request, imported.datasetId, "dataset_import", "dataset", imported.datasetId, {
+      ingredientCount: imported.ingredientCount,
+      recipeCount: imported.recipeCount,
+      dishCount: imported.dishCount
+    });
     response.status(201).json(imported);
   });
 
-  app.post("/api/import/validate", (request, response) => {
+  app.post("/api/import/validate", adminAccess, (request, response) => {
     const datasetId = parseDatasetId(request.query.dataset);
     const body = request.body as unknown;
     const protectedSeededDatasetIds = new Set(listDemoDatasets().map((dataset) => dataset.id));
@@ -671,9 +888,14 @@ export function createApp(options: CreateAppOptions = {}) {
       typeof body.dataset.id === "string"
         ? body.dataset.id
         : undefined);
+    const scopedDatasetId = getScopedDatasetId(request, targetDatasetId, response);
+    if (scopedDatasetId === null) {
+      return;
+    }
+
     const validation = validateDatasetImportPayload(body);
 
-    if (targetDatasetId && protectedSeededDatasetIds.has(targetDatasetId)) {
+    if (scopedDatasetId && protectedSeededDatasetIds.has(scopedDatasetId)) {
       validation.valid = false;
       validation.errors = [
         ...validation.errors,
@@ -684,8 +906,12 @@ export function createApp(options: CreateAppOptions = {}) {
     response.status(validation.valid ? 200 : 400).json(validation);
   });
 
-  app.post("/api/datasets/:id/reset", async (request, response) => {
-    const datasetId = request.params.id;
+  app.post("/api/datasets/:id/reset", adminAccess, async (request, response) => {
+    const targetDatasetId = getRouteParam(request.params.id);
+    const datasetId = getScopedDatasetId(request, targetDatasetId, response);
+    if (!datasetId) {
+      return;
+    }
     const summary = dataStore.resetDataset(datasetId);
 
     if (!summary) {
@@ -694,16 +920,23 @@ export function createApp(options: CreateAppOptions = {}) {
     }
 
     await dataStore.flushDatasetAsync(datasetId);
+    await recordAudit(auditService, dataStore, request, datasetId, "dataset_reset", "dataset", datasetId, {
+      clearedInvoices: summary.clearedInvoices,
+      clearedCostHistory: summary.clearedCostHistory,
+      clearedAlerts: summary.clearedAlerts,
+      clearedOcrJobs: summary.clearedOcrJobs,
+      restoredDishCount: summary.restoredDishCount
+    });
     response.json(summary);
   });
 
-  app.post("/api/invoices/parse-mock", async (request, response) => {
+  app.post("/api/invoices/parse-mock", adminAccess, async (request, response) => {
     const body = request.body as {
       dataset?: unknown;
       sampleInvoiceId?: unknown;
     };
     const datasetId = parseDatasetId(request.query.dataset ?? body.dataset);
-    const dataset = resolveDatasetOrRespond(datasetId, response, dataStore);
+    const dataset = resolveDatasetOrRespond(request, datasetId, response, dataStore);
     if (!dataset) {
       return;
     }
@@ -715,18 +948,28 @@ export function createApp(options: CreateAppOptions = {}) {
       return;
     }
 
-    const parsed = dataStore.parseMockInvoice(sampleInvoiceId, datasetId);
+    const parsed = dataStore.parseMockInvoice(sampleInvoiceId, dataset.id);
 
-    if (parsed === undefined) {
+    if (!parsed) {
       response.status(404).json({ message: `Unknown sample invoice "${sampleInvoiceId}".` });
       return;
     }
 
     await dataStore.flushDatasetAsync(dataset.id);
+    await recordAudit(
+      auditService,
+      dataStore,
+      request,
+      dataset.id,
+      "invoice_parse_mock",
+      "invoice",
+      parsed.invoiceDraft.id,
+      { sourceType: parsed.invoiceDraft.sourceType }
+    );
     response.json(parsed);
   });
 
-  app.post("/api/invoices/manual-draft", async (request, response) => {
+  app.post("/api/invoices/manual-draft", adminAccess, async (request, response) => {
     const body = request.body as {
       dataset?: unknown;
       supplierName?: unknown;
@@ -735,7 +978,7 @@ export function createApp(options: CreateAppOptions = {}) {
       lines?: unknown;
     };
     const datasetId = parseDatasetId(request.query.dataset ?? body.dataset);
-    const dataset = resolveDatasetOrRespond(datasetId, response, dataStore);
+    const dataset = resolveDatasetOrRespond(request, datasetId, response, dataStore);
     if (!dataset) {
       return;
     }
@@ -817,7 +1060,7 @@ export function createApp(options: CreateAppOptions = {}) {
           matchedIngredientId: line.matchedIngredientId
         }))
       },
-      datasetId
+      dataset.id
     );
 
     if (!draft) {
@@ -826,13 +1069,23 @@ export function createApp(options: CreateAppOptions = {}) {
     }
 
     await dataStore.flushDatasetAsync(dataset.id);
+    await recordAudit(
+      auditService,
+      dataStore,
+      request,
+      dataset.id,
+      "invoice_manual_draft",
+      "invoice",
+      draft.invoiceDraft.id,
+      { sourceType: draft.invoiceDraft.sourceType }
+    );
     response.json(draft);
   });
 
-  app.post("/api/ocr/invoices/upload", upload.single("file"), async (request, response) => {
+  app.post("/api/ocr/invoices/upload", adminAccess, upload.single("file"), async (request, response) => {
     const body = request.body as { dataset?: unknown; provider?: unknown };
     const datasetId = parseDatasetId(request.query.dataset ?? body.dataset);
-    const dataset = resolveDatasetOrRespond(datasetId, response, dataStore);
+    const dataset = resolveDatasetOrRespond(request, datasetId, response, dataStore);
     if (!dataset) {
       return;
     }
@@ -881,7 +1134,7 @@ export function createApp(options: CreateAppOptions = {}) {
           mimeType: file.mimetype,
           fileSizeBytes: file.size
         },
-        datasetId
+        dataset.id
       );
 
       if (!draft) {
@@ -890,6 +1143,16 @@ export function createApp(options: CreateAppOptions = {}) {
       }
 
       await dataStore.flushDatasetAsync(dataset.id);
+      await recordAudit(
+        auditService,
+        dataStore,
+        request,
+        dataset.id,
+        "ocr_upload_parse",
+        "ocr_job",
+        draft.ocrJob.id,
+        { provider: resolvedProvider.id, invoiceDraftId: draft.invoiceDraft.id }
+      );
       response.json(draft);
     } catch (error: unknown) {
       const failureReason = error instanceof Error ? error.message : "OCR parse failed.";
@@ -901,10 +1164,22 @@ export function createApp(options: CreateAppOptions = {}) {
           fileSizeBytes: file.size,
           failureReason
         },
-        datasetId
+        dataset.id
       );
 
       await dataStore.flushDatasetAsync(dataset.id);
+      if (failedJob) {
+        await recordAudit(
+          auditService,
+          dataStore,
+          request,
+          dataset.id,
+          "ocr_upload_failed",
+          "ocr_job",
+          failedJob.id,
+          { provider: provider.config.id, failureReason }
+        );
+      }
 
       if (error instanceof OcrProviderNotConfiguredError) {
         response.status(503).json({
@@ -929,23 +1204,30 @@ export function createApp(options: CreateAppOptions = {}) {
     }
   });
 
-  app.get("/api/ocr/jobs", (request, response) => {
+  app.get("/api/ocr/jobs", memberAccess, (request, response) => {
     const datasetId = parseDatasetId(request.query.dataset);
-    const dataset = resolveDatasetOrRespond(datasetId, response, dataStore);
+    const dataset = resolveDatasetOrRespond(request, datasetId, response, dataStore);
     if (!dataset) {
       return;
     }
 
-    response.json(dataStore.listOcrJobs(datasetId));
+    response.json(dataStore.listOcrJobs(dataset.id));
   });
 
-  app.get("/api/ocr/jobs/:id", (request, response) => {
+  app.get("/api/ocr/jobs/:id", memberAccess, (request, response) => {
+    const jobId = getRouteParam(request.params.id);
     const datasetId = parseDatasetId(request.query.dataset);
-    if (!resolveDatasetOrRespond(datasetId, response, dataStore)) {
+    const dataset = resolveDatasetOrRespond(request, datasetId, response, dataStore);
+    if (!dataset) {
       return;
     }
 
-    const ocrJob = dataStore.getOcrJob(request.params.id, datasetId);
+    if (!jobId) {
+      response.status(400).json({ message: "OCR job id is required." });
+      return;
+    }
+
+    const ocrJob = dataStore.getOcrJob(jobId, dataset.id);
 
     if (!ocrJob) {
       response.status(404).json({ message: "OCR job not found." });
@@ -955,13 +1237,20 @@ export function createApp(options: CreateAppOptions = {}) {
     response.json(ocrJob);
   });
 
-  app.get("/api/invoices/:id", (request, response) => {
+  app.get("/api/invoices/:id", memberAccess, (request, response) => {
+    const invoiceId = getRouteParam(request.params.id);
     const datasetId = parseDatasetId(request.query.dataset);
-    if (!resolveDatasetOrRespond(datasetId, response, dataStore)) {
+    const dataset = resolveDatasetOrRespond(request, datasetId, response, dataStore);
+    if (!dataset) {
       return;
     }
 
-    const invoice = dataStore.getInvoice(request.params.id, datasetId);
+    if (!invoiceId) {
+      response.status(400).json({ message: "Invoice id is required." });
+      return;
+    }
+
+    const invoice = dataStore.getInvoice(invoiceId, dataset.id);
 
     if (!invoice) {
       response.status(404).json({ message: "Invoice not found." });
@@ -971,7 +1260,8 @@ export function createApp(options: CreateAppOptions = {}) {
     response.json(invoice);
   });
 
-  app.post("/api/invoices/:id/review-confirm", async (request, response) => {
+  app.post("/api/invoices/:id/review-confirm", adminAccess, async (request, response) => {
+    const invoiceId = getRouteParam(request.params.id);
     const body = request.body as {
       dataset?: unknown;
       supplierId?: unknown;
@@ -980,7 +1270,7 @@ export function createApp(options: CreateAppOptions = {}) {
       lines?: unknown;
     };
     const datasetId = parseDatasetId(request.query.dataset ?? body.dataset);
-    const dataset = resolveDatasetOrRespond(datasetId, response, dataStore);
+    const dataset = resolveDatasetOrRespond(request, datasetId, response, dataStore);
     if (!dataset) {
       return;
     }
@@ -1048,8 +1338,13 @@ export function createApp(options: CreateAppOptions = {}) {
       }
     }
 
+    if (!invoiceId) {
+      response.status(400).json({ message: "Invoice id is required." });
+      return;
+    }
+
     try {
-      const result = dataStore.confirmInvoice(request.params.id, datasetId, {
+      const result = dataStore.confirmInvoice(invoiceId, dataset.id, {
         supplierId: typeof body.supplierId === "string" ? body.supplierId : undefined,
         invoiceDate: typeof body.invoiceDate === "string" ? body.invoiceDate : undefined,
         invoiceNumber: typeof body.invoiceNumber === "string" ? body.invoiceNumber : undefined,
@@ -1075,6 +1370,20 @@ export function createApp(options: CreateAppOptions = {}) {
       }
 
       await dataStore.flushDatasetAsync(dataset.id);
+      await recordAudit(
+        auditService,
+        dataStore,
+        request,
+        dataset.id,
+        "invoice_review_confirm",
+        "invoice",
+        result.confirmedInvoice.id,
+        {
+          confirmedLineCount: result.confirmationSummary?.confirmedLineCount ?? 0,
+          ignoredLineCount: result.confirmationSummary?.ignoredLineCount ?? 0,
+          alertCount: result.confirmationSummary?.alertCount ?? 0
+        }
+      );
       response.json({
         confirmationSummary: result.confirmationSummary,
         costHistory: result.costHistory,
@@ -1089,49 +1398,60 @@ export function createApp(options: CreateAppOptions = {}) {
     }
   });
 
-  app.get("/api/alerts/price-changes", (request, response) => {
+  app.get("/api/alerts/price-changes", memberAccess, (request, response) => {
     const datasetId = parseDatasetId(request.query.dataset);
-    if (!resolveDatasetOrRespond(datasetId, response, dataStore)) {
+    const dataset = resolveDatasetOrRespond(request, datasetId, response, dataStore);
+    if (!dataset) {
       return;
     }
 
-    response.json(dataStore.getPriceChangeAlerts(datasetId));
+    response.json(dataStore.getPriceChangeAlerts(dataset.id));
   });
 
-  app.get("/api/analytics/dishes", (request, response) => {
+  app.get("/api/analytics/dishes", memberAccess, (request, response) => {
     const datasetId = parseDatasetId(request.query.dataset);
-    if (!resolveDatasetOrRespond(datasetId, response, dataStore)) {
+    const dataset = resolveDatasetOrRespond(request, datasetId, response, dataStore);
+    if (!dataset) {
       return;
     }
 
-    response.json(dataStore.getCalculatedDishes(datasetId));
+    response.json(dataStore.getCalculatedDishes(dataset.id));
   });
 
-  app.get("/api/analytics/overview", (request, response) => {
+  app.get("/api/analytics/overview", memberAccess, (request, response) => {
     const datasetId = parseDatasetId(request.query.dataset);
-    if (!resolveDatasetOrRespond(datasetId, response, dataStore)) {
+    const dataset = resolveDatasetOrRespond(request, datasetId, response, dataStore);
+    if (!dataset) {
       return;
     }
 
-    response.json(dataStore.getOverview(datasetId));
+    response.json(dataStore.getOverview(dataset.id));
   });
 
-  app.get("/api/analytics/actions", (request, response) => {
+  app.get("/api/analytics/actions", memberAccess, (request, response) => {
     const datasetId = parseDatasetId(request.query.dataset);
-    if (!resolveDatasetOrRespond(datasetId, response, dataStore)) {
+    const dataset = resolveDatasetOrRespond(request, datasetId, response, dataStore);
+    if (!dataset) {
       return;
     }
 
-    response.json(dataStore.getAllActions(datasetId));
+    response.json(dataStore.getAllActions(dataset.id));
   });
 
-  app.get("/api/analytics/dish/:id", (request, response) => {
+  app.get("/api/analytics/dish/:id", memberAccess, (request, response) => {
+    const dishId = getRouteParam(request.params.id);
     const datasetId = parseDatasetId(request.query.dataset);
-    if (!resolveDatasetOrRespond(datasetId, response, dataStore)) {
+    const dataset = resolveDatasetOrRespond(request, datasetId, response, dataStore);
+    if (!dataset) {
       return;
     }
 
-    const detail = dataStore.getDishDetail(request.params.id, datasetId);
+    if (!dishId) {
+      response.status(400).json({ message: "Dish id is required." });
+      return;
+    }
+
+    const detail = dataStore.getDishDetail(dishId, dataset.id);
     if (!detail) {
       response.status(404).json({ message: "Dish not found." });
       return;
@@ -1140,9 +1460,9 @@ export function createApp(options: CreateAppOptions = {}) {
     response.json(detail);
   });
 
-  app.post("/api/simulate/price", (request, response) => {
+  app.post("/api/simulate/price", memberAccess, (request, response) => {
     const datasetId = parseDatasetId(request.query.dataset);
-    const dataset = resolveDatasetOrRespond(datasetId, response, dataStore);
+    const dataset = resolveDatasetOrRespond(request, datasetId, response, dataStore);
 
     if (!dataset) {
       return;
@@ -1155,9 +1475,9 @@ export function createApp(options: CreateAppOptions = {}) {
       return;
     }
 
-    const ingredients = dataStore.getIngredients(datasetId);
-    const recipes = dataStore.getRecipes(datasetId);
-    const dishes = dataStore.getDishes(datasetId);
+    const ingredients = dataStore.getIngredients(dataset.id);
+    const recipes = dataStore.getRecipes(dataset.id);
+    const dishes = dataStore.getDishes(dataset.id);
 
     const dish = dishes?.find((item) => item.id === dishId);
     if (!dish) {
