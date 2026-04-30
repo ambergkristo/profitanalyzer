@@ -43,6 +43,19 @@ Phase 13 introduces:
 - cross-workspace denial checks at the access layer
 - demo-mode bypass validation so product demos still work without login
 
+## What Phase 14 Adds To Validation
+
+Phase 14 introduces:
+
+- `validate:runtime`
+- `validate:production-readiness`
+- `validate:mobile`
+- production-oriented env blocker checks
+- readiness endpoint validation
+- safe error response validation with request ids
+- mobile invoice/dashboard/dish-detail smoke checks
+- deterministic production-readiness reports that still keep `productionReady=false`
+
 ## Production SaaS Validation Gates
 
 Production SaaS readiness now requires:
@@ -64,7 +77,7 @@ Production SaaS readiness now requires:
 - authenticated isolation under a live DB in a production-like deployment
 - production backup and restore maturity
 - live OCR accuracy on real restaurant invoices
-- mobile smoke coverage for the full invoice flow
+- full mobile browser coverage for the invoice flow
 - willingness to pay
 - retention
 - real restaurant onboarding effort

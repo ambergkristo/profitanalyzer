@@ -56,7 +56,8 @@ async function main() {
   const pilotMemoryApp = createApp({
     env: {
       ...memoryEnv,
-      APP_MODE: "pilot"
+      APP_MODE: "pilot",
+      SESSION_SECRET: "pilot-validation-secret"
     }
   });
 
@@ -97,7 +98,8 @@ async function main() {
     APP_MODE: "pilot",
     STORE_DRIVER: "file",
     DATA_DIR: tempDataDir,
-    OCR_PROVIDER: "fixture"
+    OCR_PROVIDER: "fixture",
+    SESSION_SECRET: "pilot-validation-secret"
   };
 
   try {

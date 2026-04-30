@@ -20,10 +20,15 @@
     "validate:pilot": "tsx scripts/validatePilot.ts",
     "validate:env": "tsx scripts/validateEnv.ts",
     "validate:auth": "tsx scripts/validateAuth.ts",
+    "validate:runtime": "tsx scripts/validateRuntime.ts",
+    "validate:production-readiness": "tsx scripts/validateProductionReadiness.ts",
+    "validate:mobile": "tsx scripts/validateMobile.ts",
     "db:generate": "npm run db:generate -w @profit-analyzer/api",
     "db:migrate": "npm run db:migrate -w @profit-analyzer/api",
     "db:seed": "npm run db:seed -w @profit-analyzer/api",
-    "validate:db": "tsx scripts/validateDb.ts"
+    "validate:db": "tsx scripts/validateDb.ts",
+    "build:production": "npm run build",
+    "start:api": "node apps/api/dist/index.js"
   },
   "devDependencies": {
     "@eslint/js": "^9.18.0",

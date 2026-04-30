@@ -115,6 +115,33 @@ describe("api", () => {
     expect(demoResponse.status).toBe(200);
   });
 
+  it("returns consistent safe error payloads with request ids", async () => {
+    const app = buildApp({
+      env: {
+        ...process.env,
+        APP_MODE: "pilot",
+        AUTH_MODE: "dev"
+      }
+    });
+
+    const response = await request(app).get("/api/analytics/overview?dataset=pilot-workspace");
+    const body = response.body as {
+      message: string;
+      error: {
+        code: string;
+        message: string;
+        requestId: string;
+      };
+    };
+
+    expect(response.status).toBe(401);
+    expect(body.message).toBe("Authentication is required.");
+    expect(body.error.code).toBe("unauthenticated");
+    expect(body.error.message).toBe("Authentication is required.");
+    expect(body.error.requestId).toBeTruthy();
+    expect(response.headers["x-request-id"]).toBeTruthy();
+  });
+
   it("enforces role-based protection and workspace scoping in pilot mode", async () => {
     const app = buildApp({
       env: {
@@ -153,10 +180,14 @@ describe("api", () => {
     const response = await request(buildApp()).get("/api/app/config");
     const body = response.body as {
       appMode: string;
+      nodeEnv: string;
       version: string;
       storage: {
         driver: string;
         persistenceWarning: string | null;
+      };
+      runtime: {
+        logLevel: string;
       };
       features: {
         externalOcrConfigured: boolean;
@@ -165,9 +196,11 @@ describe("api", () => {
 
     expect(response.status).toBe(200);
     expect(body.appMode).toBe("demo");
+    expect(body.nodeEnv).toBeTruthy();
     expect(body.version).toBeTruthy();
     expect(body.storage.driver).toBe("memory");
     expect(body.storage.persistenceWarning).toContain("memory storage");
+    expect(body.runtime.logLevel).toBeTruthy();
     expect(body.features.externalOcrConfigured).toBe(false);
   });
 
@@ -215,6 +248,7 @@ describe("api", () => {
     const response = await request(buildApp()).get("/api/health/deep");
     const body = response.body as {
       ok: boolean;
+      nodeEnv: string;
       storage: {
         driver: string;
       };
@@ -223,9 +257,65 @@ describe("api", () => {
 
     expect(response.status).toBe(200);
     expect(body.ok).toBe(true);
+    expect(body.nodeEnv).toBeTruthy();
     expect(body.storage.driver).toBe("memory");
     expect(body.checks.length).toBeGreaterThan(0);
     expect(JSON.stringify(body)).not.toContain("OCR_PROVIDER_API_KEY");
+  });
+
+  it("returns a safe readiness payload with productionReady=false", async () => {
+    const response = await request(buildApp()).get("/api/health/readiness");
+    const body = response.body as {
+      ok: boolean;
+      appMode: string;
+      nodeEnv: string;
+      productionReady: boolean;
+      storage: {
+        driver: string;
+        databaseConfigured: boolean;
+        databaseReachable: boolean | null;
+      };
+      auth: {
+        mode: string;
+        sessionSecretConfigured: boolean;
+      };
+      checks: Array<{ name: string; status: string; message: string }>;
+    };
+
+    expect(response.status).toBe(200);
+    expect(body.ok).toBe(true);
+    expect(body.appMode).toBe("demo");
+    expect(body.nodeEnv).toBeTruthy();
+    expect(body.productionReady).toBe(false);
+    expect(body.storage.driver).toBe("memory");
+    expect(Array.isArray(body.checks)).toBe(true);
+    expect(JSON.stringify(body)).not.toContain("postgresql://");
+    expect(JSON.stringify(body)).not.toContain("postgres://");
+  });
+
+  it("returns a blocking readiness response for unsafe production configuration", async () => {
+    const response = await request(
+      buildApp({
+        env: {
+          ...process.env,
+          NODE_ENV: "production",
+          APP_MODE: "production",
+          AUTH_MODE: "dev",
+          STORE_DRIVER: "memory",
+          APP_BASE_URL: "",
+          API_BASE_URL: "",
+          CORS_ORIGIN: ""
+        }
+      })
+    ).get("/api/health/readiness");
+    const body = response.body as {
+      ok: boolean;
+      checks: Array<{ status: string }>;
+    };
+
+    expect(response.status).toBe(200);
+    expect(body.ok).toBe(false);
+    expect(body.checks.some((check) => check.status === "fail")).toBe(true);
   });
 
   it("returns upgraded analytics overview for the selected dataset", async () => {
@@ -515,7 +605,8 @@ describe("api", () => {
           ...process.env,
           APP_MODE: "pilot",
           STORE_DRIVER: "file",
-          DATA_DIR: tempDataDir
+          DATA_DIR: tempDataDir,
+          SESSION_SECRET: "pilot-health-secret"
         }
       });
 

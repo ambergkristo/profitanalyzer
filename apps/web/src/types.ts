@@ -74,10 +74,10 @@ export type PriceSimulationResponse = PriceSimulationResult;
 export type InvoiceDraftResponse = ParsedInvoiceDraft;
 export type OcrInvoiceDraftResponse = OcrDraftResponse;
 export type InvoiceDetailResponse = StoredInvoiceView;
-export type AppMode = "demo" | "pilot";
+export type AppMode = "demo" | "pilot" | "production";
 export type PersistenceDriver = "memory" | "file" | "database";
 export type RecipeInputUnit = Ingredient["unit"] | "kg" | "l" | "pcs" | "pack";
-export type AuthMode = "disabled" | "dev";
+export type AuthMode = "disabled" | "dev" | "production_future";
 export type WorkspaceRole = "owner" | "admin" | "member";
 
 export interface StorageInfo {
@@ -92,6 +92,7 @@ export interface StorageInfo {
 
 export interface AppConfigResponse {
   appMode: AppMode;
+  nodeEnv: "development" | "test" | "production";
   version: string;
   productionReadinessClaimed: false;
   storage: StorageInfo;
@@ -103,6 +104,12 @@ export interface AppConfigResponse {
   auth: {
     mode: AuthMode;
     required: boolean;
+  };
+  runtime: {
+    logLevel: "debug" | "info" | "warn" | "error";
+    appBaseUrlConfigured: boolean;
+    apiBaseUrlConfigured: boolean;
+    corsOriginConfigured: boolean;
   };
   features: {
     invoiceIntake: boolean;
@@ -116,12 +123,39 @@ export interface DeepHealthResponse {
   ok: boolean;
   storage: StorageInfo;
   appMode: AppMode;
+  nodeEnv: "development" | "test" | "production";
   workspaceContext: AppConfigResponse["workspaceContext"];
   externalOcrConfigured: boolean;
   auth: AppConfigResponse["auth"];
   checks: Array<{
     key: string;
     status: "pass" | "warn" | "fail";
+    message: string;
+  }>;
+}
+
+export interface ReadinessResponse {
+  ok: boolean;
+  appMode: AppMode;
+  nodeEnv: "development" | "test" | "production";
+  productionReady: false;
+  storage: {
+    driver: PersistenceDriver;
+    databaseConfigured: boolean;
+    databaseReachable: boolean | null;
+  };
+  auth: {
+    mode: AuthMode;
+    required: boolean;
+    sessionSecretConfigured: boolean;
+  };
+  ocr: {
+    provider: string;
+    externalConfigured: boolean;
+  };
+  checks: Array<{
+    name: string;
+    status: "pass" | "warn" | "fail" | "skipped";
     message: string;
   }>;
 }

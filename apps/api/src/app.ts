@@ -8,15 +8,23 @@ import {
   type IngredientUnit,
   type InvoiceUnit
 } from "../../../packages/core/src/index.js";
-import { buildAppConfig, buildDeepHealth } from "./config.js";
+import { buildAppConfig, buildDeepHealth, buildReadiness } from "./config.js";
 import { createAuditService } from "./audit/service.js";
-import { createAuthService } from "./auth/service.js";
+import { createAuthService, DevAuthUnavailableError } from "./auth/service.js";
 import {
   getRequestAuthContext,
   requireAccess,
   resolveScopedDatasetId,
   readBearerToken
 } from "./auth/middleware.js";
+import { normalizeErrorBody } from "./http/errors.js";
+import {
+  attachRequestId,
+  createLogger,
+  createRequestLogger,
+  getRequestId,
+  logApiError
+} from "./logging/logger.js";
 import {
   createOcrProviderRegistry,
   isAllowedMimeType,
@@ -32,6 +40,7 @@ import {
   sanitizeImportedPayload,
   validateDatasetImportPayload
 } from "./store/exportImport.js";
+import { getCorsOrigin, getNodeEnv } from "./runtime/profile.js";
 import { normalizeRecipeIngredientEntries } from "./store/validation.js";
 import type { AppStore } from "./store/types.js";
 import type { AuthService } from "./auth/service.js";
@@ -119,6 +128,26 @@ function isFinitePositive(value: unknown): value is number {
   return typeof value === "number" && Number.isFinite(value) && value > 0;
 }
 
+function buildCorsOptions(environment: NodeJS.ProcessEnv | undefined) {
+  const configuredOrigin = getCorsOrigin(environment);
+  const nodeEnv = getNodeEnv(environment);
+
+  if (!configuredOrigin) {
+    return {
+      origin: nodeEnv === "production" ? false : true
+    };
+  }
+
+  const origins = configuredOrigin
+    .split(",")
+    .map((origin) => origin.trim())
+    .filter((origin) => origin.length > 0);
+
+  return {
+    origin: origins.length <= 1 ? origins[0] : origins
+  };
+}
+
 async function recordAudit(
   auditService: ReturnType<typeof createAuditService>,
   dataStore: AppStore,
@@ -156,6 +185,7 @@ export interface CreateAppOptions {
 function isStoreBootstrapExempt(pathname: string) {
   return (
     pathname === "/health/deep" ||
+    pathname === "/health/readiness" ||
     pathname === "/app/config" ||
     pathname === "/ocr/providers" ||
     pathname.startsWith("/auth/")
@@ -164,6 +194,7 @@ function isStoreBootstrapExempt(pathname: string) {
 
 export function createApp(options: CreateAppOptions = {}) {
   const app = express();
+  const logger = createLogger(options.env);
   const dataStore = options.store ?? createStore({ env: options.env });
   const authService = options.authService ?? createAuthService({ env: options.env, store: dataStore });
   const auditService = createAuditService(options.env);
@@ -176,7 +207,19 @@ export function createApp(options: CreateAppOptions = {}) {
     }
   });
 
-  app.use(cors());
+  app.use(cors(buildCorsOptions(options.env)));
+  app.use(attachRequestId);
+  app.use(createRequestLogger(logger));
+  app.use((request, response, next) => {
+    const originalJson = response.json.bind(response);
+
+    response.json = ((body: unknown) => {
+      const normalizedBody = normalizeErrorBody(body, response.statusCode, getRequestId(request));
+      return originalJson(normalizedBody);
+    }) as typeof response.json;
+
+    next();
+  });
   app.use(express.json());
 
   const memberAccess = requireAccess(authService, dataStore, options.env, {
@@ -197,6 +240,7 @@ export function createApp(options: CreateAppOptions = {}) {
       next();
     } catch (error) {
       const message = error instanceof Error ? error.message : "Store initialization failed.";
+      logApiError(logger, request, 503, "service_unavailable", message);
       response.status(503).json({ message });
     }
   });
@@ -207,6 +251,10 @@ export function createApp(options: CreateAppOptions = {}) {
 
   app.get("/api/health/deep", (_request, response) => {
     response.json(buildDeepHealth(dataStore, authService, ocrRegistry, options.env));
+  });
+
+  app.get("/api/health/readiness", (_request, response) => {
+    response.json(buildReadiness(dataStore, authService, ocrRegistry, options.env));
   });
 
   app.get("/api/app/config", (_request, response) => {
@@ -234,7 +282,7 @@ export function createApp(options: CreateAppOptions = {}) {
       response.json(result);
     } catch (error) {
       const message = error instanceof Error ? error.message : "Login failed.";
-      response.status(400).json({ message });
+      response.status(error instanceof DevAuthUnavailableError ? 503 : 400).json({ message });
     }
   });
 
@@ -1494,17 +1542,29 @@ export function createApp(options: CreateAppOptions = {}) {
     response.json(simulateDishPriceChange(dish, recipe, ingredients, newPriceCents));
   });
 
+  app.use("/api", (request, response) => {
+    response.status(404).json({
+      message: `Route ${request.method} ${request.originalUrl} was not found.`
+    });
+  });
+
   app.use((error: unknown, _request: express.Request, response: express.Response, next: express.NextFunction) => {
     void next;
+    const request = _request;
     if (isMulterLimitError(error)) {
+      logApiError(logger, request, 413, "payload_too_large", "Uploaded file is too large.");
       response.status(413).json({
         message: "Uploaded file is too large. Keep OCR fixture uploads under 10MB."
       });
       return;
     }
 
-    const message = error instanceof Error ? error.message : "Request failed.";
-    response.status(500).json({ message });
+    const safeMessage =
+      error instanceof Error && getNodeEnv(options.env) !== "production"
+        ? error.message
+        : "The request could not be completed safely.";
+    logApiError(logger, request, 500, "internal_error", safeMessage);
+    response.status(500).json({ message: safeMessage });
   });
 
   return app;

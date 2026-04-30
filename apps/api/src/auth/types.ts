@@ -1,4 +1,4 @@
-export type AuthMode = "disabled" | "dev";
+export type AuthMode = "disabled" | "dev" | "production_future";
 export type WorkspaceRole = "owner" | "admin" | "member";
 
 export interface AuthWorkspaceRestaurant {

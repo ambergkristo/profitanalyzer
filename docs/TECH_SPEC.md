@@ -49,7 +49,7 @@
 - separate frontend and backend deployment
 - database as separate managed service
 - production env validation as a gate
-- health and deep health endpoints
+- health, deep health, and readiness endpoints
 
 ### Auth Direction
 
@@ -62,8 +62,11 @@
 
 ### Observability Direction
 
-- structured health checks now
-- structured logging, monitoring, and error aggregation later
+- structured request logging foundation
+- request id propagation
+- safe error response normalization
+- readiness and runtime validation gates
+- full monitoring and alerting still later
 
 ## Phase 12 Implementation Direction
 
@@ -90,9 +93,10 @@ The DB adapter is additive:
 - database runtime is not yet universally validated in this local environment without `DATABASE_URL`
 - production-complete auth provider, invite flow, and hardened session lifecycle are not live
 - auth works today as a dev-session and RBAC foundation, not final customer identity
+- production deployment is documented, but not yet claimed as fully proven in a hosted environment
 - billing is not live
 - production object or file storage strategy is not finalized
-- monitoring and alerting are not live
+- monitoring and alerting are not live beyond the current logging and readiness foundation
 - backup and restore operations are not fully productionized
 - external OCR is not benchmarked on real invoices yet
 

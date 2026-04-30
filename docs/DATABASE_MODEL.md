@@ -56,6 +56,7 @@ npm run validate:db
 
 - if `DATABASE_URL` is missing, `validate:db` prints `SKIPPED_DATABASE_VALIDATION`
 - if `DATABASE_URL` exists, validation checks DB connectivity, seed viability, store load, and scoped analytics access
+- `GET /api/health/readiness` reports DB configuration and reachability without exposing the raw connection string
 
 ## Access Rule
 
@@ -68,3 +69,4 @@ npm run validate:db
 - auth currently uses a dev-session flow, not the final production identity provider
 - full DB parity for every operational helper should continue to be verified in later phases
 - migration rollout policy and production backup strategy are still later work
+- live DB runtime is still unproven in this environment until `DATABASE_URL` is configured

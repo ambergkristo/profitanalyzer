@@ -34,7 +34,8 @@ async function main() {
     ...process.env,
     APP_MODE: "pilot",
     AUTH_MODE: "dev",
-    STORE_DRIVER: process.env.STORE_DRIVER?.trim() || "memory"
+    STORE_DRIVER: process.env.STORE_DRIVER?.trim() || "memory",
+    SESSION_SECRET: "auth-validation-secret"
   };
   const app = createApp({ env: pilotEnv });
 
@@ -42,7 +43,7 @@ async function main() {
   assertCondition(configResponse.status === 200, "App config should load.", failures);
   assertCondition(configResponse.body.auth?.mode === "dev", "Auth mode should be dev.", failures);
   assertCondition(configResponse.body.auth?.required === true, "Pilot mode should require auth.", failures);
-  assertCondition(JSON.stringify(configResponse.body).includes("SESSION_SECRET") === false, "App config must not expose secrets.", failures);
+  assertCondition(JSON.stringify(configResponse.body).includes("auth-validation-secret") === false, "App config must not expose secrets.", failures);
 
   const unauthOverviewResponse = await request(app).get("/api/analytics/overview?dataset=pilot-workspace");
   assertCondition(unauthOverviewResponse.status === 401, "Protected overview should reject unauthenticated requests in pilot mode.", failures);

@@ -34,6 +34,7 @@ describe("PilotToolsPage", () => {
 
     vi.mocked(apiClient.getAppConfig).mockResolvedValue({
       appMode: "pilot",
+      nodeEnv: "test",
       version: "0.1.0",
       productionReadinessClaimed: false,
       storage: {
@@ -50,6 +51,12 @@ describe("PilotToolsPage", () => {
       auth: {
         mode: "dev",
         required: true
+      },
+      runtime: {
+        logLevel: "warn",
+        appBaseUrlConfigured: true,
+        apiBaseUrlConfigured: true,
+        corsOriginConfigured: true
       },
       features: {
         invoiceIntake: true,
@@ -72,6 +79,7 @@ describe("PilotToolsPage", () => {
     ]);
     vi.mocked(apiClient.getDeepHealth).mockResolvedValue({
       ok: true,
+      nodeEnv: "test",
       storage: {
         driver: "memory",
         dataDirConfigured: false,

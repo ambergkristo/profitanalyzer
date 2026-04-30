@@ -13,6 +13,14 @@ const linkClass = ({ isActive }: { isActive: boolean }) =>
     isActive ? "bg-accent/15 text-accent" : "text-muted hover:text-text"
   }`;
 
+function getModeLabel(appMode: "demo" | "pilot" | "production") {
+  if (appMode === "production") {
+    return "Production mode";
+  }
+
+  return appMode === "demo" ? "Demo mode" : "Pilot mode";
+}
+
 export function Layout() {
   const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -259,7 +267,7 @@ export function Layout() {
                       {config.data ? (
                         <div className="mt-4 flex flex-wrap gap-2">
                           <span className="rounded-full border border-white/10 px-4 py-2 text-[11px] uppercase tracking-[0.18em] text-text">
-                            {config.data.appMode === "demo" ? "Demo mode" : "Pilot mode"}
+                            {getModeLabel(config.data.appMode)}
                           </span>
                           <span className="rounded-full border border-white/10 px-4 py-2 text-[11px] uppercase tracking-[0.18em] text-muted">
                             Storage {config.data.storage.driver}

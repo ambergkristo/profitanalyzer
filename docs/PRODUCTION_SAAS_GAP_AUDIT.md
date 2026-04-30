@@ -21,6 +21,9 @@
 - workspace and restaurant scoping added at the data model layer
 - auth/session and workspace membership foundation added
 - protected route and RBAC foundation added
+- deployment profile, readiness endpoint, and runtime validation added
+- structured logging foundation and safe error responses added
+- mobile readiness documentation and smoke validation added
 
 ## Missing For Production SaaS
 
@@ -29,10 +32,10 @@
 - invite and workspace management flows
 - production object or file storage strategy for OCR uploads
 - monitoring and operational alerting
-- production backup and restore process
+- production backup and restore process beyond controlled export/import
 - privacy, legal, and security baseline
 - billing and license model
-- mobile smoke tests for critical workflows
+- full mobile browser validation for critical workflows
 - live OCR benchmark on realistic private invoice samples
 - onboarding hardening for real restaurant data
 

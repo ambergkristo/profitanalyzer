@@ -25,7 +25,7 @@ import type {
   SupplierProductMatch
 } from "../../../../packages/core/src/index.js";
 
-export type AppMode = "demo" | "pilot";
+export type AppMode = "demo" | "pilot" | "production";
 export type PersistenceType = "memory" | "file" | "database";
 
 export interface StoreContext {

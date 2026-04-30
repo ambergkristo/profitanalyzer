@@ -6,6 +6,14 @@ import { Panel } from "../components/Panel.js";
 import { StatePanel } from "../components/StatePanel.js";
 import { useAsyncData } from "../hooks.js";
 
+function getModeLabel(appMode: "demo" | "pilot" | "production") {
+  if (appMode === "production") {
+    return "Production mode";
+  }
+
+  return appMode === "demo" ? "Demo mode" : "Pilot mode";
+}
+
 export function LoginPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -74,7 +82,7 @@ export function LoginPage() {
               </p>
               <div className="mt-4 flex flex-wrap gap-2">
                 <span className="rounded-full border border-white/10 px-4 py-2 text-[11px] uppercase tracking-[0.18em] text-text">
-                  {config.data.appMode === "demo" ? "Demo mode" : "Pilot mode"}
+                  {getModeLabel(config.data.appMode)}
                 </span>
                 <span className="rounded-full border border-white/10 px-4 py-2 text-[11px] uppercase tracking-[0.18em] text-muted">
                   Auth {config.data.auth.mode}

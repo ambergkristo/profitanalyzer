@@ -1,12 +1,27 @@
-import type { AppMode, AppStore } from "./store/types.js";
 import type { AuthMode } from "./auth/types.js";
 import type { AuthService } from "./auth/service.js";
 import type { OcrProviderRegistry } from "./ocr/providerRegistry.js";
+import {
+  getAppBaseUrl,
+  getAppMode,
+  getAppVersion,
+  getApiBaseUrl,
+  getCorsOrigin,
+  getLogLevel,
+  getNodeEnv,
+  isSessionSecretConfigured,
+  type RuntimeCheck,
+  validateEnvironmentProfile
+} from "./runtime/profile.js";
+import type { AppMode, AppStore } from "./store/types.js";
+
+export { getAppMode, getAppVersion } from "./runtime/profile.js";
 
 const defaultVersion = "0.1.0";
 
 export interface AppConfigResponse {
   appMode: AppMode;
+  nodeEnv: ReturnType<typeof getNodeEnv>;
   version: string;
   productionReadinessClaimed: false;
   storage: ReturnType<AppStore["getStorageInfo"]>;
@@ -14,6 +29,12 @@ export interface AppConfigResponse {
   auth: {
     mode: AuthMode;
     required: boolean;
+  };
+  runtime: {
+    logLevel: ReturnType<typeof getLogLevel>;
+    appBaseUrlConfigured: boolean;
+    apiBaseUrlConfigured: boolean;
+    corsOriginConfigured: boolean;
   };
   features: {
     invoiceIntake: boolean;
@@ -27,6 +48,7 @@ export interface DeepHealthResponse {
   ok: boolean;
   storage: ReturnType<AppStore["getStorageInfo"]>;
   appMode: AppMode;
+  nodeEnv: ReturnType<typeof getNodeEnv>;
   workspaceContext: ReturnType<AppStore["getStoreContext"]>;
   externalOcrConfigured: boolean;
   auth: AppConfigResponse["auth"];
@@ -37,12 +59,26 @@ export interface DeepHealthResponse {
   }>;
 }
 
-export function getAppMode(environment: NodeJS.ProcessEnv = process.env): AppMode {
-  return environment.APP_MODE === "pilot" ? "pilot" : "demo";
-}
-
-export function getAppVersion(environment: NodeJS.ProcessEnv = process.env): string {
-  return environment.npm_package_version ?? defaultVersion;
+export interface ReadinessResponse {
+  ok: boolean;
+  appMode: AppMode;
+  nodeEnv: ReturnType<typeof getNodeEnv>;
+  productionReady: false;
+  storage: {
+    driver: ReturnType<AppStore["getStorageType"]>;
+    databaseConfigured: boolean;
+    databaseReachable: boolean | null;
+  };
+  auth: {
+    mode: AuthMode;
+    required: boolean;
+    sessionSecretConfigured: boolean;
+  };
+  ocr: {
+    provider: string;
+    externalConfigured: boolean;
+  };
+  checks: RuntimeCheck[];
 }
 
 export function buildAppConfig(
@@ -57,13 +93,20 @@ export function buildAppConfig(
 
   return {
     appMode: getAppMode(environment),
-    version: getAppVersion(environment),
+    nodeEnv: getNodeEnv(environment),
+    version: getAppVersion(environment) ?? defaultVersion,
     productionReadinessClaimed: false,
     storage: store.getStorageInfo(),
     workspaceContext: store.getStoreContext(),
     auth: {
       mode: authService.getMode(),
       required: authService.isAuthRequired()
+    },
+    runtime: {
+      logLevel: getLogLevel(environment),
+      appBaseUrlConfigured: Boolean(getAppBaseUrl(environment)),
+      apiBaseUrlConfigured: Boolean(getApiBaseUrl(environment)),
+      corsOriginConfigured: Boolean(getCorsOrigin(environment))
     },
     features: {
       invoiceIntake: true,
@@ -74,6 +117,61 @@ export function buildAppConfig(
   };
 }
 
+function mapChecksForLegacyHealth(checks: RuntimeCheck[]) {
+  return checks.map((check) => ({
+    key: check.name,
+    status: check.status === "skipped" ? "warn" : check.status,
+    message: check.message
+  }));
+}
+
+export function buildReadiness(
+  store: AppStore,
+  authService: AuthService,
+  ocrRegistry: OcrProviderRegistry,
+  environment: NodeJS.ProcessEnv = process.env
+): ReadinessResponse {
+  const storage = store.getStorageInfo();
+  const validation = validateEnvironmentProfile({
+    environment,
+    storageInfo: storage,
+    authMode: authService.getMode(),
+    ocrRegistry
+  });
+  const provider = normalizeOcrProvider(environment.OCR_PROVIDER);
+
+  return {
+    ok: validation.ok,
+    appMode: validation.profile.appMode,
+    nodeEnv: validation.profile.nodeEnv,
+    productionReady: false,
+    storage: {
+      driver: storage.driver,
+      databaseConfigured: Boolean(storage.databaseConfigured),
+      databaseReachable: storage.driver === "database" ? storage.readable && storage.writable : null
+    },
+    auth: {
+      mode: authService.getMode(),
+      required: authService.isAuthRequired(),
+      sessionSecretConfigured: isSessionSecretConfigured(environment)
+    },
+    ocr: {
+      provider,
+      externalConfigured: validation.profile.externalOcrConfigured
+    },
+    checks: validation.checks
+  };
+}
+
+function normalizeOcrProvider(value: string | undefined) {
+  const provider = value?.trim();
+  if (provider === "external_env" || provider === "disabled") {
+    return provider;
+  }
+
+  return "fixture";
+}
+
 export function buildDeepHealth(
   store: AppStore,
   authService: AuthService,
@@ -81,83 +179,16 @@ export function buildDeepHealth(
   environment: NodeJS.ProcessEnv = process.env
 ): DeepHealthResponse {
   const config = buildAppConfig(store, authService, ocrRegistry, environment);
-  const storageChecks: DeepHealthResponse["checks"] = [];
-
-  if (config.storage.driver === "memory") {
-    storageChecks.push({
-      key: "storage",
-      status: "warn",
-      message: config.storage.persistenceWarning ?? "Memory storage is active. Restarting the API resets pilot data."
-    });
-  } else if (config.storage.driver === "database") {
-    storageChecks.push({
-      key: "database_config",
-      status: config.storage.databaseConfigured ? "pass" : "fail",
-      message: config.storage.databaseConfigured
-        ? "Database store is configured."
-        : "Database store is selected, but DATABASE_URL is missing."
-    });
-    storageChecks.push({
-      key: "database_connectivity",
-      status: config.storage.readable && config.storage.writable ? "pass" : "fail",
-      message: config.storage.readable && config.storage.writable
-        ? "Database connectivity checks passed."
-        : config.storage.persistenceWarning ?? "Database connectivity checks failed."
-    });
-  } else {
-    storageChecks.push({
-      key: "storage_readable",
-      status: config.storage.readable ? "pass" : "fail",
-      message: config.storage.readable
-        ? `File storage is readable at ${config.storage.dataDir}.`
-        : `File storage is not readable at ${config.storage.dataDir}.`
-    });
-    storageChecks.push({
-      key: "storage_writable",
-      status: config.storage.writable ? "pass" : "fail",
-      message: config.storage.writable
-        ? `File storage is writable at ${config.storage.dataDir}.`
-        : `File storage is not writable at ${config.storage.dataDir}.`
-    });
-  }
+  const readiness = buildReadiness(store, authService, ocrRegistry, environment);
 
   return {
-    ok:
-      config.storage.driver === "memory"
-        ? true
-        : config.storage.driver === "database"
-          ? Boolean(config.storage.databaseConfigured) &&
-            config.storage.readable &&
-            config.storage.writable
-        : config.storage.readable && config.storage.writable,
+    ok: readiness.ok,
     storage: config.storage,
     appMode: config.appMode,
+    nodeEnv: config.nodeEnv,
     workspaceContext: config.workspaceContext,
     externalOcrConfigured: config.features.externalOcrConfigured,
     auth: config.auth,
-    checks: [
-      ...storageChecks,
-      {
-        key: "auth_mode",
-        status: config.auth.required ? "pass" : config.appMode === "demo" ? "warn" : "fail",
-        message: config.auth.required
-          ? `Auth mode ${config.auth.mode} is active.`
-          : config.appMode === "demo"
-            ? "Demo mode allows no-auth access."
-            : "Auth is disabled outside demo mode."
-      },
-      {
-        key: "invoice_intake",
-        status: "pass",
-        message: "Invoice review-confirm workflow is available."
-      },
-      {
-        key: "ocr_provider",
-        status: config.features.externalOcrConfigured ? "pass" : "warn",
-        message: config.features.externalOcrConfigured
-          ? "External OCR provider is configured."
-          : "External OCR provider is not configured. Fixture OCR remains available."
-      }
-    ]
+    checks: mapChecksForLegacyHealth(readiness.checks)
   };
 }

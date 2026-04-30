@@ -2,7 +2,7 @@
 
 ## Current Posture
 
-The app is not yet production SaaS ready, but it now has a database-oriented deployment path instead of only memory and file persistence.
+The app is not yet production SaaS ready, but it now has a production-oriented deployment profile, runtime validation, and safe readiness reporting.
 
 ## Runtime Split
 
@@ -28,6 +28,10 @@ npm run validate:ocr:provider
 npm run validate:pilot
 npm run validate:env
 npm run validate:db
+npm run validate:auth
+npm run validate:runtime
+npm run validate:production-readiness
+npm run validate:mobile
 ```
 
 ## Node and Ports
@@ -40,22 +44,26 @@ npm run validate:db
 
 Core:
 
-- `APP_MODE=demo|pilot`
-- `AUTH_MODE=dev|disabled`
+- `NODE_ENV=development|test|production`
+- `APP_MODE=demo|pilot|production`
+- `AUTH_MODE=dev|disabled|production_future`
 - `SESSION_SECRET=`
-- `APP_BASE_URL=http://localhost:5173`
+- `APP_BASE_URL=`
+- `API_BASE_URL=`
+- `CORS_ORIGIN=`
+- `LOG_LEVEL=debug|info|warn|error`
 - `STORE_DRIVER=memory|file|database`
 - `DATA_DIR=.data`
 - `DATABASE_URL=` when `STORE_DRIVER=database`
 
 OCR:
 
-- `OCR_PROVIDER`
-- `OCR_PROVIDER_API_KEY`
-- `OCR_PROVIDER_MODEL`
-- `OCR_PROVIDER_ENDPOINT`
-- `OCR_PROVIDER_TIMEOUT_MS`
-- `OCR_PROVIDER_MAX_RETRIES`
+- `OCR_PROVIDER=fixture|external_env|disabled`
+- `OCR_PROVIDER_API_KEY=`
+- `OCR_PROVIDER_MODEL=`
+- `OCR_PROVIDER_ENDPOINT=`
+- `OCR_PROVIDER_TIMEOUT_MS=30000`
+- `OCR_PROVIDER_MAX_RETRIES=1`
 
 ## Deployment Notes By Driver
 
@@ -63,31 +71,44 @@ OCR:
 
 - safe for demo only
 - restarts clear data
+- `APP_MODE=production` with memory storage is a readiness blocker
 
 ### File
 
 - safe for local controlled use
 - requires persistent writable disk
 - many hosted environments are ephemeral
+- acceptable for controlled environments, not the long-term SaaS storage target
 
 ### Database
 
 - intended production-oriented path
 - requires Postgres and `DATABASE_URL`
 - should not silently fall back to memory
+- readiness fails clearly if DB is selected but not configured or reachable
 
-## Health Endpoints
+## Health And Readiness Endpoints
 
 - `GET /health`
 - `GET /api/health/deep`
+- `GET /api/health/readiness`
 - `GET /api/app/config`
 - `GET /api/auth/me` after login
 
-`/api/health/deep` must be treated as a readiness signal for storage:
+Readiness behaviors:
 
-- `memory`: warning only
-- `file`: read/write disk checks
-- `database`: configuration and connectivity checks
+- no secrets are returned
+- `productionReady` currently remains `false`
+- DB selection without `DATABASE_URL` is a fail check
+- `AUTH_MODE=dev` in `APP_MODE=production` is a fail check
+- fixture OCR in production is a warning, not a secret leak
+
+## Production Build And Start
+
+```bash
+npm run build:production
+npm run start:api
+```
 
 ## Pre-Deploy Validation
 
@@ -104,6 +125,9 @@ Run before any serious hosted environment:
 - `npm run validate:env`
 - `npm run validate:db`
 - `npm run validate:auth`
+- `npm run validate:runtime`
+- `npm run validate:production-readiness`
+- `npm run validate:mobile`
 
 ## Hosted Production Caveats
 
@@ -111,12 +135,13 @@ Run before any serious hosted environment:
 - production hosting should move toward managed Postgres
 - OCR upload storage strategy is still future work
 - the current auth layer is a production-shaped foundation, not the final customer identity system
-- monitoring, backup, and rollout playbooks are still future phases
+- monitoring, backups, and rollout playbooks are foundations, not final operations maturity
 
 ## Known Gaps
 
 - production-complete auth is not live
 - billing is not live
 - production backup flow is not fully implemented
-- structured monitoring is not live
+- full monitoring stack is not live
 - OCR provider benchmark is not complete
+- legal/privacy launch gates are still open

@@ -18,6 +18,7 @@ Current implementation goals:
 
 - `AUTH_MODE=dev`
 - `AUTH_MODE=disabled`
+- `AUTH_MODE=production_future`
 
 `AUTH_MODE=dev` is the current working auth path.
 
@@ -30,6 +31,8 @@ It provides:
 - role-aware request handling
 
 `AUTH_MODE=disabled` is only appropriate for demo mode or deliberately open local workflows.
+
+`AUTH_MODE=production_future` is a readiness placeholder so production-mode validation can reject `dev` auth while still making the gap explicit.
 
 ## Current Endpoints
 
@@ -114,6 +117,7 @@ Unprotected:
 
 - `/health`
 - `/api/health/deep`
+- `/api/health/readiness`
 - `/api/app/config`
 - auth endpoints
 
@@ -140,10 +144,17 @@ Database-backed audit persistence is ready when the database path is configured.
 
 ## Phase 14 Handoff
 
-Phase 14 should build on this by adding:
+Phase 14 is now complete as a foundation and adds:
 
-- structured logging
+- structured logging with request ids
 - deploy-safe error handling
 - stronger operational readiness checks
 - DB deployment runbooks
 - production environment profile validation
+
+What still remains after Phase 14:
+
+- final production identity provider selection
+- hardened session lifecycle for hosted production
+- membership/invite management UX
+- full production monitoring and incident response maturity

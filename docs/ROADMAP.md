@@ -52,7 +52,7 @@ Reposition the project from controlled pilot and founding-partner product toward
 
 ## PHASE 12 - Database + Multi-Tenant Data Model
 
-Status: in progress.
+Status: partial / architectural pass.
 
 ### Goal
 
@@ -101,7 +101,7 @@ Protect the SaaS app and isolate customer data through authenticated workspace c
 
 ## PHASE 14 - Production Deployment + Observability
 
-Status: next.
+Status: complete as deployment and observability foundation.
 
 ### Goal
 
@@ -118,7 +118,15 @@ Make the app deployable and operable.
 - backup and export process
 - rollback and readiness documentation
 
+### Honest Current Position
+
+- readiness, runtime validation, and production-oriented env checks now exist
+- `productionReady` still remains `false`
+- final deployment, monitoring, backup, legal/privacy, and billing gates are still open
+
 ## PHASE 15 - Mobile-First Restaurant Onboarding
+
+Status: next.
 
 ### Goal
 

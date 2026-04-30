@@ -4,6 +4,7 @@ import type {
   DatasetExportPayload,
   DeepHealthResponse,
   DevLoginResponse,
+  ReadinessResponse,
   DishCreateRequest,
   DishUpdateRequest,
   ImportDatasetSummary,
@@ -55,8 +56,10 @@ async function getJson<T>(path: string): Promise<T> {
     headers: buildAuthHeaders()
   });
   if (!response.ok) {
-    const body = (await response.json().catch(() => null)) as { message?: string } | null;
-    throw new Error(body?.message ?? `Request failed for ${path} with ${response.status}`);
+    const body = (await response.json().catch(() => null)) as
+      | { message?: string; error?: { message?: string } }
+      | null;
+    throw new Error(body?.error?.message ?? body?.message ?? `Request failed for ${path} with ${response.status}`);
   }
 
   return (await response.json()) as T;
@@ -73,8 +76,10 @@ async function postJson<T>(path: string, body: unknown): Promise<T> {
   });
 
   if (!response.ok) {
-    const errorBody = (await response.json().catch(() => null)) as { message?: string } | null;
-    throw new Error(errorBody?.message ?? `Request failed for ${path} with ${response.status}`);
+    const errorBody = (await response.json().catch(() => null)) as
+      | { message?: string; error?: { message?: string } }
+      | null;
+    throw new Error(errorBody?.error?.message ?? errorBody?.message ?? `Request failed for ${path} with ${response.status}`);
   }
 
   return (await response.json()) as T;
@@ -91,8 +96,10 @@ async function patchJson<T>(path: string, body: unknown): Promise<T> {
   });
 
   if (!response.ok) {
-    const errorBody = (await response.json().catch(() => null)) as { message?: string } | null;
-    throw new Error(errorBody?.message ?? `Request failed for ${path} with ${response.status}`);
+    const errorBody = (await response.json().catch(() => null)) as
+      | { message?: string; error?: { message?: string } }
+      | null;
+    throw new Error(errorBody?.error?.message ?? errorBody?.message ?? `Request failed for ${path} with ${response.status}`);
   }
 
   return (await response.json()) as T;
@@ -103,8 +110,10 @@ async function getBlob(path: string): Promise<Blob> {
     headers: buildAuthHeaders()
   });
   if (!response.ok) {
-    const errorBody = (await response.json().catch(() => null)) as { message?: string } | null;
-    throw new Error(errorBody?.message ?? `Request failed for ${path} with ${response.status}`);
+    const errorBody = (await response.json().catch(() => null)) as
+      | { message?: string; error?: { message?: string } }
+      | null;
+    throw new Error(errorBody?.error?.message ?? errorBody?.message ?? `Request failed for ${path} with ${response.status}`);
   }
 
   return response.blob();
@@ -118,8 +127,10 @@ async function postFormData<T>(path: string, body: FormData): Promise<T> {
   });
 
   if (!response.ok) {
-    const errorBody = (await response.json().catch(() => null)) as { message?: string } | null;
-    throw new Error(errorBody?.message ?? `Request failed for ${path} with ${response.status}`);
+    const errorBody = (await response.json().catch(() => null)) as
+      | { message?: string; error?: { message?: string } }
+      | null;
+    throw new Error(errorBody?.error?.message ?? errorBody?.message ?? `Request failed for ${path} with ${response.status}`);
   }
 
   return (await response.json()) as T;
@@ -173,6 +184,7 @@ export const apiClient = {
     postJson<AuthMeResponse>("/api/auth/context", body),
   clearStoredAuthToken,
   getDeepHealth: () => getJson<DeepHealthResponse>("/api/health/deep"),
+  getReadiness: () => getJson<ReadinessResponse>("/api/health/readiness"),
   getDemoDatasets: () => getJson<DemoDatasetSummary[]>("/api/demo/datasets"),
   getOverview: (datasetId?: string) =>
     getJson<OverviewResponse>(buildDatasetPath("/api/analytics/overview", datasetId)),

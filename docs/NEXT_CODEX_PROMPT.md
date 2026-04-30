@@ -10,27 +10,29 @@ Production SaaS readiness.
 
 Current roadmap:
 - Phase 11 - Production SaaS Architecture Reset - complete
-- Phase 12 - Database + Multi-Tenant Data Model - implemented as SaaS data foundation
+- Phase 12 - Database + Multi-Tenant Data Model - partial / architectural pass
 - Phase 13 - Auth + Workspace Access Control - complete as auth foundation
-- Phase 14 - Production Deployment + Observability - start now
+- Phase 14 - Production Deployment + Observability - complete as deployment and observability foundation
+- Phase 15 - Mobile-First Restaurant Onboarding - start now
 
 Sprint name:
-`PHASE 14 - Production Deployment + Observability`
+`PHASE 15 - Mobile-First Restaurant Onboarding`
 
 Primary goal:
-Make the app deployable and operable on a production-oriented profile without weakening invoice or OCR safety.
+Make a real restaurant able to onboard from mobile or desktop without founder hand-holding, while preserving the current premium UI direction and OCR safety rules.
 
 Requirements:
-- define and harden the production environment profile
-- add structured logging and production-safe error handling
-- improve health and deep health checks
-- validate DB connectivity and migration readiness
-- document deploy steps, rollback expectations, and backup/export process
-- keep `memory` and `file` drivers usable for demo and local workflows if practical
-- add deployment-oriented validation where feasible
-- keep auth and workspace context intact
+- add a mobile-first onboarding wizard
+- support restaurant profile setup
+- support ingredient setup
+- support recipe builder
+- support dish builder
+- support supplier setup
+- keep invoice upload/review mobile-first
+- add a setup checklist
+- avoid desktop-only critical paths
+- preserve clean premium UI
 - keep OCR draft-only review-confirm safety unchanged
-- keep the mobile-first invoice workflow usable
 
 Important:
 - do not add billing yet
@@ -40,6 +42,7 @@ Important:
 - do not add supplier API sync
 - do not weaken review-confirm
 - do not allow blind OCR import
+- do not introduce generic SaaS clutter
 
 Validation:
 
@@ -58,6 +61,9 @@ npm run validate:pilot
 npm run validate:env
 npm run validate:db
 npm run validate:auth
+npm run validate:runtime
+npm run validate:production-readiness
+npm run validate:mobile
 npm audit
 ```
 
@@ -65,7 +71,7 @@ If benchmark or audit commands exist, run them too.
 
 Git:
 
-- commit with: `feat: add deployment and observability foundation`
+- commit with: `feat: add mobile-first onboarding foundation`
 - push to `origin/main`
 - verify:
 
@@ -77,10 +83,10 @@ git rev-parse origin/main
 
 Final report must include:
 
-- deployment profile summary
-- logging and error-handling status
-- health and readiness status
-- DB validation status
+- onboarding flow summary
+- mobile readiness summary
+- setup-tool coverage
+- validation status
 - validation results
 - current branch
 - remote origin URL

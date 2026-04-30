@@ -80,8 +80,19 @@ export interface CreateAuthServiceOptions {
   store: AppStore;
 }
 
+export class DevAuthUnavailableError extends Error {
+  constructor(message = "Dev login is not available for the selected auth mode.") {
+    super(message);
+    this.name = "DevAuthUnavailableError";
+  }
+}
+
 export function getAuthMode(environment: NodeJS.ProcessEnv = process.env): AuthMode {
-  return environment.AUTH_MODE === "disabled" ? "disabled" : "dev";
+  if (environment.AUTH_MODE === "disabled") {
+    return "disabled";
+  }
+
+  return environment.AUTH_MODE === "production_future" ? "production_future" : "dev";
 }
 
 function buildMemberships(store: AppStore, appMode: ReturnType<typeof getAppMode>, preferredWorkspaceId?: string) {
@@ -253,8 +264,8 @@ export function createAuthService(options: CreateAuthServiceOptions): AuthServic
       return appMode !== "demo" && authMode !== "disabled";
     },
     async devLogin(input) {
-      if (authMode === "disabled" && appMode !== "demo") {
-        throw new Error("Auth is disabled for a non-demo mode.");
+      if (authMode !== "dev") {
+        throw new DevAuthUnavailableError(`Dev login is unavailable when AUTH_MODE=${authMode}.`);
       }
 
       if (!input.email.trim()) {

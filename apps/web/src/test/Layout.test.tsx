@@ -34,6 +34,7 @@ describe("Layout", () => {
     vi.clearAllMocks();
     vi.mocked(apiClient.getAppConfig).mockResolvedValue({
       appMode: "demo",
+      nodeEnv: "test",
       version: "0.1.0",
       productionReadinessClaimed: false,
       storage: {
@@ -50,6 +51,12 @@ describe("Layout", () => {
       auth: {
         mode: "dev",
         required: false
+      },
+      runtime: {
+        logLevel: "warn",
+        appBaseUrlConfigured: true,
+        apiBaseUrlConfigured: true,
+        corsOriginConfigured: true
       },
       features: {
         invoiceIntake: true,
@@ -139,6 +146,7 @@ describe("Layout", () => {
   it("shows a login-required gate in pilot mode when no auth token exists", async () => {
     vi.mocked(apiClient.getAppConfig).mockResolvedValue({
       appMode: "pilot",
+      nodeEnv: "test",
       version: "0.1.0",
       productionReadinessClaimed: false,
       storage: {
@@ -155,6 +163,12 @@ describe("Layout", () => {
       auth: {
         mode: "dev",
         required: true
+      },
+      runtime: {
+        logLevel: "warn",
+        appBaseUrlConfigured: true,
+        apiBaseUrlConfigured: true,
+        corsOriginConfigured: true
       },
       features: {
         invoiceIntake: true,
@@ -186,6 +200,7 @@ describe("Layout", () => {
     vi.mocked(apiClient.getStoredAuthToken).mockReturnValue("dev-session-token");
     vi.mocked(apiClient.getAppConfig).mockResolvedValue({
       appMode: "pilot",
+      nodeEnv: "test",
       version: "0.1.0",
       productionReadinessClaimed: false,
       storage: {
@@ -202,6 +217,12 @@ describe("Layout", () => {
       auth: {
         mode: "dev",
         required: true
+      },
+      runtime: {
+        logLevel: "warn",
+        appBaseUrlConfigured: true,
+        apiBaseUrlConfigured: true,
+        corsOriginConfigured: true
       },
       features: {
         invoiceIntake: true,

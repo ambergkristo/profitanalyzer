@@ -1,0 +1,49 @@
+{
+  "productionReady": false,
+  "currentMode": "demo",
+  "sections": {
+    "database": {
+      "status": "blocked",
+      "summary": "DATABASE_URL is not configured in this environment, so live database validation is skipped."
+    },
+    "auth": {
+      "status": "partial",
+      "summary": "Dev-session auth, RBAC, and workspace scoping exist, but final production identity is not live."
+    },
+    "tenantIsolation": {
+      "status": "partial",
+      "summary": "Workspace and restaurant scoping exist in the data and access layers, but production DB runtime is not fully proven here."
+    },
+    "deployment": {
+      "status": "partial",
+      "summary": "Deployment profile, readiness endpoint, and runtime validation exist, but production rollout is not yet claimed."
+    },
+    "observability": {
+      "status": "partial",
+      "summary": "Structured request ids, request logging, and safe error handling exist; full monitoring is still future work."
+    },
+    "ocrSafety": {
+      "status": "pass",
+      "summary": "OCR and invoice upload remain draft-only and still require review-confirm before cost mutation."
+    },
+    "mobileReadiness": {
+      "status": "partial",
+      "summary": "Mobile readiness is documented and smoke-checked, but not fully browser-automated yet."
+    },
+    "backupExport": {
+      "status": "partial",
+      "summary": "Dataset export/import exists, but full database backup strategy remains a deployment concern."
+    },
+    "billingLicense": {
+      "status": "blocked",
+      "summary": "Billing and subscription/license infrastructure are not implemented."
+    },
+    "securityPrivacyLegal": {
+      "status": "blocked",
+      "summary": "Security, privacy, and legal launch gates are not finalized."
+    }
+  },
+  "blockers": [
+    "Production readiness remains false until billing, legal/privacy, and live DB deployment gates are closed."
+  ]
+}

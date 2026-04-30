@@ -2,15 +2,16 @@
 
 Menu Profit Optimizer is a restaurant profit product for dish-margin analysis, supplier cost change review, invoice intake, OCR draft review, and concrete pricing actions.
 
-RM1-RM9 are complete as a controlled pilot and founding-partner foundation. The strategic target is now production SaaS readiness, but production readiness is not claimed yet.
+RM1-RM9 are complete as a controlled pilot and founding-partner foundation. The strategic target is now production SaaS readiness, but production readiness is still not claimed.
 
 ## Current Status
 
 - RM1-RM9: complete as controlled pilot / founding-partner foundation
 - Phase 11: complete as production SaaS strategy reset
-- Phase 12: complete as database and multi-tenant data foundation
+- Phase 12: partial, with database and multi-tenant foundation in place
 - Phase 13: complete as auth and workspace access foundation
-- production SaaS readiness: not claimed
+- Phase 14: complete as deployment and observability foundation
+- production SaaS readiness: `false`
 - OCR safety boundary: unchanged
 
 The current product already includes:
@@ -23,6 +24,7 @@ The current product already includes:
 - `STORE_DRIVER=memory|file|database`
 - Prisma/Postgres-oriented database layer
 - auth/session foundation with workspace roles
+- deployment profile, readiness checks, and runtime validation
 - mobile-friendly invoice review flow
 
 ## Safety Rules
@@ -33,23 +35,39 @@ The current product already includes:
 - no blind OCR import
 - mobile invoice intake must remain usable
 
+## Runtime Profiles
+
+- `APP_MODE=demo|pilot|production`
+- `AUTH_MODE=dev|disabled|production_future`
+- `STORE_DRIVER=memory|file|database`
+- `OCR_PROVIDER=fixture|external_env|disabled`
+- `NODE_ENV=development|test|production`
+
+Important:
+
+- `APP_MODE=production` must not run with unsafe defaults
+- `STORE_DRIVER=database` does not silently fall back to memory
+- `AUTH_MODE=dev` in production-like mode is a blocker
+- `SESSION_SECRET` is required for non-demo authenticated modes
+- external OCR remains optional
+
 ## Storage Drivers
 
 - `memory`: default local/demo mode
 - `file`: local JSON persistence under `DATA_DIR`
 - `database`: Postgres-oriented Prisma-backed store
 
-Important:
+If `DATABASE_URL` is missing:
 
-- `STORE_DRIVER=memory` remains the default
-- `STORE_DRIVER=file` remains supported
-- `STORE_DRIVER=database` does not silently fall back to memory
-- if `DATABASE_URL` is missing, DB validation skips and DB runtime reports a clear configuration failure
+- `validate:db` skip-reports clearly
+- `STORE_DRIVER=database` routes fail clearly instead of silently falling back
+- readiness reports the DB blocker without exposing secrets
 
 ## Auth Modes
 
 - `AUTH_MODE=dev`: local dev-session auth with server-generated session tokens and hashed token storage
-- `AUTH_MODE=disabled`: allowed for demo mode only; pilot mode warns and protected routes reject access
+- `AUTH_MODE=disabled`: allowed for demo mode only
+- `AUTH_MODE=production_future`: readiness placeholder for later production identity work
 
 Current auth scope:
 
@@ -60,42 +78,21 @@ Current auth scope:
 - owner/admin/member RBAC on protected restaurant data endpoints
 - demo mode remains usable without login
 
-This is a production-oriented auth foundation, not production-complete auth yet. It is suitable for local validation, protected-route wiring, workspace scoping, and Phase 14 handoff, but it is not the final production identity solution.
+This is a production-oriented auth foundation, not production-complete auth yet.
 
-## Environment
+## Health And Readiness
 
-Example `.env` values:
+- `GET /health`
+- `GET /api/health/deep`
+- `GET /api/health/readiness`
+- `GET /api/app/config`
 
-```bash
-APP_MODE=demo
-AUTH_MODE=dev
-SESSION_SECRET=
-APP_BASE_URL=http://localhost:5173
-STORE_DRIVER=memory
-DATA_DIR=.data
-DATABASE_URL=
-OCR_PROVIDER=fixture
-OCR_PROVIDER_API_KEY=
-OCR_PROVIDER_MODEL=
-OCR_PROVIDER_ENDPOINT=
-OCR_PROVIDER_TIMEOUT_MS=30000
-OCR_PROVIDER_MAX_RETRIES=1
-```
+Readiness rules:
 
-## Database Commands
-
-```bash
-npm run db:generate
-npm run db:migrate
-npm run db:seed
-npm run validate:db
-```
-
-Notes:
-
-- `db:migrate` targets a configured Postgres database
-- `validate:db` is skip-aware when `DATABASE_URL` is missing
-- memory and file validation still work without a database
+- the API never exposes raw secrets
+- `productionReady` currently remains `false`
+- production blockers are reported through safe readiness checks
+- request ids are attached to responses and error payloads
 
 ## Validation Commands
 
@@ -114,8 +111,26 @@ npm run validate:pilot
 npm run validate:env
 npm run validate:db
 npm run validate:auth
+npm run validate:runtime
+npm run validate:production-readiness
+npm run validate:mobile
 npm audit
 ```
+
+## Database Commands
+
+```bash
+npm run db:generate
+npm run db:migrate
+npm run db:seed
+npm run validate:db
+```
+
+Notes:
+
+- `db:migrate` targets a configured Postgres database
+- `validate:db` is skip-aware when `DATABASE_URL` is missing
+- memory and file validation still work without a database
 
 ## Local Run
 
@@ -123,10 +138,18 @@ npm audit
 npm run dev
 ```
 
+Optional production-oriented local build:
+
+```bash
+npm run build:production
+npm run start:api
+```
+
 Local URLs:
 
 - frontend: `http://localhost:5173`
 - backend: `http://localhost:3001`
+- readiness: `http://localhost:3001/api/health/readiness`
 - deep health: `http://localhost:3001/api/health/deep`
 - app config: `http://localhost:3001/api/app/config`
 - login: `http://localhost:5173/login`
@@ -146,6 +169,7 @@ Local URLs:
 
 - `GET /api/app/config`
 - `GET /api/health/deep`
+- `GET /api/health/readiness`
 - `GET /api/demo/datasets`
 - `POST /api/auth/dev-login`
 - `GET /api/auth/me`
@@ -176,25 +200,24 @@ Local URLs:
 - `GET /api/analytics/overview`
 - `GET /api/analytics/actions`
 
-## What Phase 13 Added
+## What Phase 14 Added
 
-- dev-session auth foundation with hashed session tokens
-- `User`, `WorkspaceMembership`, `AuthSession`, and authenticated workspace context wiring
-- protected restaurant-data routes in non-demo mode
-- owner/admin/member role enforcement for key mutations
-- auth-aware app config and deep health reporting
-- minimal login screen, logout flow, and workspace indicator
-- audit log foundation for key protected mutations
-- `validate:auth`
+- stricter production-oriented env profile validation
+- `GET /api/health/readiness`
+- structured logging foundation with request ids
+- safe error response normalization
+- runtime validation and production-readiness reporting
+- mobile readiness documentation and smoke checks
+- deployment and production runbooks
 
 ## What Is Still Not Claimed
 
 - production SaaS readiness
 - production-complete auth provider, invite flow, or hardened session lifecycle
-- live DB runtime validation in every target environment
+- live DB runtime validation in this environment without `DATABASE_URL`
 - live OCR accuracy benchmark on real restaurant invoices
 - billing readiness
-- production backup and observability maturity
+- final monitoring, backup, and legal/privacy maturity
 
 ## Documentation
 
@@ -203,6 +226,9 @@ Local URLs:
 - [docs/TECH_SPEC.md](docs/TECH_SPEC.md)
 - [docs/ENVIRONMENT_CONFIG.md](docs/ENVIRONMENT_CONFIG.md)
 - [docs/DEPLOYMENT_READINESS.md](docs/DEPLOYMENT_READINESS.md)
+- [docs/PRODUCTION_RUNBOOK.md](docs/PRODUCTION_RUNBOOK.md)
+- [docs/MOBILE_READINESS.md](docs/MOBILE_READINESS.md)
+- [docs/OBSERVABILITY.md](docs/OBSERVABILITY.md)
 - [docs/PRODUCTION_SAAS_GAP_AUDIT.md](docs/PRODUCTION_SAAS_GAP_AUDIT.md)
 - [docs/DATABASE_MODEL.md](docs/DATABASE_MODEL.md)
 - [docs/AUTH_ACCESS_CONTROL.md](docs/AUTH_ACCESS_CONTROL.md)

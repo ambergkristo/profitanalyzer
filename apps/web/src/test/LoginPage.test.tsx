@@ -19,6 +19,7 @@ describe("LoginPage", () => {
     vi.clearAllMocks();
     vi.mocked(apiClient.getAppConfig).mockResolvedValue({
       appMode: "pilot",
+      nodeEnv: "test",
       version: "0.1.0",
       productionReadinessClaimed: false,
       storage: {
@@ -35,6 +36,12 @@ describe("LoginPage", () => {
       auth: {
         mode: "dev",
         required: true
+      },
+      runtime: {
+        logLevel: "warn",
+        appBaseUrlConfigured: true,
+        apiBaseUrlConfigured: true,
+        corsOriginConfigured: true
       },
       features: {
         invoiceIntake: true,
