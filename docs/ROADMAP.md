@@ -207,6 +207,32 @@ Important limits:
 - no live checkout
 - production SaaS readiness is still not claimed
 
+## UI/UX RESET SPRINT 1 - Production App Shell and Visual System
+
+Status: complete as frontend shell and visual-system reset.
+
+### Goal
+
+Move the frontend away from a demo cockpit and toward a production SaaS operating interface suitable for restaurant owners.
+
+### Scope
+
+- production app shell with left work-tree navigation
+- compact top workspace bar
+- Settings/Diagnostics area for technical environment details
+- restrained demo scenario selector in demo mode only
+- compact one-screen Overview workspace
+- mobile-first invoice safety copy retained
+- dark/light design-token system
+- EE/EN language toggle foundation
+- forbidden decorative/demo copy scan
+
+### Honest Current Position
+
+- this improves perceived product quality and shell coherence
+- full visual polish of every page is still iterative
+- production SaaS readiness is still not claimed
+
 ## PHASE 18 - Security, Privacy, Legal, and Launch Gate
 
 ### Goal

@@ -2,29 +2,40 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, NavLink, Outlet, useLocation, useSearchParams } from "react-router-dom";
 
 import { apiClient } from "../api/client.js";
+import { readStoredLanguage, translations, type LanguageCode } from "../design/i18n.js";
 import type { AuthMeResponse } from "../types.js";
 import { useAsyncData } from "../hooks.js";
 import { buildDatasetSearch, getScenarioMeta } from "../utils/scenario.js";
+import { LanguageToggle } from "./LanguageToggle.js";
 import { Panel } from "./Panel.js";
 import { ScenarioSelector } from "./ScenarioSelector.js";
+import { ThemeToggle } from "./ThemeToggle.js";
 
-const linkClass = ({ isActive }: { isActive: boolean }) =>
-  `rounded-full px-4 py-2 text-sm font-medium transition ${
-    isActive ? "bg-accent/15 text-accent" : "text-muted hover:text-text"
+const primaryNav = [
+  { key: "overview", path: "/" },
+  { key: "menu", path: "/dishes" },
+  { key: "recipes", path: "/recipes" },
+  { key: "ingredients", path: "/ingredients" },
+  { key: "invoices", path: "/invoices" },
+  { key: "alerts", path: "/alerts" },
+  { key: "onboarding", path: "/onboarding" },
+  { key: "billing", path: "/billing" },
+  { key: "settings", path: "/settings" }
+] as const;
+
+const navClass = ({ isActive }: { isActive: boolean }) =>
+  `flex items-center justify-between rounded-2xl px-3 py-2.5 text-sm font-semibold transition ${
+    isActive
+      ? "bg-accent text-bg shadow-telemetry"
+      : "text-muted hover:bg-white/[0.04] hover:text-text"
   }`;
-
-function getModeLabel(appMode: "demo" | "pilot" | "production") {
-  if (appMode === "production") {
-    return "Production mode";
-  }
-
-  return appMode === "demo" ? "Demo mode" : "Pilot mode";
-}
 
 export function Layout() {
   const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
   const datasetId = searchParams.get("dataset") ?? undefined;
+  const [language, setLanguage] = useState<LanguageCode>(() => readStoredLanguage());
+  const t = translations[language];
   const loadDatasets = useCallback(() => apiClient.getDemoDatasets(), []);
   const loadConfig = useCallback(() => apiClient.getAppConfig(), []);
   const datasets = useAsyncData(loadDatasets);
@@ -34,39 +45,26 @@ export function Layout() {
     loading: boolean;
     me: AuthMeResponse | null;
     error: string | null;
-  }>({
-    loading: false,
-    me: null,
-    error: null
-  });
+  }>({ loading: false, me: null, error: null });
 
   useEffect(() => {
     if (typeof window === "undefined") {
       return;
     }
 
-    const handleAuthChange = () => {
-      setAuthToken(apiClient.getStoredAuthToken());
-    };
-
+    const handleAuthChange = () => setAuthToken(apiClient.getStoredAuthToken());
     window.addEventListener(apiClient.authChangeEvent, handleAuthChange);
     return () => window.removeEventListener(apiClient.authChangeEvent, handleAuthChange);
   }, []);
 
   useEffect(() => {
-    if (!config.data?.auth.required) {
-      setAuthState({ loading: false, me: null, error: null });
-      return;
-    }
-
-    if (!authToken) {
+    if (!config.data?.auth.required || !authToken) {
       setAuthState({ loading: false, me: null, error: null });
       return;
     }
 
     let cancelled = false;
     setAuthState((current) => ({ ...current, loading: true, error: null }));
-
     apiClient
       .getAuthMe()
       .then((me) => {
@@ -91,7 +89,6 @@ export function Layout() {
   }, [authToken, config.data?.auth.required]);
 
   const appMode = config.data?.appMode ?? "demo";
-  const isDemoMode = appMode === "demo";
   const authRequired = config.data?.auth.required ?? false;
   const authenticatedDatasetId = authState.me?.activeRestaurantId;
 
@@ -118,7 +115,6 @@ export function Layout() {
 
   const selectedDatasetId = authRequired ? authenticatedDatasetId ?? datasetId : datasetId;
   const selectedDataset = datasets.data ? getScenarioMeta(datasets.data, selectedDatasetId) : undefined;
-
   const restaurantOptions = useMemo(
     () =>
       authState.me?.workspaces.flatMap((workspace) =>
@@ -132,6 +128,8 @@ export function Layout() {
       ) ?? [],
     [authState.me]
   );
+  const currentRestaurant =
+    restaurantOptions.find((restaurant) => restaurant.restaurantId === authState.me?.activeRestaurantId) ?? null;
 
   function handleDatasetChange(nextDatasetId: string) {
     const nextParams = new URLSearchParams(searchParams);
@@ -164,246 +162,129 @@ export function Layout() {
   }
 
   if (config.loading || datasets.loading || (authRequired && authToken && authState.loading)) {
-    return (
-      <div className="min-h-screen bg-bg px-4 py-6 text-text md:px-6 xl:px-8">
-        <div className="mx-auto max-w-[1400px]">
-          <Panel className="rounded-[2rem] border border-border bg-panel/90 p-6 shadow-telemetry backdrop-blur">
-            <p className="text-xs uppercase tracking-[0.24em] text-accent">Menu Profit Optimizer</p>
-            <h1 className="mt-3 font-display text-4xl leading-none md:text-6xl">
-              Loading workspace
-            </h1>
-            <p className="mt-4 max-w-2xl text-sm leading-6 text-muted">
-              Checking app mode, storage, and workspace access.
-            </p>
-          </Panel>
-        </div>
-      </div>
-    );
+    return <ShellState title="Loading workspace" message="Preparing the restaurant work area." />;
   }
 
   if (config.error || datasets.error || !config.data || !datasets.data) {
-    return (
-      <div className="min-h-screen bg-bg px-4 py-6 text-text md:px-6 xl:px-8">
-        <div className="mx-auto max-w-[1400px]">
-          <Panel className="rounded-[2rem] border border-danger/20 bg-danger/[0.08] p-6 shadow-telemetry">
-            <p className="text-xs uppercase tracking-[0.24em] text-danger">App unavailable</p>
-            <h1 className="mt-3 font-display text-4xl leading-none md:text-6xl">Configuration did not load</h1>
-            <p className="mt-4 max-w-2xl text-sm leading-6 text-text">
-              Start the frontend and API with <code>npm run dev</code>, then reload this view.
-            </p>
-          </Panel>
-        </div>
-      </div>
-    );
+    return <ShellState title="Configuration did not load" message="Start the frontend and API, then reload this view." tone="danger" />;
   }
 
   const loginPath = `/login?next=${encodeURIComponent(`${location.pathname}${location.search}`)}`;
-  const currentRestaurant =
-    restaurantOptions.find((restaurant) => restaurant.restaurantId === authState.me?.activeRestaurantId) ?? null;
-
   const authGate =
     authRequired && !authState.me ? (
-      <Panel className="rounded-tile border-warning/25 bg-warning/[0.08] px-4 py-4" tone="warning">
-        <p className="text-[11px] uppercase tracking-[0.2em] text-warning">Login required</p>
-        <p className="mt-2 text-sm leading-6 text-text">
-          {authState.error ?? "Pilot and production-like modes require a signed-in workspace session before restaurant data can load."}
+      <Panel className="mx-auto max-w-xl rounded-[2rem]" tone="warning">
+        <p className="text-xs uppercase tracking-[0.2em] text-warning">Login required</p>
+        <h2 className="mt-3 font-display text-3xl text-text">Workspace session required</h2>
+        <p className="mt-3 text-sm leading-6 text-text">
+          {authState.error ?? "Sign in before loading restaurant data."}
         </p>
-        <div className="mt-4">
-          <Link
-            className="inline-flex rounded-full border border-warning/30 bg-warning/10 px-4 py-2 text-sm text-warning transition hover:border-warning/60"
-            to={loginPath}
-          >
-            Open login
-          </Link>
-        </div>
+        <Link
+          className="mt-5 inline-flex rounded-full border border-warning/30 bg-warning/10 px-4 py-2 text-sm text-warning"
+          to={loginPath}
+        >
+          Open login
+        </Link>
       </Panel>
     ) : null;
 
   return (
     <div className="min-h-screen bg-bg text-text">
-      <div className="mx-auto flex min-h-screen max-w-[1400px] flex-col px-4 py-6 md:px-6 xl:px-8">
-        <header className="rounded-[2rem] border border-border bg-panel/90 p-5 shadow-telemetry backdrop-blur">
-          <div className="flex flex-col gap-6">
-            <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
-              <div className="max-w-3xl">
-                <p className="text-xs uppercase tracking-[0.24em] text-accent">Menu Profit Optimizer</p>
-                <h1 className="mt-3 font-display text-4xl leading-none md:text-6xl">Restaurant Profit Command Center</h1>
-                <p className="mt-4 max-w-2xl text-sm leading-6 text-muted">
-                  {isDemoMode
-                    ? "Scenario-switchable decision cockpit for margin repair, profit protection, and price testing."
-                    : "Authenticated workspace for invoice-driven cost updates, supplier alerts, and decision-first menu reviews."}
-                </p>
-              </div>
-
-              {datasets.data && isDemoMode ? (
-                <ScenarioSelector
-                  datasets={datasets.data}
-                  onChange={handleDatasetChange}
-                  selectedDatasetId={selectedDataset?.id}
-                />
-              ) : null}
-            </div>
-
-            <div className="grid gap-4 xl:grid-cols-[1fr_auto] xl:items-end">
-              <Panel className="rounded-tile border-white/8 bg-black/20 px-4 py-4" tone="subtle">
-                <p className="text-[11px] uppercase tracking-[0.2em] text-muted">
-                  {isDemoMode ? "Active demo profile" : "Active workspace"}
-                </p>
-                <div className="mt-2 flex flex-col gap-4">
-                  <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-                    <div>
-                      <p className="font-display text-2xl text-text">
-                        {selectedDataset?.name ?? (authRequired ? "Workspace session required" : "Loading scenario")}
-                      </p>
-                      <p className="mt-2 text-sm leading-6 text-muted">
-                        {selectedDataset?.ownerDiagnosis ??
-                          (isDemoMode
-                            ? "Loading scenario metadata..."
-                            : "Sign in to load a workspace and keep review-confirm safety active.")}
-                      </p>
-                      {selectedDataset ? (
-                        <p className="mt-2 text-sm leading-6 text-muted">{selectedDataset.description}</p>
-                      ) : null}
-                      {config.data ? (
-                        <div className="mt-4 flex flex-wrap gap-2">
-                          <span className="rounded-full border border-white/10 px-4 py-2 text-[11px] uppercase tracking-[0.18em] text-text">
-                            {getModeLabel(config.data.appMode)}
-                          </span>
-                          <span className="rounded-full border border-white/10 px-4 py-2 text-[11px] uppercase tracking-[0.18em] text-muted">
-                            Storage {config.data.storage.driver}
-                          </span>
-                          <span className="rounded-full border border-white/10 px-4 py-2 text-[11px] uppercase tracking-[0.18em] text-muted">
-                            Auth {config.data.auth.mode}
-                          </span>
-                          {config.data.features.externalOcrConfigured ? (
-                            <span className="rounded-full border border-profit/20 bg-profit/10 px-4 py-2 text-[11px] uppercase tracking-[0.18em] text-profit">
-                              External OCR configured
-                            </span>
-                          ) : (
-                            <span className="rounded-full border border-warning/20 bg-warning/10 px-4 py-2 text-[11px] uppercase tracking-[0.18em] text-warning">
-                              Fixture OCR default
-                            </span>
-                          )}
-                        </div>
-                      ) : null}
-                    </div>
-
-                    {authState.me ? (
-                      <div className="min-w-[16rem] rounded-tile border border-white/10 bg-white/[0.03] p-4">
-                        <p className="text-[11px] uppercase tracking-[0.18em] text-muted">Signed in</p>
-                        <p className="mt-2 font-medium text-text">{authState.me.user.name}</p>
-                        <p className="text-sm text-muted">{authState.me.user.email}</p>
-                        {currentRestaurant ? (
-                          <>
-                            <p className="mt-4 text-[11px] uppercase tracking-[0.18em] text-muted">Workspace</p>
-                            <p className="mt-2 text-sm text-text">{currentRestaurant.workspaceName}</p>
-                            <p className="text-sm text-muted">
-                              {currentRestaurant.restaurantName} · {currentRestaurant.role}
-                            </p>
-                          </>
-                        ) : null}
-                        {restaurantOptions.length > 1 ? (
-                          <label className="mt-4 flex flex-col gap-2 text-sm text-muted">
-                            Active restaurant
-                            <select
-                              className="rounded-xl border border-border bg-panel px-3 py-2 text-text"
-                              onChange={(event) => void handleRestaurantChange(event.target.value)}
-                              value={authState.me.activeRestaurantId}
-                            >
-                              {restaurantOptions.map((restaurant) => (
-                                <option key={restaurant.restaurantId} value={restaurant.restaurantId}>
-                                  {restaurant.workspaceName} / {restaurant.restaurantName}
-                                </option>
-                              ))}
-                            </select>
-                          </label>
-                        ) : null}
-                        <button
-                          className="mt-4 rounded-full border border-white/10 px-4 py-2 text-sm text-text transition hover:border-accent/30 hover:text-accent"
-                          onClick={() => void handleLogout()}
-                          type="button"
-                        >
-                          Log out
-                        </button>
-                      </div>
-                    ) : authRequired ? (
-                      <div className="min-w-[16rem] rounded-tile border border-warning/20 bg-warning/[0.08] p-4">
-                        <p className="text-[11px] uppercase tracking-[0.18em] text-warning">Access required</p>
-                        <p className="mt-2 text-sm leading-6 text-text">
-                          Sign in to load workspace-scoped restaurant data.
-                        </p>
-                        <Link
-                          className="mt-4 inline-flex rounded-full border border-warning/30 bg-warning/10 px-4 py-2 text-sm text-warning transition hover:border-warning/60"
-                          to={loginPath}
-                        >
-                          Open login
-                        </Link>
-                      </div>
-                    ) : null}
-                  </div>
-
-                  {!authGate ? (
-                    <nav className="flex flex-wrap gap-2">
-                      <NavLink
-                        className={linkClass}
-                        to={{ pathname: "/onboarding", search: buildDatasetSearch(selectedDataset?.id) }}
-                      >
-                        Onboarding
-                      </NavLink>
-                      <NavLink
-                        className={linkClass}
-                        to={{ pathname: "/", search: buildDatasetSearch(selectedDataset?.id) }}
-                      >
-                        Dashboard
-                      </NavLink>
-                      <NavLink
-                        className={linkClass}
-                        to={{ pathname: "/dishes", search: buildDatasetSearch(selectedDataset?.id) }}
-                      >
-                        Dishes
-                      </NavLink>
-                      <NavLink
-                        className={linkClass}
-                        to={{ pathname: "/invoices", search: buildDatasetSearch(selectedDataset?.id) }}
-                      >
-                        Cost Intake
-                      </NavLink>
-                      <NavLink
-                        className={linkClass}
-                        to={{ pathname: "/alerts", search: buildDatasetSearch(selectedDataset?.id) }}
-                      >
-                        Supplier Alerts
-                      </NavLink>
-                      <NavLink
-                        className={linkClass}
-                        to={{ pathname: "/billing", search: buildDatasetSearch(selectedDataset?.id) }}
-                      >
-                        Billing
-                      </NavLink>
-                      <NavLink
-                        className={linkClass}
-                        to={{ pathname: "/pilot-tools", search: buildDatasetSearch(selectedDataset?.id) }}
-                      >
-                        Pilot Tools
-                      </NavLink>
-                    </nav>
-                  ) : null}
-                </div>
-              </Panel>
-              {config.data.storage.persistenceWarning ? (
-                <Panel className="rounded-tile border-warning/25 bg-warning/[0.08] px-4 py-4" tone="warning">
-                  <p className="text-[11px] uppercase tracking-[0.2em] text-warning">Persistence warning</p>
-                  <p className="mt-2 text-sm leading-6 text-text">
-                    {config.data.storage.persistenceWarning}
-                  </p>
-                </Panel>
-              ) : null}
+      <div className="grid min-h-screen lg:grid-cols-[17rem_minmax(0,1fr)]">
+        <aside className="border-b border-border bg-panel/95 p-4 lg:border-b-0 lg:border-r">
+          <div className="flex items-center justify-between gap-3 lg:block">
+            <Link className="block" to={{ pathname: "/", search: buildDatasetSearch(selectedDataset?.id) }}>
+              <p className="text-xs font-bold uppercase tracking-[0.22em] text-accent">Profit Analyzer</p>
+              <p className="mt-2 hidden text-sm leading-5 text-muted lg:block">Restaurant margin operations</p>
+            </Link>
+            <div className="flex gap-2 lg:mt-6">
+              <LanguageToggle onChange={setLanguage} />
+              <ThemeToggle />
             </div>
           </div>
-        </header>
 
-        <main className="mt-6 flex-1">{authGate ?? <Outlet />}</main>
+          <nav className="mt-5 grid grid-cols-3 gap-2 sm:grid-cols-5 lg:grid-cols-1" aria-label="Primary navigation">
+            {primaryNav.map((item) => (
+              <NavLink
+                className={navClass}
+                end={item.path === "/"}
+                key={`${item.key}-${item.path}`}
+                to={{ pathname: item.path, search: buildDatasetSearch(selectedDataset?.id) }}
+              >
+                <span>{t[item.key]}</span>
+              </NavLink>
+            ))}
+          </nav>
+
+          {config.data.appMode === "demo" ? (
+            <div className="mt-5 rounded-3xl border border-border bg-elevated/70 p-3">
+              <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">Demo workspace</p>
+              <ScenarioSelector
+                datasets={datasets.data}
+                onChange={handleDatasetChange}
+                selectedDatasetId={selectedDataset?.id}
+                compact
+              />
+            </div>
+          ) : null}
+        </aside>
+
+        <div className="flex min-w-0 flex-col">
+          <header className="flex min-h-[4.5rem] flex-col gap-3 border-b border-border bg-bg/90 px-4 py-3 backdrop-blur md:flex-row md:items-center md:justify-between md:px-6">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
+                {config.data.appMode === "demo" ? "Demo workspace" : "Workspace"}
+              </p>
+              <h1 className="mt-1 text-xl font-bold tracking-[-0.03em] text-text md:text-2xl">
+                {currentRestaurant?.restaurantName ?? selectedDataset?.name ?? "Restaurant workspace"}
+              </h1>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-3">
+              {restaurantOptions.length > 1 ? (
+                <select
+                  className="rounded-full border border-border bg-panel px-3 py-2 text-sm text-text"
+                  onChange={(event) => void handleRestaurantChange(event.target.value)}
+                  value={authState.me?.activeRestaurantId}
+                >
+                  {restaurantOptions.map((restaurant) => (
+                    <option key={restaurant.restaurantId} value={restaurant.restaurantId}>
+                      {restaurant.workspaceName} / {restaurant.restaurantName}
+                    </option>
+                  ))}
+                </select>
+              ) : null}
+              {authState.me ? (
+                <div className="flex items-center gap-3 rounded-full border border-border bg-panel px-3 py-2">
+                  <span className="text-sm text-text">{authState.me.user.name}</span>
+                  <button className="text-sm text-muted hover:text-text" onClick={() => void handleLogout()} type="button">
+                    Log out
+                  </button>
+                </div>
+              ) : authRequired ? (
+                <Link className="rounded-full border border-border bg-panel px-3 py-2 text-sm text-text" to={loginPath}>
+                  Open login
+                </Link>
+              ) : null}
+            </div>
+          </header>
+
+          <main className="work-scroll min-h-0 flex-1 overflow-y-auto px-4 py-4 md:px-6">
+            {authGate ?? <Outlet />}
+          </main>
+        </div>
       </div>
+    </div>
+  );
+}
+
+function ShellState({ title, message, tone = "default" }: { title: string; message: string; tone?: "default" | "danger" }) {
+  return (
+    <div className="min-h-screen bg-bg p-6 text-text">
+      <Panel className="mx-auto max-w-2xl rounded-[2rem]" tone={tone}>
+        <p className="text-xs uppercase tracking-[0.22em] text-accent">Profit Analyzer</p>
+        <h1 className="mt-3 font-display text-4xl font-bold tracking-[-0.04em]">{title}</h1>
+        <p className="mt-4 text-sm leading-6 text-muted">{message}</p>
+      </Panel>
     </div>
   );
 }

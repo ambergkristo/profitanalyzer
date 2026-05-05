@@ -2,334 +2,185 @@ import { useCallback } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 
 import { apiClient } from "../api/client.js";
-import { ActionCard } from "../components/ActionCard.js";
-import { DishRow } from "../components/DishRow.js";
-import { KpiCard } from "../components/KpiCard.js";
-import { MenuHealthBar } from "../components/MenuHealthBar.js";
-import { PageHeader } from "../components/PageHeader.js";
 import { Panel } from "../components/Panel.js";
-import { SectionHeader } from "../components/SectionHeader.js";
 import { SeverityBadge } from "../components/SeverityBadge.js";
 import { StatePanel } from "../components/StatePanel.js";
 import { useAsyncData } from "../hooks.js";
-import { formatEuro, formatPercent, getStatusLabel } from "../utils/format.js";
-import { buildDatasetSearch, getScenarioMeta } from "../utils/scenario.js";
+import { formatEuro, formatPercent } from "../utils/format.js";
+import { buildDatasetSearch } from "../utils/scenario.js";
 
 export function DashboardPage() {
   const [searchParams] = useSearchParams();
   const datasetId = searchParams.get("dataset") ?? undefined;
   const loadDashboard = useCallback(async () => {
-    const [overview, dishes, datasets, alerts] = await Promise.all([
+    const [overview, dishes, alerts, ocrJobs] = await Promise.all([
       apiClient.getOverview(datasetId),
       apiClient.getDishes(datasetId),
-      apiClient.getDemoDatasets(),
-      apiClient.getPriceChangeAlerts(datasetId)
+      apiClient.getPriceChangeAlerts(datasetId),
+      apiClient.getOcrJobs(datasetId)
     ]);
 
-    return { overview, dishes, datasets, alerts };
+    return { overview, dishes, alerts, ocrJobs };
   }, [datasetId]);
   const dashboard = useAsyncData(loadDashboard);
 
   if (dashboard.loading) {
-    return (
-      <StatePanel
-        message="Pulling profit actions, KPI performance, and the latest menu risk signals..."
-        title="Loading decision console"
-        tone="loading"
-      />
-    );
+    return <StatePanel message="Loading profit, margin, and supplier signals." title="Loading overview" tone="loading" />;
   }
 
   if (dashboard.error || !dashboard.data) {
-    const missingScenario = dashboard.error?.includes("404");
-
     return (
       <StatePanel
-        actions={missingScenario ? [{ href: "/", label: "Open default dashboard" }] : undefined}
-        message={
-          missingScenario
-            ? "The selected scenario does not exist. Switch back to a valid demo dataset."
-            : "Backend is not reachable. Start the API with npm run dev."
-        }
-        title={missingScenario ? "Scenario unavailable" : "Backend unavailable"}
+        actions={[{ href: "/", label: "Open overview" }]}
+        message="Restaurant data could not be loaded."
+        title="Overview unavailable"
         tone="error"
       />
     );
   }
 
-  if (dashboard.data.dishes.length === 0) {
-    return (
-      <StatePanel
-        message="Seed data is empty, so there is nothing to rank yet."
-        title="No dishes loaded"
-        tone="empty"
-      />
-    );
-  }
-
-  const { overview, dishes, datasets, alerts } = dashboard.data;
-  const selectedDataset = getScenarioMeta(datasets, datasetId);
-
-  if (!selectedDataset) {
-    return (
-      <StatePanel
-        message="The selected scenario is not available. Switch back to a valid demo dataset."
-        title="Scenario unavailable"
-        tone="error"
-        actions={[{ href: "/", label: "Open dashboard" }]}
-      />
-    );
-  }
-
+  const { overview, dishes, alerts, ocrJobs } = dashboard.data;
   const dishNameById = new Map(dishes.map((dish) => [dish.dishId, dish.name]));
-  const previewDishes = [...dishes]
-    .sort((left, right) => left.contributionRank - right.contributionRank)
-    .slice(0, 6);
   const dishesAtRisk = overview.warningCount + overview.lossCount;
+  const recentJobs = ocrJobs.slice(0, 4);
 
   return (
-    <div className="space-y-6">
-      <Panel className="p-7">
-        <PageHeader
-          actions={
-            <Panel className="rounded-tile p-4" tone="subtle">
-              <p className="text-[11px] uppercase tracking-[0.18em] text-muted">Scenario narrative</p>
-              <p className="mt-3 text-sm leading-6 text-text">{selectedDataset.demoNarrative}</p>
-              <p className="mt-3 text-sm leading-6 text-muted">{selectedDataset.expectedBehavior}</p>
-            </Panel>
-          }
-          badges={
-            <>
-              <span className="rounded-full border border-white/10 px-4 py-2 text-[11px] uppercase tracking-[0.18em] text-muted">
-                {selectedDataset.name}
-              </span>
-              <span className="rounded-full border border-white/10 px-4 py-2 text-[11px] uppercase tracking-[0.18em] text-muted">
-                {selectedDataset.profile}
-              </span>
-              <span className="rounded-full border border-profit/20 bg-profit/10 px-4 py-2 text-[11px] uppercase tracking-[0.18em] text-profit">
-                Synthetic validation {selectedDataset.validationStatus}
-              </span>
-            </>
-          }
-          description={selectedDataset.description}
-          eyebrow="Dashboard diagnosis"
-          title={selectedDataset.ownerDiagnosis}
-        />
-      </Panel>
+    <div className="grid h-full min-h-[calc(100vh-7rem)] gap-4 xl:grid-cols-[minmax(0,1.3fr)_22rem]">
+      <section className="grid min-h-0 gap-4 xl:grid-rows-[auto_minmax(0,1fr)]">
+        <div className="grid gap-3 md:grid-cols-4">
+          <Metric label="Estimated profit" value={formatEuro(overview.estimatedPeriodProfitCents)} />
+          <Metric label="Weighted margin" value={formatPercent(overview.weightedAverageMarginPercent)} />
+          <Metric label="Revenue" value={formatEuro(overview.totalRevenueCents)} />
+          <Metric label="Dishes at risk" tone={dishesAtRisk > 0 ? "warning" : "profit"} value={String(dishesAtRisk)} />
+        </div>
 
-      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <KpiCard
-          hint={`Top contributors are carrying ${formatEuro(overview.estimatedPeriodProfitCents)} this period.`}
-          label="Estimated Period Profit"
-          tone="profit"
-          value={formatEuro(overview.estimatedPeriodProfitCents)}
-        />
-        <KpiCard
-          hint={
-            overview.weightedAverageMarginPercent < 30
-              ? "Below the comfort zone. Repair high-sales leaks first."
-              : "Weighted margin is holding above the warning floor."
-          }
-          label="Weighted Margin"
-          tone={overview.weightedAverageMarginPercent < 30 ? "warning" : "default"}
-          value={formatPercent(overview.weightedAverageMarginPercent)}
-        />
-        <KpiCard
-          hint={`${overview.totalDishes} tracked dishes are feeding this revenue view.`}
-          label="Total Revenue"
-          value={formatEuro(overview.totalRevenueCents)}
-        />
-        <KpiCard
-          hint={
-            dishesAtRisk > 0
-              ? `${overview.lossCount} loss dishes and ${overview.warningCount} warning dishes need attention.`
-              : "No dishes are currently below the risk threshold."
-          }
-          label="Dishes At Risk"
-          tone={overview.lossCount > 0 ? "danger" : dishesAtRisk > 0 ? "warning" : "profit"}
-          value={`${dishesAtRisk}`}
-        />
-      </section>
-
-      <section className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
-        <Panel>
-          <SectionHeader
-            aside={
-              <Link
-                className="text-sm font-medium text-accent"
-                to={{ pathname: "/dishes", search: buildDatasetSearch(selectedDataset.id) }}
-              >
-                Open full dish list
+        <div className="grid min-h-0 gap-4 xl:grid-cols-[1fr_0.9fr]">
+          <Panel className="min-h-0 rounded-[2rem]">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-accent">Priority actions</p>
+                <h2 className="mt-2 text-2xl font-bold tracking-[-0.04em] text-text">What needs a decision</h2>
+              </div>
+              <Link className="text-sm font-semibold text-accent" to={{ pathname: "/dishes", search: buildDatasetSearch(datasetId) }}>
+                Open menu
               </Link>
-            }
-            description="Start with the dishes that sell often, leak margin, or are already losing money."
-            eyebrow="Priority actions"
-            title="What to fix first"
-          />
-          <div className="mt-6 space-y-4">
-            {overview.topActions.map((action) => (
-              <ActionCard
-                key={action.id}
-                action={action}
-                datasetId={selectedDataset.id}
-                dishName={dishNameById.get(action.dishId)}
-              />
-            ))}
-          </div>
-        </Panel>
-
-        <div className="space-y-6">
-          <Panel>
-            <SectionHeader
-              description="Healthy menus skew profitable. Risk-heavy menus show pressure immediately."
-              eyebrow="Menu health"
-              title="Profit split"
-            />
-            <div className="mt-6">
-              <MenuHealthBar
-                lossCount={overview.lossCount}
-                profitableCount={overview.profitableCount}
-                warningCount={overview.warningCount}
-              />
             </div>
-            <p className="mt-4 text-sm leading-6 text-muted">
-              {selectedDataset.expectedBehavior}
-            </p>
-          </Panel>
-
-          <Panel>
-            <SectionHeader
-              description="These dishes are the first places where weak margin or negative gross profit can drag the menu."
-              eyebrow="Risk radar"
-              title="Riskiest dishes"
-            />
-            <div className="mt-6 space-y-3">
-              {overview.riskiestDishes.map((dish) => (
+            <div className="work-scroll mt-5 max-h-[30rem] space-y-3 overflow-y-auto pr-1">
+              {overview.topActions.slice(0, 5).map((action) => (
                 <Link
-                  key={dish.dishId}
-                  className="block rounded-tile border border-border bg-black/20 p-4 transition hover:border-danger/30"
-                  to={`/dishes/${dish.dishId}?dataset=${encodeURIComponent(selectedDataset.id)}`}
+                  className="block rounded-2xl border border-border bg-white/[0.03] p-4 transition hover:border-accent/40"
+                  key={action.id}
+                  to={{ pathname: `/dishes/${action.dishId}`, search: buildDatasetSearch(datasetId) }}
                 >
-                  <div className="flex items-center justify-between gap-3">
-                    <p className="font-display text-2xl text-text">{dish.name}</p>
-                    <span className="text-xs uppercase tracking-[0.16em] text-danger">
-                      {getStatusLabel(dish.status)}
-                    </span>
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <p className="font-semibold text-text">{action.title}</p>
+                      <p className="mt-2 text-sm leading-6 text-muted">{dishNameById.get(action.dishId) ?? action.message}</p>
+                    </div>
+                    <SeverityBadge severity={action.severity} />
                   </div>
-                  <p className="mt-3 text-sm leading-6 text-muted">
-                    Margin is {formatPercent(dish.marginPercent)} with {formatEuro(dish.grossProfitPerSaleCents)} gross profit per sale across {dish.salesVolume} sales.
-                  </p>
+                  <p className="mt-3 text-sm font-semibold text-profit">{formatEuro(action.estimatedImpactCents)} opportunity</p>
                 </Link>
               ))}
             </div>
           </Panel>
+
+          <div className="grid min-h-0 gap-4">
+            <Panel className="rounded-[2rem]">
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted">Menu pressure</p>
+              <div className="mt-5 grid grid-cols-3 overflow-hidden rounded-2xl border border-border">
+                <Split label="Profitable" value={overview.profitableCount} tone="profit" />
+                <Split label="Warning" value={overview.warningCount} tone="warning" />
+                <Split label="Loss" value={overview.lossCount} tone="danger" />
+              </div>
+            </Panel>
+
+            <Panel className="min-h-0 rounded-[2rem]">
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted">Lowest margin dishes</p>
+              <div className="work-scroll mt-4 max-h-[17rem] space-y-2 overflow-y-auto pr-1">
+                {overview.riskiestDishes.slice(0, 5).map((dish) => (
+                  <Link
+                    className="flex items-center justify-between gap-3 rounded-2xl border border-border bg-white/[0.03] p-3"
+                    key={dish.dishId}
+                    to={{ pathname: `/dishes/${dish.dishId}`, search: buildDatasetSearch(datasetId) }}
+                  >
+                    <span className="text-sm font-semibold text-text">{dish.name}</span>
+                    <span className="text-sm text-warning">{formatPercent(dish.marginPercent)}</span>
+                  </Link>
+                ))}
+              </div>
+            </Panel>
+          </div>
         </div>
       </section>
 
-      <section className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
-        <Panel>
-          <SectionHeader
-            description="These dishes are carrying the current-period profit, so protect them before a cost move erodes the result."
-            eyebrow="Profit contributors"
-            title="What carries the menu"
-          />
-          <div className="mt-6 space-y-3">
-            {overview.topProfitContributors.map((dish) => (
-              <Link
-                key={dish.dishId}
-                className="flex items-center justify-between gap-4 rounded-tile border border-border bg-white/[0.02] p-4 transition hover:border-profit/25"
-                to={`/dishes/${dish.dishId}?dataset=${encodeURIComponent(selectedDataset.id)}`}
-              >
-                <div>
-                  <p className="font-medium text-text">{dish.name}</p>
-                  <p className="mt-1 text-xs uppercase tracking-[0.16em] text-muted">
-                    Margin {formatPercent(dish.marginPercent)} | {dish.salesVolume} sales
-                  </p>
-                </div>
-                <div className="text-right">
-                  <p className="text-xs uppercase tracking-[0.16em] text-muted">Estimated profit</p>
-                  <p className="mt-2 text-lg text-profit">{formatEuro(dish.estimatedPeriodProfitCents)}</p>
-                </div>
-              </Link>
-            ))}
+      <aside className="grid min-h-0 gap-4 xl:grid-rows-[1fr_1fr]">
+        <Panel className="min-h-0 rounded-[2rem]">
+          <div className="flex items-center justify-between">
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted">Supplier alerts</p>
+            <Link className="text-sm font-semibold text-accent" to={{ pathname: "/alerts", search: buildDatasetSearch(datasetId) }}>
+              View
+            </Link>
           </div>
-        </Panel>
-
-        <Panel>
-          <SectionHeader
-            aside={
-              <Link
-                className="text-sm font-medium text-accent"
-                to={{ pathname: "/alerts", search: buildDatasetSearch(selectedDataset.id) }}
-              >
-                Open all alerts
-              </Link>
-            }
-            description="Confirmed invoice cost moves show up here with the first dishes likely to feel the change."
-            eyebrow="Latest supplier price alerts"
-            title="What changed since the last cost intake"
-          />
-          <div className="mt-6 space-y-3">
+          <div className="work-scroll mt-4 max-h-[20rem] space-y-3 overflow-y-auto pr-1">
             {alerts.length === 0 ? (
-              <StatePanel
-                message="No supplier price alerts yet. Confirm a sample invoice to see cost-change impact."
-                title="No supplier price alerts yet."
-                tone="empty"
-              />
+              <p className="rounded-2xl border border-border bg-white/[0.03] p-4 text-sm leading-6 text-muted">
+                No supplier alerts yet. Confirm an invoice to start tracking cost movement.
+              </p>
             ) : (
-              alerts.slice(0, 4).map((alert) => (
-                <div key={alert.id} className="rounded-tile border border-border bg-white/[0.02] p-4">
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <SeverityBadge severity={alert.severity} />
-                    <span className="text-xs uppercase tracking-[0.16em] text-muted">
-                      {alert.type.replaceAll("_", " ")}
-                    </span>
-                  </div>
+              alerts.slice(0, 5).map((alert) => (
+                <div className="rounded-2xl border border-border bg-white/[0.03] p-4" key={alert.id}>
+                  <SeverityBadge severity={alert.severity} />
                   <p className="mt-3 text-sm leading-6 text-text">{alert.message}</p>
-                  <p className="mt-2 text-sm leading-6 text-muted">{alert.recommendedAction}</p>
-                  {typeof alert.estimatedMarginImpactCents === "number" ? (
-                    <p className="mt-3 text-sm leading-6 text-warning">
-                      Estimated period impact {formatEuro(alert.estimatedMarginImpactCents)}
-                    </p>
-                  ) : null}
-                  {alert.affectedDishNames?.length ? (
-                    <p className="mt-3 text-sm leading-6 text-muted">
-                      Affected dishes: {alert.affectedDishNames.join(", ")}.
-                    </p>
-                  ) : null}
                 </div>
               ))
             )}
           </div>
         </Panel>
-      </section>
 
-      <section className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
-        <Panel>
-          <SectionHeader
-            description="Open any dish to inspect its cost driver, review the recommendation, and run the live simulator."
-            eyebrow="Dish performance preview"
-            title="Menu snapshot"
-          />
-          <div className="mt-6 space-y-3">
-            {previewDishes.map((dish) => (
-              <DishRow key={dish.dishId} datasetId={selectedDataset.id} dish={dish} />
-            ))}
+        <Panel className="min-h-0 rounded-[2rem]">
+          <div className="flex items-center justify-between">
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted">Recent cost intake</p>
+            <Link className="text-sm font-semibold text-accent" to={{ pathname: "/invoices", search: buildDatasetSearch(datasetId) }}>
+              New invoice
+            </Link>
           </div>
-          {overview.dataQualityWarnings.length > 0 ? (
-            <div className="mt-6 rounded-tile border border-warning/25 bg-warning/[0.08] p-4">
-              <p className="text-[11px] uppercase tracking-[0.18em] text-warning">Data quality warning</p>
-              <div className="mt-3 space-y-2">
-                {overview.dataQualityWarnings.map((warning) => (
-                  <p key={warning} className="text-sm leading-6 text-text">
-                    {warning}
-                  </p>
-                ))}
-              </div>
-            </div>
-          ) : null}
+          <div className="work-scroll mt-4 max-h-[20rem] space-y-3 overflow-y-auto pr-1">
+            {recentJobs.length === 0 ? (
+              <p className="rounded-2xl border border-border bg-white/[0.03] p-4 text-sm leading-6 text-muted">
+                No OCR jobs yet. Upload or enter an invoice when supplier costs change.
+              </p>
+            ) : (
+              recentJobs.map((job) => (
+                <div className="rounded-2xl border border-border bg-white/[0.03] p-4" key={job.id}>
+                  <p className="text-sm font-semibold text-text">{job.originalFileName}</p>
+                  <p className="mt-2 text-xs uppercase tracking-[0.16em] text-muted">{job.status}</p>
+                </div>
+              ))
+            )}
+          </div>
         </Panel>
-      </section>
+      </aside>
+    </div>
+  );
+}
+
+function Metric({ label, value, tone = "default" }: { label: string; value: string; tone?: "default" | "profit" | "warning" }) {
+  const toneClass = tone === "profit" ? "text-profit" : tone === "warning" ? "text-warning" : "text-text";
+  return (
+    <div className="rounded-3xl border border-border bg-panel p-4 shadow-telemetry">
+      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">{label}</p>
+      <p className={`mt-2 text-2xl font-bold tracking-[-0.04em] ${toneClass}`}>{value}</p>
+    </div>
+  );
+}
+
+function Split({ label, value, tone }: { label: string; value: number; tone: "profit" | "warning" | "danger" }) {
+  const toneClass = tone === "profit" ? "text-profit" : tone === "warning" ? "text-warning" : "text-danger";
+  return (
+    <div className="border-r border-border p-4 last:border-r-0">
+      <p className={`text-2xl font-bold ${toneClass}`}>{value}</p>
+      <p className="mt-1 text-xs text-muted">{label}</p>
     </div>
   );
 }

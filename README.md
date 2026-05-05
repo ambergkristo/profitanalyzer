@@ -30,6 +30,7 @@ The current product already includes:
 - mobile-first restaurant onboarding and invoice review flow
 - onboarding checklist for profile, ingredients, recipes, dishes, suppliers, first invoice, and dashboard review
 - upload storage abstraction, OCR retry/cancel lifecycle, confidence policy, and OCR benchmark workflow
+- production app shell with work-tree navigation, Settings diagnostics, EE/EN language foundation, and dark/light theme tokens
 
 ## Safety Rules
 
@@ -38,6 +39,18 @@ The current product already includes:
 - cost history and supplier alerts are created only after confirmation
 - no blind OCR import
 - mobile invoice intake must remain usable
+
+## UI Shell And Visual System
+
+The frontend now uses a production app shell instead of a demo-first cockpit:
+
+- primary navigation: Overview, Menu, Recipes, Ingredients, Invoices, Alerts, Onboarding, Billing, Settings
+- demo scenario controls are restrained to demo mode and no longer dominate primary work views
+- technical environment details live under Settings/Diagnostics, not in the main operating screens
+- dark theme remains default and light theme is available through persisted design tokens
+- EE/EN language toggle exists for key navigation and action labels
+- dashboard and invoice work areas are compact, screen-first layouts with bounded internal scroll where needed
+- invoice upload/review remains mobile-first and draft-only before confirmation
 
 ## Runtime Profiles
 
@@ -133,6 +146,7 @@ npm run validate:onboarding
 npm run validate:invoice-pipeline
 npm run validate:billing
 npm run benchmark:ocr
+npm run validate:ui-reset
 npm audit
 ```
 

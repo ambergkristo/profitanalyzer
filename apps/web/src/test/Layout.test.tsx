@@ -3,6 +3,7 @@ import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { Layout } from "../components/Layout.js";
+import type { DemoDatasetSummary } from "../types.js";
 
 vi.mock("../api/client.js", () => ({
   apiClient: {
@@ -13,12 +14,7 @@ vi.mock("../api/client.js", () => ({
     clearStoredAuthToken: vi.fn(),
     setAuthContext: vi.fn(),
     logout: vi.fn(),
-    getDemoDatasets: vi.fn(),
-    getOverview: vi.fn(),
-    getDishes: vi.fn(),
-    getActions: vi.fn(),
-    getDishDetail: vi.fn(),
-    simulatePrice: vi.fn()
+    getDemoDatasets: vi.fn()
   }
 }));
 
@@ -29,66 +25,70 @@ function LocationEcho() {
   return <div>{location.search}</div>;
 }
 
+const demoConfig = {
+  appMode: "demo" as const,
+  nodeEnv: "test" as const,
+  version: "0.1.0",
+  productionReadinessClaimed: false as const,
+  storage: {
+    driver: "memory" as const,
+    dataDirConfigured: false,
+    readable: true,
+    writable: true,
+    persistenceWarning: "Memory storage resets data on restart."
+  },
+  workspaceContext: {
+    workspaceId: "workspace-mixed-restaurant",
+    restaurantId: "mixed-restaurant"
+  },
+  auth: {
+    mode: "dev" as const,
+    required: false
+  },
+  runtime: {
+    logLevel: "warn" as const,
+    appBaseUrlConfigured: true,
+    apiBaseUrlConfigured: true,
+    corsOriginConfigured: true
+  },
+  features: {
+    invoiceIntake: true,
+    ocrFixture: true,
+    externalOcrConfigured: false,
+    databaseConfigured: false
+  }
+};
+
+const datasets: DemoDatasetSummary[] = [
+  {
+    id: "mixed-restaurant",
+    name: "Mixed Casual Restaurant",
+    description: "Balanced casual dining scenario.",
+    profile: "mixed",
+    ownerDiagnosis: "Mixed performance.",
+    expectedBehavior: "Balanced action stack.",
+    demoNarrative: "Show the full decision loop.",
+    validationStatus: "pass" as const
+  },
+  {
+    id: "low-margin-kitchen",
+    name: "Low Margin Kitchen",
+    description: "Volume-heavy kitchen under pricing pressure.",
+    profile: "low-margin",
+    ownerDiagnosis: "Margin pressure detected.",
+    expectedBehavior: "Critical repairs should dominate.",
+    demoNarrative: "Use this scenario first in a demo.",
+    validationStatus: "pass" as const
+  }
+];
+
 describe("Layout", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.mocked(apiClient.getAppConfig).mockResolvedValue({
-      appMode: "demo",
-      nodeEnv: "test",
-      version: "0.1.0",
-      productionReadinessClaimed: false,
-      storage: {
-        driver: "memory",
-        dataDirConfigured: false,
-        readable: true,
-        writable: true,
-        persistenceWarning: "This demo build uses memory storage. Restarting the API resets data."
-      },
-      workspaceContext: {
-        workspaceId: "workspace-mixed-restaurant",
-        restaurantId: "mixed-restaurant"
-      },
-      auth: {
-        mode: "dev",
-        required: false
-      },
-      runtime: {
-        logLevel: "warn",
-        appBaseUrlConfigured: true,
-        apiBaseUrlConfigured: true,
-        corsOriginConfigured: true
-      },
-      features: {
-        invoiceIntake: true,
-        ocrFixture: true,
-        externalOcrConfigured: false,
-        databaseConfigured: false
-      }
-    });
-
-    vi.mocked(apiClient.getDemoDatasets).mockResolvedValue([
-      {
-        id: "mixed-restaurant",
-        name: "Mixed Casual Restaurant",
-        description: "Balanced casual dining scenario.",
-        profile: "mixed",
-        ownerDiagnosis: "Mixed performance. Fix leaks while protecting top contributors.",
-        expectedBehavior: "Balanced action stack.",
-        demoNarrative: "Show the full decision loop.",
-        validationStatus: "pass"
-      },
-      {
-        id: "low-margin-kitchen",
-        name: "Low Margin Kitchen",
-        description: "Volume-heavy kitchen under pricing pressure.",
-        profile: "low-margin",
-        ownerDiagnosis: "Margin pressure detected. Start with high-sales dishes below 50% margin.",
-        expectedBehavior: "Critical repairs should dominate.",
-        demoNarrative: "Use this scenario first in a demo.",
-        validationStatus: "pass"
-      }
-    ]);
-
+    window.localStorage.clear();
+    document.documentElement.dataset.theme = "dark";
+    vi.mocked(apiClient.getAppConfig).mockResolvedValue(demoConfig);
+    vi.mocked(apiClient.getDemoDatasets).mockResolvedValue(datasets);
     vi.mocked(apiClient.getAuthMe).mockResolvedValue({
       user: {
         id: "user-owner-example-com",
@@ -114,12 +114,9 @@ describe("Layout", () => {
     });
   });
 
-  it("renders the scenario selector metadata and updates the dataset query param", async () => {
+  it("renders the production app shell, restrained demo selector, and toggles", async () => {
     render(
-      <MemoryRouter
-        future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
-        initialEntries={["/"]}
-      >
+      <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }} initialEntries={["/"]}>
         <Routes>
           <Route element={<Layout />} path="/">
             <Route element={<LocationEcho />} index />
@@ -128,61 +125,36 @@ describe("Layout", () => {
       </MemoryRouter>
     );
 
-    expect(await screen.findByText("Dataset / Scenario")).toBeInTheDocument();
-    expect((await screen.findAllByText("Show the full decision loop.")).length).toBeGreaterThan(0);
-    expect(await screen.findByText("Demo mode")).toBeInTheDocument();
-    expect(
-      await screen.findByText("This demo build uses memory storage. Restarting the API resets data.")
-    ).toBeInTheDocument();
+    expect(await screen.findByLabelText("Primary navigation")).toBeInTheDocument();
+    expect(await screen.findByText("Overview")).toBeInTheDocument();
+    expect(await screen.findByText("Menu")).toBeInTheDocument();
+    expect(await screen.findByText("Invoices")).toBeInTheDocument();
+    expect(await screen.findByText("Settings")).toBeInTheDocument();
+    expect(await screen.findByText("Demo restaurant")).toBeInTheDocument();
+    expect(screen.queryByText(/Synthetic validation/i)).not.toBeInTheDocument();
 
     fireEvent.change(screen.getByDisplayValue("Mixed Casual Restaurant"), {
       target: { value: "low-margin-kitchen" }
     });
-
     expect(await screen.findByText("?dataset=low-margin-kitchen")).toBeInTheDocument();
-    expect((await screen.findAllByText("Use this scenario first in a demo.")).length).toBeGreaterThan(0);
+
+    fireEvent.click(screen.getByRole("button", { name: "ET" }));
+    expect(await screen.findByText("Ülevaade")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Toggle theme" }));
+    expect(window.localStorage.getItem("profit-analyzer-theme")).toBe("light");
   });
 
   it("shows a login-required gate in pilot mode when no auth token exists", async () => {
     vi.mocked(apiClient.getAppConfig).mockResolvedValue({
+      ...demoConfig,
       appMode: "pilot",
-      nodeEnv: "test",
-      version: "0.1.0",
-      productionReadinessClaimed: false,
-      storage: {
-        driver: "file",
-        dataDirConfigured: true,
-        readable: true,
-        writable: true,
-        persistenceWarning: null
-      },
-      workspaceContext: {
-        workspaceId: "workspace-pilot-workspace",
-        restaurantId: "pilot-workspace"
-      },
-      auth: {
-        mode: "dev",
-        required: true
-      },
-      runtime: {
-        logLevel: "warn",
-        appBaseUrlConfigured: true,
-        apiBaseUrlConfigured: true,
-        corsOriginConfigured: true
-      },
-      features: {
-        invoiceIntake: true,
-        ocrFixture: true,
-        externalOcrConfigured: false,
-        databaseConfigured: false
-      }
+      storage: { ...demoConfig.storage, driver: "file", persistenceWarning: null },
+      auth: { mode: "dev", required: true }
     });
 
     render(
-      <MemoryRouter
-        future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
-        initialEntries={["/invoices"]}
-      >
+      <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }} initialEntries={["/invoices"]}>
         <Routes>
           <Route element={<Layout />} path="/">
             <Route element={<div>Protected content</div>} path="invoices" />
@@ -193,50 +165,19 @@ describe("Layout", () => {
 
     expect(await screen.findByText("Login required")).toBeInTheDocument();
     expect(screen.queryByText("Protected content")).not.toBeInTheDocument();
-    expect((await screen.findAllByRole("link", { name: "Open login" })).length).toBeGreaterThan(0);
   });
 
   it("renders the signed-in workspace indicator in pilot mode", async () => {
     vi.mocked(apiClient.getStoredAuthToken).mockReturnValue("dev-session-token");
     vi.mocked(apiClient.getAppConfig).mockResolvedValue({
+      ...demoConfig,
       appMode: "pilot",
-      nodeEnv: "test",
-      version: "0.1.0",
-      productionReadinessClaimed: false,
-      storage: {
-        driver: "file",
-        dataDirConfigured: true,
-        readable: true,
-        writable: true,
-        persistenceWarning: null
-      },
-      workspaceContext: {
-        workspaceId: "workspace-pilot-workspace",
-        restaurantId: "pilot-workspace"
-      },
-      auth: {
-        mode: "dev",
-        required: true
-      },
-      runtime: {
-        logLevel: "warn",
-        appBaseUrlConfigured: true,
-        apiBaseUrlConfigured: true,
-        corsOriginConfigured: true
-      },
-      features: {
-        invoiceIntake: true,
-        ocrFixture: true,
-        externalOcrConfigured: false,
-        databaseConfigured: false
-      }
+      storage: { ...demoConfig.storage, driver: "file", persistenceWarning: null },
+      auth: { mode: "dev", required: true }
     });
 
     render(
-      <MemoryRouter
-        future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
-        initialEntries={["/"]}
-      >
+      <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }} initialEntries={["/"]}>
         <Routes>
           <Route element={<Layout />} path="/">
             <Route element={<LocationEcho />} index />
@@ -245,8 +186,7 @@ describe("Layout", () => {
       </MemoryRouter>
     );
 
-    expect(await screen.findByText("Signed in")).toBeInTheDocument();
-    expect(await screen.findByText("owner@example.com")).toBeInTheDocument();
-    expect(await screen.findByText("Pilot Workspace · owner")).toBeInTheDocument();
+    expect(await screen.findByText("Owner")).toBeInTheDocument();
+    expect(await screen.findByText("Pilot Workspace")).toBeInTheDocument();
   });
 });

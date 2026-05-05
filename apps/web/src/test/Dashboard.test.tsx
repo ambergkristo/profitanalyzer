@@ -11,6 +11,7 @@ vi.mock("../api/client.js", () => ({
     getDishes: vi.fn(),
     getActions: vi.fn(),
     getPriceChangeAlerts: vi.fn(),
+    getOcrJobs: vi.fn(),
     getDishDetail: vi.fn(),
     simulatePrice: vi.fn()
   }
@@ -146,9 +147,10 @@ describe("DashboardPage", () => {
     ]);
 
     vi.mocked(apiClient.getPriceChangeAlerts).mockResolvedValue([]);
+    vi.mocked(apiClient.getOcrJobs).mockResolvedValue([]);
   });
 
-  it("renders scenario-aware diagnostics and loads data with dataset id", async () => {
+  it("renders compact production overview and loads data with dataset id", async () => {
     render(
       <MemoryRouter
         future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
@@ -158,12 +160,12 @@ describe("DashboardPage", () => {
       </MemoryRouter>
     );
 
-    expect(await screen.findByText("Margin pressure detected. Start with high-sales dishes below 50% margin.")).toBeInTheDocument();
-    expect(await screen.findByText("Use this scenario first in a demo.")).toBeInTheDocument();
-    expect(await screen.findByText("Weighted Margin")).toBeInTheDocument();
-    expect(await screen.findByText("What to fix first")).toBeInTheDocument();
-    expect(await screen.findByText("What changed since the last cost intake")).toBeInTheDocument();
-    expect(await screen.findByText("No supplier price alerts yet.")).toBeInTheDocument();
+    expect(await screen.findByText("Weighted margin")).toBeInTheDocument();
+    expect(await screen.findByText("Priority actions")).toBeInTheDocument();
+    expect(await screen.findByText("Supplier alerts")).toBeInTheDocument();
+    expect(await screen.findByText("Recent cost intake")).toBeInTheDocument();
+    expect(await screen.findByText("No supplier alerts yet. Confirm an invoice to start tracking cost movement.")).toBeInTheDocument();
+    expect(screen.queryByText("Use this scenario first in a demo.")).not.toBeInTheDocument();
     expect(vi.mocked(apiClient.getOverview)).toHaveBeenCalledWith("low-margin-kitchen");
     expect(vi.mocked(apiClient.getDishes)).toHaveBeenCalledWith("low-margin-kitchen");
     expect(vi.mocked(apiClient.getPriceChangeAlerts)).toHaveBeenCalledWith("low-margin-kitchen");
@@ -186,7 +188,7 @@ describe("DashboardPage", () => {
       </MemoryRouter>
     );
 
-    expect(await screen.findByText("Scenario unavailable")).toBeInTheDocument();
+    expect(await screen.findByText("Overview unavailable")).toBeInTheDocument();
   });
 
   it("renders supplier price alerts when invoice-driven changes exist", async () => {
@@ -224,8 +226,6 @@ describe("DashboardPage", () => {
     expect(
       await screen.findByText("Beef Patty increased 33.3%. Beef Burger is the largest affected dish.")
     ).toBeInTheDocument();
-    expect(
-      await screen.findByText("Review affected dishes and test margin repair on the highest-volume items.")
-    ).toBeInTheDocument();
+    expect(screen.getByText("Supplier alerts")).toBeInTheDocument();
   });
 });

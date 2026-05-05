@@ -1,39 +1,60 @@
-@import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=Oxanium:wght@500;600;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap");
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
-  color: #eaeaf0;
-  background: #0b0b0f;
-  font-family: "IBM Plex Sans", system-ui, sans-serif;
-  --surface-0: #0b0b0f;
-  --surface-1: #16161c;
-  --surface-2: #1d1f27;
-  --surface-3: #232632;
-  --line: #24242d;
-  --profit: #00ff7b;
-  --warning: #ffd400;
-  --danger: #ff2e2e;
-  --accent: #38d9ff;
-  --text: #eaeaf0;
-  --muted: #9aa0a6;
+  color: var(--text);
+  background: var(--bg);
+  font-family: "Inter", system-ui, sans-serif;
+  --bg: #080b10;
+  --surface: #10161d;
+  --surface-elevated: #151d26;
+  --border: #24313d;
+  --text: #f5f7fa;
+  --muted: #94a3b8;
+  --accent: #00d1b2;
+  --success: #22c55e;
+  --warning: #f59e0b;
+  --danger: #ef4444;
+  --info: #3b82f6;
+  --surface-0: var(--bg);
+  --surface-1: var(--surface);
+  --surface-2: var(--surface-elevated);
+  --surface-3: color-mix(in srgb, var(--surface-elevated) 82%, var(--text) 18%);
+  --line: var(--border);
+  --profit: var(--success);
+  --shadow-shell: 0 1px 0 rgba(255, 255, 255, 0.04), 0 24px 70px rgba(0, 0, 0, 0.34);
   --panel-radius: 2rem;
   --tile-radius: 1.5rem;
+}
+
+:root[data-theme="light"] {
+  --bg: #f6f8fb;
+  --surface: #ffffff;
+  --surface-elevated: #eef2f6;
+  --border: #d8e0e8;
+  --text: #111827;
+  --muted: #64748b;
+  --accent: #00a996;
+  --success: #15803d;
+  --warning: #b45309;
+  --danger: #b91c1c;
+  --info: #2563eb;
+  --shadow-shell: 0 1px 0 rgba(17, 24, 39, 0.04), 0 20px 60px rgba(15, 23, 42, 0.12);
 }
 
 body {
   margin: 0;
   min-width: 320px;
   background:
-    radial-gradient(circle at top right, rgba(56, 217, 255, 0.1), transparent 26%),
-    radial-gradient(circle at top left, rgba(0, 255, 123, 0.08), transparent 24%),
-    radial-gradient(circle at 50% 100%, rgba(255, 46, 46, 0.08), transparent 32%),
+    radial-gradient(circle at top right, color-mix(in srgb, var(--accent) 14%, transparent), transparent 28%),
+    radial-gradient(circle at top left, color-mix(in srgb, var(--success) 10%, transparent), transparent 22%),
     linear-gradient(180deg, rgba(255, 255, 255, 0.02), transparent 18%),
-    #0b0b0f;
+    var(--bg);
   color: var(--text);
-  font-family: "IBM Plex Sans", system-ui, sans-serif;
+  font-family: "Inter", system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -43,12 +64,9 @@ body::before {
   position: fixed;
   inset: 0;
   pointer-events: none;
-  background-image:
-    linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
-  background-size: 120px 120px;
-  mask-image: radial-gradient(circle at center, black 35%, transparent 95%);
-  opacity: 0.35;
+  background-image: linear-gradient(color-mix(in srgb, var(--text) 4%, transparent) 1px, transparent 1px);
+  background-size: 100% 4px;
+  opacity: 0.08;
 }
 
 a {
@@ -79,6 +97,11 @@ select {
 }
 
 ::selection {
-  background: rgba(0, 255, 123, 0.25);
+  background: color-mix(in srgb, var(--accent) 25%, transparent);
   color: var(--text);
+}
+
+.work-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--muted) 45%, transparent) transparent;
 }

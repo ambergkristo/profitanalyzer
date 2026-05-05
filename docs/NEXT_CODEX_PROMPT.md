@@ -40,6 +40,8 @@ Required scope:
 
 Important:
 
+- preserve the production app shell, work-tree navigation, EE/EN toggle, and dark/light theme token system
+- keep technical diagnostics in Settings rather than primary work views
 - do not add billing/payment implementation beyond the current foundation
 - do not add POS integration
 - do not add accounting

@@ -10,6 +10,7 @@ import { InvoicesPage } from "./pages/Invoices.js";
 import { LoginPage } from "./pages/Login.js";
 import { OnboardingPage } from "./pages/Onboarding.js";
 import { PilotToolsPage } from "./pages/PilotTools.js";
+import { SettingsPage } from "./pages/Settings.js";
 
 const router = createBrowserRouter([
   {
@@ -23,10 +24,13 @@ const router = createBrowserRouter([
       { index: true, element: <DashboardPage /> },
       { path: "onboarding", element: <OnboardingPage /> },
       { path: "dishes", element: <DishesPage /> },
+      { path: "recipes", element: <PilotToolsPage /> },
+      { path: "ingredients", element: <PilotToolsPage /> },
       { path: "dishes/:dishId", element: <DishDetailPage /> },
       { path: "invoices", element: <InvoicesPage /> },
       { path: "alerts", element: <AlertsPage /> },
       { path: "billing", element: <BillingPage /> },
+      { path: "settings", element: <SettingsPage /> },
       { path: "pilot-tools", element: <PilotToolsPage /> }
     ]
   }

@@ -558,11 +558,11 @@ export function InvoicesPage() {
         <PageHeader
           actions={
             <Panel className="rounded-tile p-4" tone="subtle">
-              <p className="text-[11px] uppercase tracking-[0.18em] text-muted">Active scenario</p>
+              <p className="text-[11px] uppercase tracking-[0.18em] text-muted">Active restaurant</p>
               <p className="mt-2 font-display text-2xl text-text">{selectedDataset.name}</p>
               <p className="mt-3 text-sm leading-6 text-text">{selectedDataset.ownerDiagnosis}</p>
               <p className="mt-3 text-sm leading-6 text-muted">
-                Sample, manual, and RM8 adapter uploads all stop at review. Nothing updates current costs until you confirm.
+                Review required before costs update.
               </p>
             </Panel>
           }
@@ -590,7 +590,7 @@ export function InvoicesPage() {
 
       <Panel>
         <SectionHeader
-          description="Use repeatable sample invoices for demo flow, enter a structured invoice manually, or create an RM8 OCR review draft from an uploaded file."
+          description="Start from a sample, structured entry, or photo upload. Every path creates a review draft first."
           eyebrow="Draft source"
           title="Choose how to start the review"
         />
@@ -814,10 +814,10 @@ export function InvoicesPage() {
           <>
             <div className="mt-6 grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
               <Panel className="rounded-panel border border-border bg-black/20 p-5">
-                <p className="text-[11px] uppercase tracking-[0.18em] text-muted">RM8 adapter mode</p>
+                <p className="text-[11px] uppercase tracking-[0.18em] text-muted">Photo upload</p>
                 <h2 className="mt-3 font-display text-3xl text-text">Photo/OCR upload creates a draft only</h2>
                 <p className="mt-3 text-sm leading-6 text-muted">
-                  Upload a file to simulate OCR intake. The adapter returns a review draft, not a confirmed invoice. Low-confidence lines stay blocked until you resolve or ignore them.
+                  Upload a file to create an invoice review draft. Low-confidence lines stay blocked until you resolve or ignore them.
                 </p>
                 <div className="mt-5 rounded-tile border border-warning/25 bg-warning/10 p-4">
                   <p className="text-sm leading-6 text-text">
@@ -877,7 +877,7 @@ export function InvoicesPage() {
                     </p>
                     <p className="mt-2 text-sm leading-6 text-muted">
                       {selectedOcrProvider.id === "fixture"
-                        ? "Development fixture OCR stays local and deterministic for demo-safe draft creation."
+                        ? "Development upload adapter is local and deterministic for draft creation."
                         : selectedOcrProvider.isConfigured
                           ? "Creates review drafts only. Confirmation still required before ingredient costs change."
                           : "Configure OCR_PROVIDER_API_KEY and OCR_PROVIDER_MODEL on the API server to enable."}
@@ -904,7 +904,7 @@ export function InvoicesPage() {
                   </ActionButton>
                   <p className="text-sm leading-6 text-muted">
                     {selectedOcrProvider?.id === "fixture"
-                      ? "Upload creates a review draft. Costs update only after confirmation. Fixture names: `clean-invoice-photo.jpg`, `blurry-invoice-photo.jpg`, or `cropped-invoice-photo.jpg`."
+                      ? "Upload creates a review draft. Costs update only after confirmation."
                       : selectedOcrProvider?.isConfigured
                         ? "External OCR creates review drafts only. Ingredient costs update only after review-confirm."
                         : "External OCR stays disabled until environment configuration is present."}
@@ -923,7 +923,7 @@ export function InvoicesPage() {
                 <div className="mt-5 space-y-4">
                   {ocrJobs.length === 0 ? (
                     <StatePanel
-                      message="No OCR jobs yet. Upload a fixture file to create a draft and inspect the quality gate."
+                      message="No OCR jobs yet. Upload a file to create a draft and inspect the quality gate."
                       title="No OCR jobs yet"
                       tone="empty"
                     />

@@ -4,23 +4,25 @@ export default {
   theme: {
     extend: {
       colors: {
-        bg: "#0b0b0f",
-        panel: "#16161c",
-        elevated: "#1d1f27",
-        border: "#24242d",
-        profit: "#00ff7b",
-        warning: "#ffd400",
-        danger: "#ff2e2e",
-        text: "#eaeaf0",
-        muted: "#9aa0a6",
-        accent: "#38d9ff"
+        bg: "var(--bg)",
+        panel: "var(--surface)",
+        elevated: "var(--surface-elevated)",
+        border: "var(--border)",
+        profit: "var(--success)",
+        success: "var(--success)",
+        warning: "var(--warning)",
+        danger: "var(--danger)",
+        info: "var(--info)",
+        text: "var(--text)",
+        muted: "var(--muted)",
+        accent: "var(--accent)"
       },
       boxShadow: {
-        telemetry: "0 0 0 1px rgba(36,36,45,0.88), 0 26px 64px rgba(0,0,0,0.42)"
+        telemetry: "var(--shadow-shell)"
       },
       fontFamily: {
-        display: ["Oxanium", "IBM Plex Sans", "system-ui", "sans-serif"],
-        body: ["IBM Plex Sans", "system-ui", "sans-serif"]
+        display: ["Inter", "IBM Plex Sans", "system-ui", "sans-serif"],
+        body: ["Inter", "IBM Plex Sans", "system-ui", "sans-serif"]
       }
     }
   },

@@ -2,9 +2,9 @@
 
 ## Design Intent
 
-The product should feel like a premium decision console, not office software. The mood is closer to a trading terminal or F1 telemetry panel than a generic SaaS admin.
+The product should feel like a premium restaurant profit operating tool, not a demo cockpit, generic SaaS admin, spreadsheet, or marketing page.
 
-Design objective: compress complex margin data into fast, confident actions.
+Design objective: compress complex margin data into fast, confident actions while keeping the interface credible for serious restaurant owners.
 
 ## Core UX Principles
 
@@ -13,30 +13,51 @@ Design objective: compress complex margin data into fast, confident actions.
 - No Excel feel
 - Mobile-first invoice flow
 - Mobile usable across core flows
-- Premium dashboard atmosphere
+- Production app shell over demo-first presentation
+- Premium operating-platform atmosphere
 - Signal-rich but not cluttered
 - Every warning must lead to a next action
 
 ## Visual Direction
 
 - Dark mode is the default and primary design surface.
-- Surfaces should feel layered and instrument-like.
+- Light mode must be available through the same design-token system.
+- Surfaces should feel layered, restrained, and professional.
 - KPI numbers should be visually dominant.
 - Color is for status and urgency, not decoration.
 - Charts should support decisions, not fill empty space.
 
 ## Color System
 
-- Background: `#0b0b0f`
-- Panel: `#16161c`
-- Panel border: `#24242d`
-- Profit green: `#00ff7b`
-- Warning yellow: `#ffd400`
-- Danger red: `#ff2e2e`
-- Accent cyan: `#38d9ff`
-- Text primary: `#eaeaf0`
-- Text secondary: `#9aa0a6`
-- Muted grid/lines: `#2b2f36`
+Use central CSS variables/design tokens for primary UI colors. Do not hardcode separate dark and light interfaces.
+
+Dark tokens:
+
+- Background: `#080b10`
+- Surface: `#10161d`
+- Elevated surface: `#151d26`
+- Border: `#24313d`
+- Text primary: `#f5f7fa`
+- Text muted: `#94a3b8`
+- Accent: `#00d1b2`
+- Success: `#22c55e`
+- Warning: `#f59e0b`
+- Danger: `#ef4444`
+- Info: `#3b82f6`
+
+Light tokens:
+
+- Background: `#f6f8fb`
+- Surface: `#ffffff`
+- Elevated surface: `#eef2f6`
+- Border: `#d8e0e8`
+- Text primary: `#111827`
+- Text muted: `#64748b`
+- Accent: `#00a996`
+- Success: `#15803d`
+- Warning: `#b45309`
+- Danger: `#b91c1c`
+- Info: `#2563eb`
 
 Usage rules:
 
@@ -48,10 +69,9 @@ Usage rules:
 
 ## Typography
 
-- Heading direction: Orbitron or Rajdhani style
-- Body direction: Inter or clean system sans
+- Main UI: Inter or clean system sans
 - KPI numerics: bold, compact, high contrast
-- Status labels: uppercase or semi-condensed styling where appropriate
+- Status labels: restrained and only where they carry operational meaning
 
 Rules:
 
@@ -61,14 +81,20 @@ Rules:
 
 ## Layout Rules
 
+### App Shell
+
+- Use a left navigation/work-tree on desktop.
+- Use a compact top bar for workspace, user, language, and theme controls.
+- Keep technical environment state in Settings/Diagnostics, not primary work views.
+- Demo scenario selection may appear in demo mode only as a restrained control.
+- Avoid long stacked pages; use bounded internal scroll inside work panels when content is large.
+
 ### Dashboard
 
-- Top row reserved for KPIs and main action signal
-- Main content split into:
-  - priority actions
-  - dish status table
-  - compact trend or scenario panel
-- Keep the primary recommendation above the fold on desktop and mobile
+- Top metric strip: estimated profit, weighted margin, revenue, dishes at risk.
+- Main work area: priority actions, menu pressure, lowest-margin dishes, supplier alerts, recent invoices.
+- Avoid synthetic/demo validation copy in the primary dashboard.
+- Fit the operating view into a 1440x900-style viewport where practical.
 
 ### Dish Table
 
@@ -94,6 +120,12 @@ Rules:
 
 ## Core Components
 
+- App shell
+- Side navigation/work-tree
+- Top workspace bar
+- Settings/Diagnostics panel
+- Theme toggle
+- Language toggle
 - KPI card
 - Recommendation card
 - Status badge
@@ -180,6 +212,15 @@ Before founding partner launch, the product should pass:
 - invoice review card layout test
 - simulator mobile layout test
 - dashboard mobile layout test
+- app shell navigation mobile smoke test
+- EE/EN and theme persistence smoke test
+
+## Language Requirements
+
+- Provide an EE/EN selector in the app shell.
+- Persist language choice locally.
+- Translate key navigation and primary action labels before broad copy translation.
+- Do not block feature delivery on complete translation coverage, but avoid scattering future-incompatible hardcoded copy.
 
 ## Premium Feel Requirements
 
@@ -193,6 +234,10 @@ Before founding partner launch, the product should pass:
 
 - Plain white dashboard
 - default Tailwind-looking card grid
+- demo-first cockpit as the main application shell
+- synthetic/demo validation labels in primary work views
+- decorative status words such as "idle" or "operative"
+- "AI-powered" or "magic" claims in product screens
 - spreadsheet-first layout
 - OCR results saved directly without a human review step
 - giant empty hero sections inside product UI

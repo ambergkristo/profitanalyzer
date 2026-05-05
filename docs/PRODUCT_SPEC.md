@@ -44,6 +44,10 @@ The production target requires:
 - pricing plan and workspace license model
 - founding partner lifetime access represented explicitly
 - billing status visibility without card collection until payment provider is live
+- production app shell with clear work-tree navigation
+- dark/light theme support through shared design tokens
+- EE/EN language selector foundation
+- demo and diagnostics separation from primary restaurant work views
 
 ## Core Functional Areas
 
@@ -56,6 +60,14 @@ The production target requires:
 - supplier setup
 - first invoice setup through existing invoice intake
 - onboarding progress checklist
+
+### Product Shell
+
+- left navigation/work-tree for primary work areas
+- compact top bar for workspace, user, theme, and language controls
+- Settings/Diagnostics for technical environment status
+- restrained demo scenario control only in demo mode
+- primary views should avoid long stacked scroll pages where practical
 
 ### Decision Layer
 

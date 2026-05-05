@@ -621,9 +621,7 @@ describe("InvoicesPage", () => {
     expect(screen.getByRole("option", { name: "External OCR provider (not configured)" })).toBeDisabled();
     expect(await screen.findByText("Configured")).toBeInTheDocument();
     expect(
-      await screen.findByText(
-        "Development fixture OCR stays local and deterministic for demo-safe draft creation."
-      )
+      await screen.findByText("Development upload adapter is local and deterministic for draft creation.")
     ).toBeInTheDocument();
     expect(await screen.findByText(/Upload creates a review draft\. Costs update only after confirmation\./)).toBeInTheDocument();
     expect(await screen.findByText("Latest OCR jobs")).toBeInTheDocument();

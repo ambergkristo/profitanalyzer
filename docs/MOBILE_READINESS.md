@@ -21,6 +21,8 @@ The app must support:
 
 ## Current UI Expectations
 
+- the app shell uses a compact navigation model that remains usable on mobile
+- primary work views avoid desktop-only long-page layouts where practical
 - onboarding uses compact step cards and mobile forms
 - restaurant profile, ingredients, recipes, dishes, suppliers, and first invoice setup must be usable on phone-sized screens
 - recipe setup uses line cards and large touch controls rather than a wide table
@@ -56,6 +58,7 @@ For the current web product:
 - invoice page does not depend on a desktop-only table
 - dashboard supplier/action surfaces still render
 - dish detail simulator controls still render
+- language and theme controls remain available without blocking core work
 
 ## Current Validation
 
@@ -63,11 +66,14 @@ Run:
 
 ```bash
 npm run validate:mobile
+npm run validate:ui-reset
 ```
 
 Current validation is a smoke gate, not full browser automation.
 
 It now checks onboarding source/tests and mobile invoice upload assumptions, including image/PDF accept, browser capture hint, and draft-only safety copy.
+
+`validate:ui-reset` adds a shell-level smoke gate for the work-tree navigation, theme/language controls, forbidden primary copy, and mobile invoice safety copy.
 
 ## Launch Blockers
 

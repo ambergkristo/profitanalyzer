@@ -110,7 +110,7 @@ function main() {
   );
   assertContains(
     dashboardTestsPath,
-    /What changed since the last cost intake/u,
+    /Priority actions[\s\S]*Supplier alerts/u,
     "Dashboard tests should cover supplier alert or dashboard action rendering.",
     failures
   );
