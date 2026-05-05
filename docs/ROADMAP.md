@@ -126,7 +126,7 @@ Make the app deployable and operable.
 
 ## PHASE 15 - Mobile-First Restaurant Onboarding
 
-Status: next.
+Status: complete as mobile-first onboarding foundation.
 
 ### Goal
 
@@ -141,6 +141,13 @@ Make a real restaurant able to onboard without desktop-only friction.
 - mobile-first invoice upload and review
 - setup checklist
 - no desktop-only critical path
+
+### Honest Current Position
+
+- restaurants can now follow a guided setup path without editing JSON manually
+- setup is mobile-first and uses cards/forms rather than desktop-only tables
+- first invoice setup still preserves the draft-only review-confirm safety boundary
+- this does not make the product production SaaS ready by itself; production OCR storage, billing/license, final security/privacy, and launch gates remain open
 
 ## PHASE 16 - Production Invoice/OCR Pipeline
 

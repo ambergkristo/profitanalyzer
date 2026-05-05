@@ -22,6 +22,8 @@ import type {
   OcrInvoiceJob,
   OcrProviderConfig,
   OcrQualityReport,
+  OnboardingChecklist,
+  OnboardingState,
   PriceChangeAlert,
   ResetDatasetSummary,
   CalculatedDish,
@@ -30,10 +32,15 @@ import type {
   DishDetailResponse,
   OverviewResponse,
   PriceSimulationResponse,
+  RestaurantProfile,
+  RestaurantProfileUpdateRequest,
   Recipe,
   RecipeCreateRequest,
   RecipeUpdateRequest,
-  Supplier
+  Supplier,
+  SupplierCreateRequest,
+  SupplierUpdateRequest,
+  OnboardingStepId
 } from "../types.js";
 
 const AUTH_TOKEN_STORAGE_KEY = "profit-analyzer-auth-token";
@@ -192,6 +199,35 @@ export const apiClient = {
     getJson<CalculatedDish[]>(buildDatasetPath("/api/analytics/dishes", datasetId)),
   getIngredients: (datasetId?: string) =>
     getJson<Ingredient[]>(buildDatasetPath("/api/ingredients", datasetId)),
+  getRestaurantProfile: (datasetId?: string) =>
+    getJson<RestaurantProfile>(buildDatasetPath("/api/restaurant/profile", datasetId)),
+  updateRestaurantProfile: (body: RestaurantProfileUpdateRequest, datasetId?: string) =>
+    patchJson<RestaurantProfile>(buildDatasetPath("/api/restaurant/profile", datasetId), {
+      ...body,
+      dataset: datasetId
+    }),
+  getOnboardingStatus: (datasetId?: string) =>
+    getJson<OnboardingState>(buildDatasetPath("/api/onboarding/status", datasetId)),
+  updateOnboardingStatus: (
+    body: Partial<Pick<OnboardingState, "currentStep" | "completedSteps" | "skippedSteps">>,
+    datasetId?: string
+  ) =>
+    patchJson<OnboardingState>(buildDatasetPath("/api/onboarding/status", datasetId), {
+      ...body,
+      dataset: datasetId
+    }),
+  completeOnboardingStep: (step: OnboardingStepId, datasetId?: string) =>
+    postJson<OnboardingState>(buildDatasetPath("/api/onboarding/complete-step", datasetId), {
+      step,
+      dataset: datasetId
+    }),
+  skipOnboardingStep: (step: OnboardingStepId, datasetId?: string) =>
+    postJson<OnboardingState>(buildDatasetPath("/api/onboarding/skip-step", datasetId), {
+      step,
+      dataset: datasetId
+    }),
+  getOnboardingChecklist: (datasetId?: string) =>
+    getJson<OnboardingChecklist>(buildDatasetPath("/api/onboarding/checklist", datasetId)),
   getRecipes: (datasetId?: string) =>
     getJson<Recipe[]>(buildDatasetPath("/api/recipes", datasetId)),
   getMenuDishes: (datasetId?: string) =>
@@ -314,6 +350,16 @@ export const apiClient = {
     ),
   getSuppliers: (datasetId?: string) =>
     getJson<Supplier[]>(buildDatasetPath("/api/suppliers", datasetId)),
+  createSupplier: (body: SupplierCreateRequest, datasetId?: string) =>
+    postJson<Supplier>(buildDatasetPath("/api/suppliers", datasetId), {
+      ...body,
+      dataset: datasetId
+    }),
+  updateSupplier: (supplierId: string, body: SupplierUpdateRequest, datasetId?: string) =>
+    patchJson<Supplier>(buildDatasetPath(`/api/suppliers/${supplierId}`, datasetId), {
+      ...body,
+      dataset: datasetId
+    }),
   getIngredientCostHistory: (ingredientId: string, datasetId?: string) =>
     getJson<IngredientCostHistoryView>(
       buildDatasetPath(`/api/ingredients/${ingredientId}/cost-history`, datasetId)

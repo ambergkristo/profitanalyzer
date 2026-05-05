@@ -19,6 +19,8 @@ function main() {
   const failures: string[] = [];
   const invoicePagePath = path.resolve("apps/web/src/pages/Invoices.tsx");
   const invoiceTestsPath = path.resolve("apps/web/src/test/InvoicesPage.test.tsx");
+  const onboardingPagePath = path.resolve("apps/web/src/pages/Onboarding.tsx");
+  const onboardingTestsPath = path.resolve("apps/web/src/test/OnboardingPage.test.tsx");
   const dashboardTestsPath = path.resolve("apps/web/src/test/Dashboard.test.tsx");
   const dishDetailTestsPath = path.resolve("apps/web/src/test/DishDetail.test.tsx");
 
@@ -47,6 +49,48 @@ function main() {
     failures
   );
   assertContains(
+    onboardingPagePath,
+    /Mobile-first onboarding/u,
+    "Onboarding page should expose the mobile-first setup wizard.",
+    failures
+  );
+  assertContains(
+    onboardingPagePath,
+    /Restaurant Profile/u,
+    "Onboarding page should include restaurant profile setup.",
+    failures
+  );
+  assertContains(
+    onboardingPagePath,
+    /Add ingredient line/u,
+    "Onboarding recipe builder should support touch-friendly ingredient line cards.",
+    failures
+  );
+  assertContains(
+    onboardingPagePath,
+    /Open invoice intake/u,
+    "Onboarding first invoice step should link to the existing invoice intake flow.",
+    failures
+  );
+  assertNotContains(
+    onboardingPagePath,
+    /<table/iu,
+    "Onboarding setup flow should not rely on desktop-only table layout.",
+    failures
+  );
+  assertContains(
+    onboardingTestsPath,
+    /mobile-first onboarding wizard/u,
+    "Onboarding tests should cover the wizard.",
+    failures
+  );
+  assertContains(
+    onboardingTestsPath,
+    /first invoice/u,
+    "Onboarding tests should cover the invoice setup step.",
+    failures
+  );
+  assertContains(
     dashboardTestsPath,
     /What changed since the last cost intake/u,
     "Dashboard tests should cover supplier alert or dashboard action rendering.",
@@ -70,7 +114,7 @@ function main() {
 
   console.log("PASS mobile validation");
   console.log("Invoice upload and review copy is present without a desktop-only table dependency.");
-  console.log("Dashboard and dish-detail smoke coverage is present.");
+  console.log("Onboarding setup, dashboard, and dish-detail smoke coverage is present.");
 }
 
 main();

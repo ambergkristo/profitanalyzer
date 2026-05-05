@@ -24,6 +24,9 @@
 - deployment profile, readiness endpoint, and runtime validation added
 - structured logging foundation and safe error responses added
 - mobile readiness documentation and smoke validation added
+- mobile-first onboarding wizard added
+- restaurant profile, ingredient, recipe, dish, supplier, first invoice, and dashboard review setup steps added
+- onboarding validation command added
 
 ## Missing For Production SaaS
 
@@ -37,7 +40,8 @@
 - billing and license model
 - full mobile browser validation for critical workflows
 - live OCR benchmark on realistic private invoice samples
-- onboarding hardening for real restaurant data
+- real restaurant onboarding rehearsal with messy customer data
+- full mobile browser automation for onboarding and invoice workflows
 
 ## Strategic Interpretation
 

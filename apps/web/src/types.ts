@@ -79,6 +79,15 @@ export type PersistenceDriver = "memory" | "file" | "database";
 export type RecipeInputUnit = Ingredient["unit"] | "kg" | "l" | "pcs" | "pack";
 export type AuthMode = "disabled" | "dev" | "production_future";
 export type WorkspaceRole = "owner" | "admin" | "member";
+export type OnboardingStepId =
+  | "restaurant_profile"
+  | "ingredients"
+  | "recipes"
+  | "dishes"
+  | "suppliers"
+  | "first_invoice"
+  | "dashboard_review";
+export type OnboardingStepStatus = "not_started" | "in_progress" | "complete" | "skipped";
 
 export interface StorageInfo {
   driver: PersistenceDriver;
@@ -237,6 +246,55 @@ export interface ImportDatasetSummary {
   supplierCount: number;
 }
 
+export interface RestaurantProfile {
+  workspaceId: string;
+  restaurantId: string;
+  name: string;
+  currency: string;
+  country?: string;
+  concept?: string;
+  averageMonthlyDishSalesEstimate?: number;
+  updatedAt: string;
+}
+
+export interface RestaurantProfileUpdateRequest {
+  dataset?: string;
+  name?: string;
+  currency?: string;
+  country?: string;
+  concept?: string;
+  averageMonthlyDishSalesEstimate?: number;
+}
+
+export interface OnboardingState {
+  workspaceId: string;
+  restaurantId: string;
+  currentStep: OnboardingStepId;
+  completedSteps: OnboardingStepId[];
+  skippedSteps: OnboardingStepId[];
+  progressPercent: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface OnboardingChecklistItem {
+  step: OnboardingStepId;
+  label: string;
+  status: OnboardingStepStatus;
+  complete: boolean;
+  count?: number;
+  minimum?: number;
+  message: string;
+}
+
+export interface OnboardingChecklist {
+  workspaceId: string;
+  restaurantId: string;
+  progressPercent: number;
+  readyForDashboard: boolean;
+  items: OnboardingChecklistItem[];
+}
+
 export interface InvoiceConfirmResponse {
   confirmationSummary: InvoiceConfirmationSummary;
   costHistory: IngredientCostHistory[];
@@ -256,6 +314,17 @@ export interface IngredientUpdateRequest {
   name?: string;
   costPerUnitCents?: number;
   unit?: Ingredient["unit"];
+}
+
+export interface SupplierCreateRequest {
+  id?: string;
+  name: string;
+  contactLabel?: string;
+}
+
+export interface SupplierUpdateRequest {
+  name?: string;
+  contactLabel?: string;
 }
 
 export interface RecipeCreateRequest {

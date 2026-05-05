@@ -8,6 +8,7 @@
 - Vite
 - TypeScript
 - mobile-first invoice intake and review
+- mobile-first onboarding wizard and setup forms
 
 ### Backend
 
@@ -36,6 +37,18 @@
 - restaurant-scoped business entities
 - authenticated actor context
 - session model
+- restaurant-scoped onboarding state and restaurant profile metadata
+
+### Onboarding
+
+- `GET /api/onboarding/status`
+- `PATCH /api/onboarding/status`
+- `POST /api/onboarding/complete-step`
+- `POST /api/onboarding/skip-step`
+- `GET /api/onboarding/checklist`
+- `GET /api/restaurant/profile`
+- `PATCH /api/restaurant/profile`
+- setup data remains scoped through the same StoreContext used by protected restaurant data routes
 
 ### OCR
 
@@ -99,6 +112,7 @@ The DB adapter is additive:
 - monitoring and alerting are not live beyond the current logging and readiness foundation
 - backup and restore operations are not fully productionized
 - external OCR is not benchmarked on real invoices yet
+- onboarding is now implemented as a mobile-first foundation, but real restaurant onboarding time and data messiness are not yet proven
 
 ## Fixed Technical Rules
 

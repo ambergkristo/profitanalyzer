@@ -34,6 +34,77 @@ export interface StoreContext {
   actorUserId?: string;
 }
 
+export type OnboardingStepId =
+  | "restaurant_profile"
+  | "ingredients"
+  | "recipes"
+  | "dishes"
+  | "suppliers"
+  | "first_invoice"
+  | "dashboard_review";
+
+export type OnboardingStepStatus = "not_started" | "in_progress" | "complete" | "skipped";
+
+export interface OnboardingState {
+  workspaceId: string;
+  restaurantId: string;
+  currentStep: OnboardingStepId;
+  completedSteps: OnboardingStepId[];
+  skippedSteps: OnboardingStepId[];
+  progressPercent: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface OnboardingChecklistItem {
+  id: OnboardingStepId;
+  step: OnboardingStepId;
+  label: string;
+  status: OnboardingStepStatus;
+  complete: boolean;
+  required: boolean;
+  detail: string;
+  count?: number;
+  minimum?: number;
+  message: string;
+}
+
+export interface OnboardingChecklist {
+  workspaceId: string;
+  restaurantId: string;
+  progressPercent: number;
+  minimumUsefulDataReady: boolean;
+  dashboardReady: boolean;
+  items: OnboardingChecklistItem[];
+  summary: {
+    ingredientCount: number;
+    recipeCount: number;
+    dishCount: number;
+    supplierCount: number;
+    confirmedInvoiceCount: number;
+    alertCount: number;
+  };
+}
+
+export interface RestaurantProfile {
+  workspaceId: string;
+  restaurantId: string;
+  name: string;
+  currency: string;
+  country?: string;
+  concept?: string;
+  averageMonthlyDishSalesEstimate?: number;
+  updatedAt: string;
+}
+
+export interface RestaurantProfileUpdateInput {
+  name?: string;
+  currency?: string;
+  country?: string;
+  concept?: string;
+  averageMonthlyDishSalesEstimate?: number;
+}
+
 export interface StorageInfo {
   driver: PersistenceType;
   dataDir?: string;
@@ -58,6 +129,8 @@ export interface DatasetExportPayload {
   alerts: PriceChangeAlert[];
   invoices: StoredInvoiceView[];
   ocrJobs: OcrInvoiceJob[];
+  onboardingState?: OnboardingState;
+  restaurantProfile?: RestaurantProfile;
 }
 
 export interface ImportValidationSummary {
@@ -140,6 +213,23 @@ export interface DishUpdateInput {
   salesVolume?: number;
 }
 
+export interface SupplierCreateInput {
+  id?: string;
+  name: string;
+  contactLabel?: string;
+}
+
+export interface SupplierUpdateInput {
+  name?: string;
+  contactLabel?: string;
+}
+
+export interface OnboardingUpdateInput {
+  currentStep?: OnboardingStepId;
+  completedSteps?: OnboardingStepId[];
+  skippedSteps?: OnboardingStepId[];
+}
+
 export interface AppStore {
   restaurantData: {
     ingredients: Ingredient[];
@@ -161,6 +251,15 @@ export interface AppStore {
   getRecipes(datasetId?: string): DemoDatasetDefinition["data"]["recipes"] | null;
   getDishes(datasetId?: string): DemoDatasetDefinition["data"]["dishes"] | null;
   getSuppliers(datasetId?: string): Supplier[] | null;
+  createSupplier(input: SupplierCreateInput, datasetId?: string): Supplier | null | undefined;
+  updateSupplier(supplierId: string, input: SupplierUpdateInput, datasetId?: string): Supplier | null | undefined;
+  getRestaurantProfile(datasetId?: string): RestaurantProfile | null;
+  updateRestaurantProfile(input: RestaurantProfileUpdateInput, datasetId?: string): RestaurantProfile | null;
+  getOnboardingState(datasetId?: string): OnboardingState | null;
+  updateOnboardingState(input: OnboardingUpdateInput, datasetId?: string): OnboardingState | null;
+  completeOnboardingStep(step: OnboardingStepId, datasetId?: string): OnboardingState | null;
+  skipOnboardingStep(step: OnboardingStepId, datasetId?: string): OnboardingState | null;
+  getOnboardingChecklist(datasetId?: string): OnboardingChecklist | null;
   getCalculatedDishes(datasetId?: string): CalculatedDish[] | null;
   getAllActions(datasetId?: string): DishAction[] | null;
   getOverview(datasetId?: string): OverviewMetrics | null;

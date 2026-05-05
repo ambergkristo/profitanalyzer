@@ -30,6 +30,9 @@ The production target requires:
 - protected APIs
 - mobile-first invoice workflow
 - onboarding
+- mobile-first restaurant onboarding wizard
+- restaurant profile setup
+- ingredient, recipe, dish, and supplier setup without JSON editing
 - OCR review safety
 - supplier price alerts
 - dish-level margin engine
@@ -43,11 +46,13 @@ The production target requires:
 
 ### Setup
 
-- restaurant or workspace setup
-- ingredient setup
-- recipe setup
-- dish setup
+- restaurant profile setup
+- ingredient setup with mobile cards
+- recipe builder with touch-friendly ingredient lines
+- dish builder linked to recipes
 - supplier setup
+- first invoice setup through existing invoice intake
+- onboarding progress checklist
 
 ### Decision Layer
 
@@ -95,4 +100,5 @@ Still out of scope for the first production version:
 - dashboard produces concrete actions from real data
 - dish detail and simulator support real decisions
 - mobile invoice workflow works without desktop-only interaction
+- restaurant onboarding works without desktop-only interaction
 - workspace data remains isolated and protected

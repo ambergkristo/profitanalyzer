@@ -54,9 +54,18 @@ import type {
   IngredientCreateInput,
   IngredientUpdateInput,
   ImportDatasetSummary,
+  OnboardingChecklist,
+  OnboardingStepId,
+  OnboardingStepStatus,
+  OnboardingState,
+  OnboardingUpdateInput,
   RecipeCreateInput,
   RecipeUpdateInput,
-  ResetDatasetSummary
+  RestaurantProfile,
+  RestaurantProfileUpdateInput,
+  ResetDatasetSummary,
+  SupplierCreateInput,
+  SupplierUpdateInput
 } from "./store/types.js";
 
 interface StoredInvoiceRecord {
@@ -90,6 +99,8 @@ interface DatasetSession {
   invoiceCounter: number;
   ocrJobs: Map<string, StoredOcrJobRecord>;
   ocrJobCounter: number;
+  onboardingState: OnboardingState;
+  restaurantProfile: RestaurantProfile;
   baseline: DatasetExportPayload;
 }
 
@@ -107,6 +118,28 @@ const defaultMemoryStorageInfo = {
   writable: true,
   persistenceWarning: "This build uses memory storage. Restarting the API resets data."
 } as const;
+
+const onboardingSteps: OnboardingStepId[] = [
+  "restaurant_profile",
+  "ingredients",
+  "recipes",
+  "dishes",
+  "suppliers",
+  "first_invoice",
+  "dashboard_review"
+];
+
+const onboardingStepLabels: Record<OnboardingStepId, string> = {
+  restaurant_profile: "Restaurant profile",
+  ingredients: "Ingredients",
+  recipes: "Recipes",
+  dishes: "Dishes",
+  suppliers: "Suppliers",
+  first_invoice: "First invoice",
+  dashboard_review: "Dashboard review"
+};
+
+const deterministicOnboardingCreatedAt = "2026-04-30T00:00:00.000Z";
 
 function toDatasetSummary(dataset: DemoDatasetDefinition): DemoDatasetSummary {
   return {
@@ -205,6 +238,8 @@ function createDatasetSession(
     invoiceCounter: 0,
     ocrJobs: new Map<string, StoredOcrJobRecord>(),
     ocrJobCounter: 0,
+    onboardingState: createOnboardingState(dataset.id),
+    restaurantProfile: createRestaurantProfile(dataset),
     baseline: {} as DatasetExportPayload
   };
 
@@ -240,6 +275,208 @@ function createUniqueId(prefix: string, name: string, existingIds: Set<string>) 
   }
 
   return candidate;
+}
+
+function buildWorkspaceId(datasetId: string) {
+  return `workspace-${datasetId}`;
+}
+
+function uniqueOnboardingSteps(steps: OnboardingStepId[] | undefined) {
+  return onboardingSteps.filter((step) => steps?.includes(step));
+}
+
+function calculateOnboardingProgress(completedSteps: OnboardingStepId[], skippedSteps: OnboardingStepId[]) {
+  const done = new Set([...completedSteps, ...skippedSteps]);
+  return Math.round((done.size / onboardingSteps.length) * 100);
+}
+
+function createOnboardingState(datasetId: string): OnboardingState {
+  return {
+    workspaceId: buildWorkspaceId(datasetId),
+    restaurantId: datasetId,
+    currentStep: "restaurant_profile",
+    completedSteps: [],
+    skippedSteps: [],
+    progressPercent: 0,
+    createdAt: deterministicOnboardingCreatedAt,
+    updatedAt: deterministicOnboardingCreatedAt
+  };
+}
+
+function normalizeOnboardingState(datasetId: string, state?: OnboardingState): OnboardingState {
+  const completedSteps = uniqueOnboardingSteps(state?.completedSteps);
+  const skippedSteps = uniqueOnboardingSteps(state?.skippedSteps).filter(
+    (step) => !completedSteps.includes(step)
+  );
+  const currentStep =
+    state?.currentStep && onboardingSteps.includes(state.currentStep)
+      ? state.currentStep
+      : onboardingSteps.find((step) => !completedSteps.includes(step) && !skippedSteps.includes(step)) ??
+        "dashboard_review";
+
+  return {
+    workspaceId: buildWorkspaceId(datasetId),
+    restaurantId: datasetId,
+    currentStep,
+    completedSteps,
+    skippedSteps,
+    progressPercent: calculateOnboardingProgress(completedSteps, skippedSteps),
+    createdAt: state?.createdAt ?? deterministicOnboardingCreatedAt,
+    updatedAt: state?.updatedAt ?? deterministicOnboardingCreatedAt
+  };
+}
+
+function createRestaurantProfile(dataset: DemoDatasetDefinition, profile?: RestaurantProfile): RestaurantProfile {
+  return {
+    workspaceId: buildWorkspaceId(dataset.id),
+    restaurantId: dataset.id,
+    name: profile?.name?.trim() || dataset.name,
+    currency: profile?.currency?.trim() || "EUR",
+    country: profile?.country,
+    concept: profile?.concept,
+    averageMonthlyDishSalesEstimate: profile?.averageMonthlyDishSalesEstimate,
+    updatedAt: profile?.updatedAt ?? deterministicOnboardingCreatedAt
+  };
+}
+
+function buildOnboardingChecklist(session: DatasetSession): OnboardingChecklist {
+  const confirmedInvoiceCount = [...session.invoices.values()].filter((record) => record.confirmedInvoice).length;
+  const dashboardReady = session.ingredients.length >= 5 && session.recipes.length >= 2 && session.dishes.length >= 2;
+  const state = session.onboardingState;
+  const statusFor = (step: OnboardingStepId, condition: boolean): "not_started" | "in_progress" | "complete" | "skipped" => {
+    if (state.completedSteps.includes(step) || condition) {
+      return "complete";
+    }
+
+    if (state.skippedSteps.includes(step)) {
+      return "skipped";
+    }
+
+    return state.currentStep === step ? "in_progress" : "not_started";
+  };
+
+  const createItem = (
+    step: OnboardingStepId,
+    label: string,
+    status: OnboardingStepStatus,
+    required: boolean,
+    detail: string,
+    message: string,
+    count?: number,
+    minimum?: number
+  ): OnboardingChecklist["items"][number] => ({
+    id: step,
+    step,
+    label,
+    status,
+    complete: status === "complete" || status === "skipped",
+    required,
+    detail,
+    message,
+    count,
+    minimum
+  });
+
+  const items = [
+    createItem(
+      "restaurant_profile",
+      onboardingStepLabels.restaurant_profile,
+      statusFor("restaurant_profile", session.restaurantProfile.name.trim().length > 0),
+      true,
+      session.restaurantProfile.name,
+      session.restaurantProfile.name.trim().length > 0
+        ? "Restaurant profile is saved."
+        : "Save the restaurant name and operating basics."
+    ),
+    createItem(
+      "ingredients",
+      onboardingStepLabels.ingredients,
+      statusFor("ingredients", session.ingredients.length >= 5),
+      true,
+      `${session.ingredients.length} ingredients`,
+      session.ingredients.length >= 5
+        ? "Enough key ingredients exist for first margin calculations."
+        : "Add at least 5 key ingredients to start useful dish costing.",
+      session.ingredients.length,
+      5
+    ),
+    createItem(
+      "recipes",
+      onboardingStepLabels.recipes,
+      statusFor("recipes", session.recipes.length >= 2),
+      true,
+      `${session.recipes.length} recipes`,
+      session.recipes.length >= 2
+        ? "Recipe setup is ready for initial dish costing."
+        : "Create at least 2 recipes that connect ingredients to dishes.",
+      session.recipes.length,
+      2
+    ),
+    createItem(
+      "dishes",
+      onboardingStepLabels.dishes,
+      statusFor("dishes", session.dishes.length >= 2),
+      true,
+      `${session.dishes.length} dishes`,
+      session.dishes.length >= 2
+        ? "Dish setup can feed dashboard and simulator views."
+        : "Add at least 2 priced dishes linked to recipes.",
+      session.dishes.length,
+      2
+    ),
+    createItem(
+      "suppliers",
+      onboardingStepLabels.suppliers,
+      statusFor("suppliers", session.suppliers.length >= 1),
+      false,
+      `${session.suppliers.length} suppliers`,
+      session.suppliers.length >= 1
+        ? "Supplier setup is ready for invoice cost intake."
+        : "Add at least one supplier for invoice cost updates and alerts.",
+      session.suppliers.length,
+      1
+    ),
+    createItem(
+      "first_invoice",
+      onboardingStepLabels.first_invoice,
+      statusFor("first_invoice", confirmedInvoiceCount >= 1),
+      false,
+      `${confirmedInvoiceCount} confirmed invoices`,
+      confirmedInvoiceCount >= 1
+        ? "First invoice has been confirmed through review-confirm."
+        : "Confirm a first invoice or skip this step for menu-only setup.",
+      confirmedInvoiceCount,
+      1
+    ),
+    createItem(
+      "dashboard_review",
+      onboardingStepLabels.dashboard_review,
+      statusFor("dashboard_review", dashboardReady && session.alerts.length + session.dishes.length > 0),
+      true,
+      dashboardReady ? "Dashboard has enough menu data" : "Needs minimum setup data",
+      dashboardReady
+        ? "Dashboard can compute first useful actions."
+        : "Complete the minimum menu setup before dashboard review."
+    )
+  ];
+  const completed = items.filter((item) => item.status === "complete" || item.status === "skipped").length;
+
+  return {
+    workspaceId: state.workspaceId,
+    restaurantId: state.restaurantId,
+    progressPercent: Math.round((completed / onboardingSteps.length) * 100),
+    minimumUsefulDataReady: dashboardReady,
+    dashboardReady,
+    items,
+    summary: {
+      ingredientCount: session.ingredients.length,
+      recipeCount: session.recipes.length,
+      dishCount: session.dishes.length,
+      supplierCount: session.suppliers.length,
+      confirmedInvoiceCount,
+      alertCount: session.alerts.length
+    }
+  };
 }
 
 function serializeDatasetSession(
@@ -283,7 +520,9 @@ function serializeDatasetSession(
             warnings: [...record.job.qualityReport.warnings]
           }
         : undefined
-    }))
+    })),
+    onboardingState: { ...session.onboardingState },
+    restaurantProfile: { ...session.restaurantProfile }
   };
 }
 
@@ -387,6 +626,8 @@ function createSessionFromExportPayload(
     invoiceCounter: imported.invoices.length,
     ocrJobs,
     ocrJobCounter: imported.ocrJobs.length,
+    onboardingState: normalizeOnboardingState(targetDatasetId, imported.onboardingState),
+    restaurantProfile: createRestaurantProfile(dataset, imported.restaurantProfile),
     baseline: {} as DatasetExportPayload
   };
 
@@ -575,6 +816,159 @@ export function createDataStore(options: CreateDataStoreOptions = {}): AppStore 
     },
     getSuppliers(datasetId?: string) {
       return getSession(datasetId)?.suppliers ?? null;
+    },
+    createSupplier(input: SupplierCreateInput, datasetId?: string) {
+      const session = getSession(datasetId);
+
+      if (!session) {
+        return null;
+      }
+
+      const normalizedName = normalizeName(input.name);
+      if (!normalizedName) {
+        return undefined;
+      }
+
+      const existingIds = new Set(session.suppliers.map((supplier) => supplier.id));
+      const supplier: Supplier = {
+        id: input.id && !existingIds.has(input.id)
+          ? input.id
+          : createUniqueId("supplier", input.name, existingIds),
+        restaurantId: session.dataset.id,
+        name: input.name.trim(),
+        normalizedName,
+        contactLabel: input.contactLabel?.trim() || undefined,
+        createdAt: "2026-04-01T00:00:00.000Z"
+      };
+
+      session.suppliers = [...session.suppliers, supplier];
+      return supplier;
+    },
+    updateSupplier(supplierId: string, input: SupplierUpdateInput, datasetId?: string) {
+      const session = getSession(datasetId);
+
+      if (!session) {
+        return null;
+      }
+
+      const currentSupplier = session.suppliers.find((supplier) => supplier.id === supplierId);
+      if (!currentSupplier) {
+        return undefined;
+      }
+
+      const nextName = input.name?.trim() || currentSupplier.name;
+      const supplier: Supplier = {
+        ...currentSupplier,
+        name: nextName,
+        normalizedName: normalizeName(nextName),
+        contactLabel:
+          input.contactLabel === undefined
+            ? currentSupplier.contactLabel
+            : input.contactLabel.trim() || undefined
+      };
+
+      session.suppliers = session.suppliers.map((candidate) =>
+        candidate.id === supplierId ? supplier : candidate
+      );
+      return supplier;
+    },
+    getRestaurantProfile(datasetId?: string) {
+      const session = getSession(datasetId);
+      return session ? { ...session.restaurantProfile } : null;
+    },
+    updateRestaurantProfile(input: RestaurantProfileUpdateInput, datasetId?: string) {
+      const session = getSession(datasetId);
+
+      if (!session) {
+        return null;
+      }
+
+      const nextProfile: RestaurantProfile = {
+        ...session.restaurantProfile,
+        name: input.name?.trim() || session.restaurantProfile.name,
+        currency: input.currency?.trim() || session.restaurantProfile.currency,
+        country: input.country === undefined ? session.restaurantProfile.country : input.country.trim() || undefined,
+        concept: input.concept === undefined ? session.restaurantProfile.concept : input.concept.trim() || undefined,
+        averageMonthlyDishSalesEstimate:
+          input.averageMonthlyDishSalesEstimate ?? session.restaurantProfile.averageMonthlyDishSalesEstimate,
+        updatedAt: deterministicOnboardingCreatedAt
+      };
+
+      session.restaurantProfile = nextProfile;
+      session.dataset = {
+        ...session.dataset,
+        name: nextProfile.name
+      };
+
+      return { ...nextProfile };
+    },
+    getOnboardingState(datasetId?: string) {
+      const session = getSession(datasetId);
+      return session ? { ...session.onboardingState } : null;
+    },
+    updateOnboardingState(input: OnboardingUpdateInput, datasetId?: string) {
+      const session = getSession(datasetId);
+
+      if (!session) {
+        return null;
+      }
+
+      const completedSteps = uniqueOnboardingSteps(input.completedSteps ?? session.onboardingState.completedSteps);
+      const skippedSteps = uniqueOnboardingSteps(input.skippedSteps ?? session.onboardingState.skippedSteps).filter(
+        (step) => !completedSteps.includes(step)
+      );
+      const currentStep =
+        input.currentStep && onboardingSteps.includes(input.currentStep)
+          ? input.currentStep
+          : session.onboardingState.currentStep;
+
+      session.onboardingState = normalizeOnboardingState(session.dataset.id, {
+        ...session.onboardingState,
+        currentStep,
+        completedSteps,
+        skippedSteps,
+        updatedAt: deterministicOnboardingCreatedAt
+      });
+
+      return { ...session.onboardingState };
+    },
+    completeOnboardingStep(step: OnboardingStepId, datasetId?: string) {
+      const session = getSession(datasetId);
+
+      if (!session) {
+        return null;
+      }
+
+      if (!onboardingSteps.includes(step)) {
+        return null;
+      }
+
+      const completedSteps = uniqueOnboardingSteps([...session.onboardingState.completedSteps, step]);
+      const skippedSteps = session.onboardingState.skippedSteps.filter((candidate) => candidate !== step);
+      const currentStep = onboardingSteps.find((candidate) => !completedSteps.includes(candidate) && !skippedSteps.includes(candidate)) ?? step;
+
+      return this.updateOnboardingState({ currentStep, completedSteps, skippedSteps }, session.dataset.id);
+    },
+    skipOnboardingStep(step: OnboardingStepId, datasetId?: string) {
+      const session = getSession(datasetId);
+
+      if (!session) {
+        return null;
+      }
+
+      if (!onboardingSteps.includes(step)) {
+        return null;
+      }
+
+      const completedSteps = session.onboardingState.completedSteps.filter((candidate) => candidate !== step);
+      const skippedSteps = uniqueOnboardingSteps([...session.onboardingState.skippedSteps, step]);
+      const currentStep = onboardingSteps.find((candidate) => !completedSteps.includes(candidate) && !skippedSteps.includes(candidate)) ?? step;
+
+      return this.updateOnboardingState({ currentStep, completedSteps, skippedSteps }, session.dataset.id);
+    },
+    getOnboardingChecklist(datasetId?: string) {
+      const session = getSession(datasetId);
+      return session ? buildOnboardingChecklist(session) : null;
     },
     getCalculatedDishes(datasetId?: string): CalculatedDish[] | null {
       return getAnalyticsSnapshot(datasetId)?.calculatedDishes ?? null;

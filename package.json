@@ -23,6 +23,7 @@
     "validate:runtime": "tsx scripts/validateRuntime.ts",
     "validate:production-readiness": "tsx scripts/validateProductionReadiness.ts",
     "validate:mobile": "tsx scripts/validateMobile.ts",
+    "validate:onboarding": "tsx scripts/validateOnboarding.ts",
     "db:generate": "npm run db:generate -w @profit-analyzer/api",
     "db:migrate": "npm run db:migrate -w @profit-analyzer/api",
     "db:seed": "npm run db:seed -w @profit-analyzer/api",

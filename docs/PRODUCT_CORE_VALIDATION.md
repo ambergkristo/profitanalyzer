@@ -13,6 +13,7 @@ Validated now:
 - controlled pilot package behavior
 - environment validation
 - file-store persistence behavior
+- mobile-first onboarding API and UI smoke behavior
 
 ## Readiness Shift
 
@@ -56,6 +57,18 @@ Phase 14 introduces:
 - mobile invoice/dashboard/dish-detail smoke checks
 - deterministic production-readiness reports that still keep `productionReady=false`
 
+## What Phase 15 Adds To Validation
+
+Phase 15 introduces:
+
+- `validate:onboarding`
+- onboarding status and checklist endpoint validation
+- restaurant profile setup validation
+- ingredient, recipe, dish, and supplier setup validation
+- owner/admin mutation and member denial checks for setup flow
+- onboarding export safety checks
+- expanded `validate:mobile` coverage for onboarding wizard, recipe builder, supplier setup, and first invoice step
+
 ## Production SaaS Validation Gates
 
 Production SaaS readiness now requires:
@@ -78,6 +91,7 @@ Production SaaS readiness now requires:
 - production backup and restore maturity
 - live OCR accuracy on real restaurant invoices
 - full mobile browser coverage for the invoice flow
+- real restaurant onboarding time and data cleanup burden
 - willingness to pay
 - retention
 - real restaurant onboarding effort

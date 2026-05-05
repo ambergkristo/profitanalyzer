@@ -13,36 +13,37 @@ Current roadmap:
 - Phase 12 - Database + Multi-Tenant Data Model - partial / architectural pass
 - Phase 13 - Auth + Workspace Access Control - complete as auth foundation
 - Phase 14 - Production Deployment + Observability - complete as deployment and observability foundation
-- Phase 15 - Mobile-First Restaurant Onboarding - start now
+- Phase 15 - Mobile-First Restaurant Onboarding - complete as onboarding foundation
+- Phase 16 - Production Invoice/OCR Pipeline - start next
 
 Sprint name:
-`PHASE 15 - Mobile-First Restaurant Onboarding`
+`PHASE 16 - Production Invoice/OCR Pipeline`
 
 Primary goal:
-Make a real restaurant able to onboard from mobile or desktop without founder hand-holding, while preserving the current premium UI direction and OCR safety rules.
+Make the invoice and OCR workflow production-safe without allowing blind import or weakening review-confirm.
 
 Requirements:
-- add a mobile-first onboarding wizard
-- support restaurant profile setup
-- support ingredient setup
-- support recipe builder
-- support dish builder
-- support supplier setup
-- keep invoice upload/review mobile-first
-- add a setup checklist
-- avoid desktop-only critical paths
-- preserve clean premium UI
-- keep OCR draft-only review-confirm safety unchanged
+- design and implement a production-safe upload storage strategy
+- persist OCR job metadata through the store boundary
+- keep uploaded file contents out of memory/file exports unless explicitly safe
+- add private benchmark workflow for realistic invoice samples
+- add expected JSON comparison and review-burden scoring
+- add confidence thresholds and quality reporting
+- make provider errors safe and observable
+- add review-confirm audit log coverage
+- preserve mobile-first photo/upload and review flow
+- prove no OCR path can mutate ingredient costs before review-confirm
 
 Important:
-- do not add billing yet
+- do not add billing
 - do not add POS integration
 - do not add accounting
 - do not add inventory management
 - do not add supplier API sync
 - do not weaken review-confirm
 - do not allow blind OCR import
-- do not introduce generic SaaS clutter
+- do not require external OCR credentials for normal validation
+- do not claim production SaaS readiness yet
 
 Validation:
 
@@ -64,14 +65,13 @@ npm run validate:auth
 npm run validate:runtime
 npm run validate:production-readiness
 npm run validate:mobile
+npm run validate:onboarding
 npm audit
 ```
 
-If benchmark or audit commands exist, run them too.
-
 Git:
 
-- commit with: `feat: add mobile-first onboarding foundation`
+- commit with: `feat: harden production invoice ocr pipeline`
 - push to `origin/main`
 - verify:
 
@@ -83,13 +83,11 @@ git rev-parse origin/main
 
 Final report must include:
 
-- onboarding flow summary
-- mobile readiness summary
-- setup-tool coverage
-- validation status
+- invoice/OCR production-safety summary
+- storage strategy
+- benchmark status
+- mobile invoice status
+- OCR safety confirmation
 - validation results
-- current branch
-- remote origin URL
 - latest commit
-- origin/main hash
-- whether `HEAD == origin/main`
+- `HEAD == origin/main`

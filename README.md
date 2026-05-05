@@ -11,6 +11,7 @@ RM1-RM9 are complete as a controlled pilot and founding-partner foundation. The 
 - Phase 12: partial, with database and multi-tenant foundation in place
 - Phase 13: complete as auth and workspace access foundation
 - Phase 14: complete as deployment and observability foundation
+- Phase 15: complete as mobile-first onboarding foundation
 - production SaaS readiness: `false`
 - OCR safety boundary: unchanged
 
@@ -25,7 +26,8 @@ The current product already includes:
 - Prisma/Postgres-oriented database layer
 - auth/session foundation with workspace roles
 - deployment profile, readiness checks, and runtime validation
-- mobile-friendly invoice review flow
+- mobile-first restaurant onboarding and invoice review flow
+- onboarding checklist for profile, ingredients, recipes, dishes, suppliers, first invoice, and dashboard review
 
 ## Safety Rules
 
@@ -114,6 +116,7 @@ npm run validate:auth
 npm run validate:runtime
 npm run validate:production-readiness
 npm run validate:mobile
+npm run validate:onboarding
 npm audit
 ```
 
@@ -175,6 +178,13 @@ Local URLs:
 - `GET /api/auth/me`
 - `POST /api/auth/logout`
 - `POST /api/auth/context`
+- `GET /api/restaurant/profile`
+- `PATCH /api/restaurant/profile`
+- `GET /api/onboarding/status`
+- `PATCH /api/onboarding/status`
+- `POST /api/onboarding/complete-step`
+- `POST /api/onboarding/skip-step`
+- `GET /api/onboarding/checklist`
 - `GET /api/export`
 - `POST /api/import/validate`
 - `POST /api/import`
@@ -209,6 +219,19 @@ Local URLs:
 - runtime validation and production-readiness reporting
 - mobile readiness documentation and smoke checks
 - deployment and production runbooks
+
+## What Phase 15 Added
+
+- mobile-first onboarding wizard at `/onboarding`
+- restaurant profile setup
+- ingredient setup cards
+- touch-friendly recipe builder
+- dish builder linked to recipes
+- supplier setup
+- first-invoice step that routes through the existing invoice intake and review-confirm safety boundary
+- dashboard review/completion step
+- `npm run validate:onboarding`
+- expanded `npm run validate:mobile` coverage for onboarding
 
 ## What Is Still Not Claimed
 

@@ -307,6 +307,54 @@ export function createFileStore(options: FileStoreOptions): AppStore {
       }
       return dish;
     },
+    createSupplier(input, datasetId) {
+      const supplier = baseStore.createSupplier(input, datasetId);
+      const resolvedDatasetId = resolveDatasetId(datasetId);
+      if (supplier && resolvedDatasetId) {
+        persistDatasetFromStore(resolvedDatasetId);
+      }
+      return supplier;
+    },
+    updateSupplier(supplierId, input, datasetId) {
+      const supplier = baseStore.updateSupplier(supplierId, input, datasetId);
+      const resolvedDatasetId = resolveDatasetId(datasetId);
+      if (supplier && resolvedDatasetId) {
+        persistDatasetFromStore(resolvedDatasetId);
+      }
+      return supplier;
+    },
+    updateRestaurantProfile(input, datasetId) {
+      const profile = baseStore.updateRestaurantProfile(input, datasetId);
+      const resolvedDatasetId = resolveDatasetId(datasetId);
+      if (profile && resolvedDatasetId) {
+        persistDatasetFromStore(resolvedDatasetId);
+      }
+      return profile;
+    },
+    updateOnboardingState(input, datasetId) {
+      const state = baseStore.updateOnboardingState(input, datasetId);
+      const resolvedDatasetId = resolveDatasetId(datasetId);
+      if (state && resolvedDatasetId) {
+        persistDatasetFromStore(resolvedDatasetId);
+      }
+      return state;
+    },
+    completeOnboardingStep(step, datasetId) {
+      const state = baseStore.completeOnboardingStep(step, datasetId);
+      const resolvedDatasetId = resolveDatasetId(datasetId);
+      if (state && resolvedDatasetId) {
+        persistDatasetFromStore(resolvedDatasetId);
+      }
+      return state;
+    },
+    skipOnboardingStep(step, datasetId) {
+      const state = baseStore.skipOnboardingStep(step, datasetId);
+      const resolvedDatasetId = resolveDatasetId(datasetId);
+      if (state && resolvedDatasetId) {
+        persistDatasetFromStore(resolvedDatasetId);
+      }
+      return state;
+    },
     confirmInvoice(invoiceId, datasetId, input) {
       const result = baseStore.confirmInvoice(invoiceId, datasetId, input);
       const resolvedDatasetId = resolveDatasetId(datasetId);

@@ -18,7 +18,14 @@ import {
   type SupplierProductMatch
 } from "../../../../packages/core/src/index.js";
 import { createDataStore } from "../data.js";
-import type { AppMode, DatasetExportPayload, StorageInfo, StoreContext } from "./types.js";
+import type {
+  AppMode,
+  DatasetExportPayload,
+  OnboardingState,
+  RestaurantProfile,
+  StorageInfo,
+  StoreContext
+} from "./types.js";
 import { createPilotWorkspaceDefinition } from "./seedStore.js";
 
 const defaultUserId = "default-owner-user";
@@ -385,7 +392,9 @@ function exportRestaurantDataset(
     costHistory: mapCostHistory(restaurant.costHistory),
     alerts,
     invoices: buildInvoiceViews(restaurant.invoices, alerts, ocrJobs),
-    ocrJobs
+    ocrJobs,
+    onboardingState: cloneJson<OnboardingState>(restaurant.onboardingStateJson),
+    restaurantProfile: cloneJson<RestaurantProfile>(restaurant.restaurantProfileJson)
   };
 
   const baseline = cloneJson<DatasetExportPayload>(restaurant.baselineSnapshotJson) ?? current;
@@ -453,7 +462,9 @@ async function replaceRestaurantDataset(
       name: payload.dataset.name,
       currency: "EUR",
       datasetMetaJson: toInputJson(buildDatasetMeta(payload.dataset)),
-      baselineSnapshotJson: toInputJson(baselinePayload)
+      baselineSnapshotJson: toInputJson(baselinePayload),
+      onboardingStateJson: toInputJson(payload.onboardingState),
+      restaurantProfileJson: toInputJson(payload.restaurantProfile)
     },
     create: {
       id: restaurantId,
@@ -461,7 +472,9 @@ async function replaceRestaurantDataset(
       name: payload.dataset.name,
       currency: "EUR",
       datasetMetaJson: toInputJson(buildDatasetMeta(payload.dataset)),
-      baselineSnapshotJson: toInputJson(baselinePayload)
+      baselineSnapshotJson: toInputJson(baselinePayload),
+      onboardingStateJson: toInputJson(payload.onboardingState),
+      restaurantProfileJson: toInputJson(payload.restaurantProfile)
     }
   });
 

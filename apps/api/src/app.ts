@@ -42,7 +42,7 @@ import {
 } from "./store/exportImport.js";
 import { getCorsOrigin, getNodeEnv } from "./runtime/profile.js";
 import { normalizeRecipeIngredientEntries } from "./store/validation.js";
-import type { AppStore } from "./store/types.js";
+import type { AppStore, OnboardingStepId } from "./store/types.js";
 import type { AuthService } from "./auth/service.js";
 
 function isPositivePrice(value: unknown): value is number {
@@ -118,6 +118,21 @@ function isIngredientUnit(value: unknown): value is IngredientUnit {
 
 function isNonEmptyString(value: unknown): value is string {
   return typeof value === "string" && value.trim().length > 0;
+}
+
+function isOnboardingStep(value: unknown): value is OnboardingStepId {
+  return (
+    typeof value === "string" &&
+    [
+      "restaurant_profile",
+      "ingredients",
+      "recipes",
+      "dishes",
+      "suppliers",
+      "first_invoice",
+      "dashboard_review"
+    ].includes(value)
+  );
 }
 
 function isFiniteNonNegative(value: unknown): value is number {
@@ -345,6 +360,190 @@ export function createApp(options: CreateAppOptions = {}) {
     response.json(ocrRegistry.getProviders());
   });
 
+  app.get("/api/restaurant/profile", memberAccess, (request, response) => {
+    const datasetId = parseDatasetId(request.query.dataset);
+    const dataset = resolveDatasetOrRespond(request, datasetId, response, dataStore);
+    if (!dataset) {
+      return;
+    }
+
+    response.json(dataStore.getRestaurantProfile(dataset.id));
+  });
+
+  app.patch("/api/restaurant/profile", adminAccess, async (request, response) => {
+    const body = request.body as {
+      dataset?: unknown;
+      name?: unknown;
+      currency?: unknown;
+      country?: unknown;
+      concept?: unknown;
+      averageMonthlyDishSalesEstimate?: unknown;
+    };
+    const datasetId = parseDatasetId(body.dataset ?? request.query.dataset);
+    const dataset = resolveDatasetOrRespond(request, datasetId, response, dataStore);
+    if (!dataset) {
+      return;
+    }
+
+    if (body.name !== undefined && !isNonEmptyString(body.name)) {
+      response.status(400).json({ message: "name must be a non-empty string." });
+      return;
+    }
+
+    if (body.currency !== undefined && !isNonEmptyString(body.currency)) {
+      response.status(400).json({ message: "currency must be a non-empty string." });
+      return;
+    }
+
+    if (
+      body.averageMonthlyDishSalesEstimate !== undefined &&
+      !isFiniteNonNegative(body.averageMonthlyDishSalesEstimate)
+    ) {
+      response.status(400).json({ message: "averageMonthlyDishSalesEstimate must be non-negative." });
+      return;
+    }
+
+    const profile = dataStore.updateRestaurantProfile(
+      {
+        name: typeof body.name === "string" ? body.name : undefined,
+        currency: typeof body.currency === "string" ? body.currency : undefined,
+        country: typeof body.country === "string" ? body.country : undefined,
+        concept: typeof body.concept === "string" ? body.concept : undefined,
+        averageMonthlyDishSalesEstimate:
+          typeof body.averageMonthlyDishSalesEstimate === "number"
+            ? body.averageMonthlyDishSalesEstimate
+            : undefined
+      },
+      dataset.id
+    );
+
+    if (!profile) {
+      response.status(404).json({ message: `Unknown dataset "${datasetId}".` });
+      return;
+    }
+
+    dataStore.completeOnboardingStep("restaurant_profile", dataset.id);
+    await dataStore.flushDatasetAsync(dataset.id);
+    await recordAudit(auditService, dataStore, request, dataset.id, "restaurant_profile_update", "restaurant", dataset.id, {
+      name: profile.name
+    });
+    response.json(profile);
+  });
+
+  app.get("/api/onboarding/status", memberAccess, (request, response) => {
+    const datasetId = parseDatasetId(request.query.dataset);
+    const dataset = resolveDatasetOrRespond(request, datasetId, response, dataStore);
+    if (!dataset) {
+      return;
+    }
+
+    response.json(dataStore.getOnboardingState(dataset.id));
+  });
+
+  app.patch("/api/onboarding/status", adminAccess, async (request, response) => {
+    const body = request.body as {
+      dataset?: unknown;
+      currentStep?: unknown;
+      completedSteps?: unknown;
+      skippedSteps?: unknown;
+    };
+    const datasetId = parseDatasetId(body.dataset ?? request.query.dataset);
+    const dataset = resolveDatasetOrRespond(request, datasetId, response, dataStore);
+    if (!dataset) {
+      return;
+    }
+
+    if (body.currentStep !== undefined && !isOnboardingStep(body.currentStep)) {
+      response.status(400).json({ message: "currentStep is invalid." });
+      return;
+    }
+
+    if (
+      (body.completedSteps !== undefined &&
+        (!Array.isArray(body.completedSteps) || body.completedSteps.some((step) => !isOnboardingStep(step)))) ||
+      (body.skippedSteps !== undefined &&
+        (!Array.isArray(body.skippedSteps) || body.skippedSteps.some((step) => !isOnboardingStep(step))))
+    ) {
+      response.status(400).json({ message: "completedSteps and skippedSteps must contain valid onboarding steps." });
+      return;
+    }
+
+    const state = dataStore.updateOnboardingState(
+      {
+        currentStep: body.currentStep,
+        completedSteps: body.completedSteps as OnboardingStepId[] | undefined,
+        skippedSteps: body.skippedSteps as OnboardingStepId[] | undefined
+      },
+      dataset.id
+    );
+
+    if (!state) {
+      response.status(404).json({ message: `Unknown dataset "${datasetId}".` });
+      return;
+    }
+
+    await dataStore.flushDatasetAsync(dataset.id);
+    response.json(state);
+  });
+
+  app.post("/api/onboarding/complete-step", adminAccess, async (request, response) => {
+    const body = request.body as { dataset?: unknown; step?: unknown };
+    const datasetId = parseDatasetId(body.dataset ?? request.query.dataset);
+    const dataset = resolveDatasetOrRespond(request, datasetId, response, dataStore);
+    if (!dataset) {
+      return;
+    }
+
+    if (!isOnboardingStep(body.step)) {
+      response.status(400).json({ message: "step is required." });
+      return;
+    }
+
+    const state = dataStore.completeOnboardingStep(body.step, dataset.id);
+    if (!state) {
+      response.status(404).json({ message: `Unknown dataset "${datasetId}".` });
+      return;
+    }
+
+    await dataStore.flushDatasetAsync(dataset.id);
+    await recordAudit(auditService, dataStore, request, dataset.id, "onboarding_complete_step", "onboarding", body.step);
+    response.json(state);
+  });
+
+  app.post("/api/onboarding/skip-step", adminAccess, async (request, response) => {
+    const body = request.body as { dataset?: unknown; step?: unknown };
+    const datasetId = parseDatasetId(body.dataset ?? request.query.dataset);
+    const dataset = resolveDatasetOrRespond(request, datasetId, response, dataStore);
+    if (!dataset) {
+      return;
+    }
+
+    if (!isOnboardingStep(body.step)) {
+      response.status(400).json({ message: "step is required." });
+      return;
+    }
+
+    const state = dataStore.skipOnboardingStep(body.step, dataset.id);
+    if (!state) {
+      response.status(404).json({ message: `Unknown dataset "${datasetId}".` });
+      return;
+    }
+
+    await dataStore.flushDatasetAsync(dataset.id);
+    await recordAudit(auditService, dataStore, request, dataset.id, "onboarding_skip_step", "onboarding", body.step);
+    response.json(state);
+  });
+
+  app.get("/api/onboarding/checklist", memberAccess, (request, response) => {
+    const datasetId = parseDatasetId(request.query.dataset);
+    const dataset = resolveDatasetOrRespond(request, datasetId, response, dataStore);
+    if (!dataset) {
+      return;
+    }
+
+    response.json(dataStore.getOnboardingChecklist(dataset.id));
+  });
+
   app.get("/api/ingredients", memberAccess, (request, response) => {
     const datasetId = parseDatasetId(request.query.dataset);
     const dataset = resolveDatasetOrRespond(request, datasetId, response, dataStore);
@@ -380,10 +579,21 @@ export function createApp(options: CreateAppOptions = {}) {
       return;
     }
 
+    const ingredientName = body.name.trim();
+    const existingIngredients = dataStore.getIngredients(dataset.id) ?? [];
+    if (
+      existingIngredients.some(
+        (ingredient) => ingredient.name.trim().toLowerCase() === ingredientName.toLowerCase()
+      )
+    ) {
+      response.status(409).json({ message: "Ingredient name already exists in this restaurant." });
+      return;
+    }
+
     const ingredient = dataStore.createIngredient(
       {
         id: typeof body.id === "string" ? body.id : undefined,
-        name: body.name,
+        name: ingredientName,
         costPerUnitCents: body.costPerUnitCents,
         unit: body.unit
       },
@@ -399,6 +609,10 @@ export function createApp(options: CreateAppOptions = {}) {
     await recordAudit(auditService, dataStore, request, dataset.id, "ingredient_create", "ingredient", ingredient.id, {
       name: ingredient.name
     });
+    if ((dataStore.getIngredients(dataset.id)?.length ?? 0) >= 5) {
+      dataStore.completeOnboardingStep("ingredients", dataset.id);
+      await dataStore.flushDatasetAsync(dataset.id);
+    }
     response.status(201).json(ingredient);
   });
 
@@ -584,6 +798,10 @@ export function createApp(options: CreateAppOptions = {}) {
     await recordAudit(auditService, dataStore, request, dataset.id, "recipe_create", "recipe", recipe.id, {
       name: recipe.name
     });
+    if ((dataStore.getRecipes(dataset.id)?.length ?? 0) >= 2) {
+      dataStore.completeOnboardingStep("recipes", dataset.id);
+      await dataStore.flushDatasetAsync(dataset.id);
+    }
     response.status(201).json(recipe);
   });
 
@@ -762,6 +980,10 @@ export function createApp(options: CreateAppOptions = {}) {
     await recordAudit(auditService, dataStore, request, dataset.id, "dish_create", "dish", dish.id, {
       name: dish.name
     });
+    if ((dataStore.getDishes(dataset.id)?.length ?? 0) >= 2) {
+      dataStore.completeOnboardingStep("dishes", dataset.id);
+      await dataStore.flushDatasetAsync(dataset.id);
+    }
     response.status(201).json(dish);
   });
 
@@ -851,6 +1073,93 @@ export function createApp(options: CreateAppOptions = {}) {
     }
 
     response.json(dataStore.getSuppliers(dataset.id));
+  });
+
+  app.post("/api/suppliers", adminAccess, async (request, response) => {
+    const body = request.body as { dataset?: unknown; id?: unknown; name?: unknown; contactLabel?: unknown };
+    const datasetId = parseDatasetId(body.dataset ?? request.query.dataset);
+    const dataset = resolveDatasetOrRespond(request, datasetId, response, dataStore);
+    if (!dataset) {
+      return;
+    }
+
+    if (!isNonEmptyString(body.name)) {
+      response.status(400).json({ message: "Supplier name is required." });
+      return;
+    }
+
+    const supplierName = body.name.trim();
+    const existingSuppliers = dataStore.getSuppliers(dataset.id) ?? [];
+    if (existingSuppliers.some((supplier) => supplier.name.trim().toLowerCase() === supplierName.toLowerCase())) {
+      response.status(409).json({ message: "Supplier name already exists in this restaurant." });
+      return;
+    }
+
+    const supplier = dataStore.createSupplier(
+      {
+        id: typeof body.id === "string" ? body.id : undefined,
+        name: supplierName,
+        contactLabel: typeof body.contactLabel === "string" ? body.contactLabel : undefined
+      },
+      dataset.id
+    );
+
+    if (!supplier) {
+      response.status(404).json({ message: `Unknown dataset "${datasetId}".` });
+      return;
+    }
+
+    dataStore.completeOnboardingStep("suppliers", dataset.id);
+    await dataStore.flushDatasetAsync(dataset.id);
+    await recordAudit(auditService, dataStore, request, dataset.id, "supplier_create", "supplier", supplier.id, {
+      name: supplier.name
+    });
+    response.status(201).json(supplier);
+  });
+
+  app.patch("/api/suppliers/:id", adminAccess, async (request, response) => {
+    const supplierId = getRouteParam(request.params.id);
+    const body = request.body as { dataset?: unknown; name?: unknown; contactLabel?: unknown };
+    const datasetId = parseDatasetId(body.dataset ?? request.query.dataset);
+    const dataset = resolveDatasetOrRespond(request, datasetId, response, dataStore);
+    if (!dataset) {
+      return;
+    }
+
+    if (!supplierId) {
+      response.status(400).json({ message: "Supplier id is required." });
+      return;
+    }
+
+    if (body.name !== undefined && !isNonEmptyString(body.name)) {
+      response.status(400).json({ message: "Supplier name must be a non-empty string." });
+      return;
+    }
+
+    const supplier = dataStore.updateSupplier(
+      supplierId,
+      {
+        name: typeof body.name === "string" ? body.name : undefined,
+        contactLabel: typeof body.contactLabel === "string" ? body.contactLabel : undefined
+      },
+      dataset.id
+    );
+
+    if (supplier === null) {
+      response.status(404).json({ message: `Unknown dataset "${datasetId}".` });
+      return;
+    }
+
+    if (supplier === undefined) {
+      response.status(404).json({ message: "Supplier not found." });
+      return;
+    }
+
+    await dataStore.flushDatasetAsync(dataset.id);
+    await recordAudit(auditService, dataStore, request, dataset.id, "supplier_update", "supplier", supplier.id, {
+      name: supplier.name
+    });
+    response.json(supplier);
   });
 
   app.get("/api/invoices/samples", (_request, response) => {
@@ -1190,6 +1499,8 @@ export function createApp(options: CreateAppOptions = {}) {
         return;
       }
 
+      await dataStore.flushDatasetAsync(dataset.id);
+      dataStore.completeOnboardingStep("first_invoice", dataset.id);
       await dataStore.flushDatasetAsync(dataset.id);
       await recordAudit(
         auditService,

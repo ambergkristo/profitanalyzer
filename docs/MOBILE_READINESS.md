@@ -19,6 +19,9 @@ The app must support:
 
 ## Current UI Expectations
 
+- onboarding uses compact step cards and mobile forms
+- restaurant profile, ingredients, recipes, dishes, suppliers, and first invoice setup must be usable on phone-sized screens
+- recipe setup uses line cards and large touch controls rather than a wide table
 - invoice review uses card-style rows, not a wide desktop-only table
 - unresolved lines stay visually obvious
 - touch targets for confirm, ignore, and ingredient selection remain usable
@@ -38,6 +41,12 @@ For the current web product:
 
 ## Mobile Smoke Checklist
 
+- onboarding wizard renders
+- ingredient setup cards render
+- recipe builder renders
+- dish builder renders
+- supplier setup renders
+- first invoice step links to invoice intake
 - invoice upload mode renders
 - invoice review-confirm CTA renders
 - invoice page does not depend on a desktop-only table
@@ -54,6 +63,8 @@ npm run validate:mobile
 
 Current validation is a smoke gate, not full browser automation.
 
+It now checks onboarding source/tests for mobile-first setup coverage in addition to invoice, dashboard, and dish-detail smoke coverage.
+
 ## Launch Blockers
 
 The product must not be called launch ready if:
@@ -63,3 +74,4 @@ The product must not be called launch ready if:
 - unresolved OCR lines are unreadable on mobile
 - dashboard/actions require horizontal scrolling to function
 - dish simulator cannot be used from a phone-sized viewport
+- onboarding setup requires desktop-only tables or tiny controls

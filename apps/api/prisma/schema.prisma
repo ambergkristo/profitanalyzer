@@ -125,6 +125,8 @@ model Restaurant {
   currency             String
   datasetMetaJson      Json?
   baselineSnapshotJson Json?
+  onboardingStateJson  Json?
+  restaurantProfileJson Json?
   createdAt            DateTime                @default(now())
   updatedAt            DateTime                @updatedAt
   workspace            Workspace               @relation(fields: [workspaceId], references: [id], onDelete: Cascade)

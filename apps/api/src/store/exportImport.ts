@@ -264,6 +264,8 @@ export function sanitizeImportedPayload(payload: DatasetExportPayload, targetDat
             warnings: [...job.qualityReport.warnings]
           }
         : undefined
-    }))
+    })),
+    onboardingState: payload.onboardingState ? { ...payload.onboardingState } : undefined,
+    restaurantProfile: payload.restaurantProfile ? { ...payload.restaurantProfile } : undefined
   };
 }
