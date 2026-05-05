@@ -32,6 +32,7 @@
 - upload storage abstraction with `memory` and `local_file`
 - OCR job retry/cancel lifecycle and confidence policy added
 - invoice pipeline validation command added
+- pricing plan, subscription/license, founding partner lifetime entitlement, usage counter, and billing provider seam added
 
 ## Missing For Production SaaS
 
@@ -42,7 +43,7 @@
 - monitoring and operational alerting
 - production backup and restore process beyond controlled export/import
 - privacy, legal, and security baseline
-- billing and license model
+- live payment provider, checkout, webhook handling, and production billing operations
 - full mobile browser validation for critical workflows
 - live OCR benchmark on realistic private invoice samples with configured provider
 - real restaurant onboarding rehearsal with messy customer data

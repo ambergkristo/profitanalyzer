@@ -16,6 +16,7 @@ function main() {
     console.log(`storeDriver=${result.profile.storeDriver}`);
     console.log(`uploadStorageDriver=${result.profile.uploadStorageDriver}`);
     console.log(`ocrProvider=${result.profile.ocrProvider}`);
+    console.log(`billingProvider=${result.profile.billingProvider}`);
     console.log(`authMode=${result.profile.authMode}`);
     console.log("production readiness blockers:");
     for (const blocker of result.blockers) {
@@ -46,6 +47,8 @@ function main() {
   console.log(`uploadStorageDriver=${result.profile.uploadStorageDriver}`);
   console.log(`uploadMaxFileSizeBytes=${result.profile.uploadMaxFileSizeBytes}`);
   console.log(`ocrProvider=${result.profile.ocrProvider}`);
+  console.log(`billingProvider=${result.profile.billingProvider}`);
+  console.log(`billingProviderConfigured=${result.profile.billingProviderConfigured}`);
   console.log(`authMode=${result.profile.authMode}`);
   console.log(
     result.warnings.length === 0

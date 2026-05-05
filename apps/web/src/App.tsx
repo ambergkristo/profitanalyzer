@@ -2,6 +2,7 @@ import { createBrowserRouter, RouterProvider } from "react-router-dom";
 
 import { Layout } from "./components/Layout.js";
 import { AlertsPage } from "./pages/Alerts.js";
+import { BillingPage } from "./pages/Billing.js";
 import { DashboardPage } from "./pages/Dashboard.js";
 import { DishDetailPage } from "./pages/DishDetail.js";
 import { DishesPage } from "./pages/Dishes.js";
@@ -25,6 +26,7 @@ const router = createBrowserRouter([
       { path: "dishes/:dishId", element: <DishDetailPage /> },
       { path: "invoices", element: <InvoicesPage /> },
       { path: "alerts", element: <AlertsPage /> },
+      { path: "billing", element: <BillingPage /> },
       { path: "pilot-tools", element: <PilotToolsPage /> }
     ]
   }

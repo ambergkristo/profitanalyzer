@@ -54,6 +54,13 @@ It should not be positioned as payment for praise.
 
 The lifetime access promise should ultimately be represented inside the license or subscription model, not left as an undocumented handshake.
 
+Phase 17 adds that representation:
+
+- founding partners use an explicit `founding_partner_lifetime` entitlement
+- the workspace subscription can resolve to `lifetime`
+- notes can record why access was granted
+- this still does not mean payment processing or public checkout is live
+
 ## Public Post And Case-Study Rules
 
 Public references must follow these rules:

@@ -107,7 +107,8 @@ The DB adapter is additive:
 - production-complete auth provider, invite flow, and hardened session lifecycle are not live
 - auth works today as a dev-session and RBAC foundation, not final customer identity
 - production deployment is documented, but not yet claimed as fully proven in a hosted environment
-- billing is not live
+- billing/license foundation exists with plans, workspace subscription state, lifetime entitlements, usage counters, and a provider seam
+- live payment processing, checkout, and webhook handling are not live
 - production object or file storage strategy is not finalized
 - monitoring and alerting are not live beyond the current logging and readiness foundation
 - backup and restore operations are not fully productionized

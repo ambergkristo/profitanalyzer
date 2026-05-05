@@ -6,6 +6,7 @@ import { describe, expect, it } from "vitest";
 
 import type {
   CalculatedDish,
+  BillingStatus,
   DemoDatasetSummary,
   DishAction,
   DishDetailAnalytics,
@@ -174,6 +175,55 @@ describe("api", () => {
         unit: "g"
       });
     expect(adminIngredient.status).toBe(201);
+  });
+
+  it("returns billing plans, status, and controlled manual licenses", async () => {
+    const app = buildApp();
+
+    const plansResponse = await request(app).get("/api/billing/plans");
+    expect(plansResponse.status).toBe(200);
+    expect((plansResponse.body as Array<{ code: string }>).map((plan) => plan.code)).toContain("founding_partner");
+
+    const statusResponse = await request(app).get("/api/billing/status?dataset=mixed-restaurant");
+    const statusBody = statusResponse.body as BillingStatus;
+    expect(statusResponse.status).toBe(200);
+    expect(statusBody.effectiveAccess.hasAccess).toBe(true);
+
+    const licenseResponse = await request(app)
+      .post("/api/billing/manual-license?dataset=mixed-restaurant")
+      .send({ type: "founding_partner_lifetime", notes: "API test grant." });
+    const licenseBody = licenseResponse.body as BillingStatus;
+    expect(licenseResponse.status).toBe(201);
+    expect(licenseBody.subscription.status).toBe("lifetime");
+    expect(
+      licenseBody.entitlements.some((entitlement) => entitlement.type === "founding_partner_lifetime")
+    ).toBe(true);
+    expect(JSON.stringify(licenseBody)).not.toContain("BILLING_PROVIDER_SECRET_KEY");
+  });
+
+  it("protects manual license grants by role in pilot mode", async () => {
+    const app = buildApp({
+      env: {
+        ...process.env,
+        APP_MODE: "pilot",
+        AUTH_MODE: "dev"
+      }
+    });
+
+    const memberToken = await login(app, "billing-member@example.com", "workspace-pilot-workspace", "member");
+    const ownerToken = await login(app, "billing-owner@example.com", "workspace-pilot-workspace", "owner");
+
+    const memberResponse = await request(app)
+      .post("/api/billing/manual-license?dataset=pilot-workspace")
+      .set("Authorization", `Bearer ${memberToken}`)
+      .send({ type: "manual_comp" });
+    expect(memberResponse.status).toBe(403);
+
+    const ownerResponse = await request(app)
+      .post("/api/billing/manual-license?dataset=pilot-workspace")
+      .set("Authorization", `Bearer ${ownerToken}`)
+      .send({ type: "manual_comp", notes: "Owner grant." });
+    expect(ownerResponse.status).toBe(201);
   });
 
   it("returns app config with demo defaults and memory persistence", async () => {

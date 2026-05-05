@@ -100,6 +100,7 @@ Production SaaS readiness now requires:
 - backup and export validation
 - security and privacy baseline
 - billing and license model validation
+- `validate:billing` proves plan seed, billing status, founding partner lifetime entitlement, trial status, usage counters, role protection, and secret-safe provider responses
 
 ## What Is Still Not Proven
 

@@ -1,5 +1,7 @@
 import type {
   AffectedDishImpact,
+  BillingProviderStatus,
+  BillingStatus,
   CalculatedDish,
   DemoDatasetDefinition,
   DemoDatasetSummary,
@@ -17,13 +19,18 @@ import type {
   OverviewMetrics,
   ParsedInvoiceDraft,
   PriceChangeAlert,
+  Plan,
+  LicenseEntitlement,
+  LicenseEntitlementType,
   PurchaseInvoice,
   PurchaseInvoiceLine,
   ReviewedInvoiceLineInput,
   StoredInvoiceView,
   Supplier,
   SupplierProductMatch,
-  UploadStorageObject
+  UsageCounter,
+  UploadStorageObject,
+  WorkspaceSubscription
 } from "../../../../packages/core/src/index.js";
 
 export type { UploadStorageObject } from "../../../../packages/core/src/index.js";
@@ -134,6 +141,10 @@ export interface DatasetExportPayload {
   ocrJobs: OcrInvoiceJob[];
   onboardingState?: OnboardingState;
   restaurantProfile?: RestaurantProfile;
+  plans?: Plan[];
+  subscription?: WorkspaceSubscription;
+  entitlements?: LicenseEntitlement[];
+  usage?: UsageCounter;
 }
 
 export interface ImportValidationSummary {
@@ -233,6 +244,12 @@ export interface OnboardingUpdateInput {
   skippedSteps?: OnboardingStepId[];
 }
 
+export interface ManualLicenseInput {
+  workspaceId?: string;
+  type: Extract<LicenseEntitlementType, "founding_partner_lifetime" | "manual_comp" | "internal_demo">;
+  notes?: string;
+}
+
 export interface AppStore {
   restaurantData: {
     ingredients: Ingredient[];
@@ -248,6 +265,11 @@ export interface AppStore {
   flushDatasetAsync(datasetId: string): Promise<boolean>;
   listDatasets(): DemoDatasetSummary[];
   getDemoDatasets(): DemoDatasetSummary[];
+  getBillingPlans(includeInternal?: boolean): Plan[];
+  getBillingStatus(datasetId?: string, providerStatus?: BillingProviderStatus): BillingStatus | null;
+  grantManualLicense(input: ManualLicenseInput, datasetId?: string): BillingStatus | null | undefined;
+  startTrial(datasetId?: string): BillingStatus | null;
+  getBillingUsage(datasetId?: string): UsageCounter | null;
   getMockInvoiceSampleSummaries(): MockInvoiceSampleSummary[];
   getAnalyticsInput(datasetId?: string): AnalyticsInputSnapshot | null;
   getIngredients(datasetId?: string): Ingredient[] | null;

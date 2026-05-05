@@ -25,6 +25,7 @@
     "validate:mobile": "tsx scripts/validateMobile.ts",
     "validate:onboarding": "tsx scripts/validateOnboarding.ts",
     "validate:invoice-pipeline": "tsx scripts/validateInvoicePipeline.ts",
+    "validate:billing": "tsx scripts/validateBilling.ts",
     "benchmark:ocr": "tsx scripts/benchmarkOcr.ts",
     "db:generate": "npm run db:generate -w @profit-analyzer/api",
     "db:migrate": "npm run db:migrate -w @profit-analyzer/api",

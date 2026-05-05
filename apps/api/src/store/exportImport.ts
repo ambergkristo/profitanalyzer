@@ -266,6 +266,10 @@ export function sanitizeImportedPayload(payload: DatasetExportPayload, targetDat
         : undefined
     })),
     onboardingState: payload.onboardingState ? { ...payload.onboardingState } : undefined,
-    restaurantProfile: payload.restaurantProfile ? { ...payload.restaurantProfile } : undefined
+    restaurantProfile: payload.restaurantProfile ? { ...payload.restaurantProfile } : undefined,
+    plans: payload.plans?.map((plan) => ({ ...plan, features: [...plan.features] })),
+    subscription: payload.subscription ? { ...payload.subscription } : undefined,
+    entitlements: payload.entitlements?.map((entitlement) => ({ ...entitlement })),
+    usage: payload.usage ? { ...payload.usage } : undefined
   };
 }

@@ -71,10 +71,14 @@
 
 ## Billing And License
 
-- [ ] pricing or plan structure
-- [ ] founding-partner lifetime license terms
-- [ ] billing seam or provider direction
-- [ ] subscription model readiness
+- [x] pricing or plan structure
+- [x] founding-partner lifetime license representation
+- [x] billing seam or provider direction
+- [x] subscription model foundation
+- [x] usage counter foundation
+- [ ] live payment provider
+- [ ] checkout and webhook handling
+- [ ] production billing operations
 
 ## Security, Privacy, Legal
 

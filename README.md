@@ -131,9 +131,23 @@ npm run validate:production-readiness
 npm run validate:mobile
 npm run validate:onboarding
 npm run validate:invoice-pipeline
+npm run validate:billing
 npm run benchmark:ocr
 npm audit
 ```
+
+## Billing And License Foundation
+
+Phase 17 adds a production-shaped billing model without live payment processing:
+
+- pricing plans for starter, pro, multi-location, founding partner, and internal demo use
+- workspace subscription and license status
+- explicit founding partner lifetime entitlements
+- usage counters for OCR uploads, invoice confirmations, users, and restaurants
+- billing provider seam with `none`, `manual`, and disabled `stripe_future`
+- `/billing` status page with no payment form or card collection
+
+Production SaaS readiness is still not claimed. Live checkout, webhooks, and payment operations remain future work.
 
 ## Database Commands
 

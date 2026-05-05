@@ -149,7 +149,7 @@ Run before any serious hosted environment:
 ## Known Gaps
 
 - production-complete auth is not live
-- billing is not live
+- billing/license foundation exists, but live payment processing, checkout, and webhook handling are not live
 - production backup flow is not fully implemented
 - full monitoring stack is not live
 - live OCR provider benchmark is not complete without configured provider env and private samples

@@ -41,6 +41,9 @@ The production target requires:
 - export and backup
 - error handling
 - deployability
+- pricing plan and workspace license model
+- founding partner lifetime access represented explicitly
+- billing status visibility without card collection until payment provider is live
 
 ## Core Functional Areas
 
@@ -69,6 +72,15 @@ The production target requires:
 - review-confirm workflow
 - cost history
 - auditability
+
+### Billing And License Layer
+
+- workspace plan status
+- active/trial/lifetime/internal access states
+- founding partner lifetime entitlement
+- usage counters for invoices, OCR uploads, users, and restaurants
+- billing provider seam with no live payment dependency yet
+- no payment form or card collection in the current foundation
 
 ## Mobile-First Invoice Requirement
 

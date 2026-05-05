@@ -122,7 +122,7 @@ This is not a full production backup strategy yet.
 ## Known Production Blockers
 
 - final production identity provider is not live
-- billing is not live
+- billing/license foundation exists, but live payment provider, checkout, and webhook operations are not live
 - legal/privacy launch gates are not complete
 - live OCR benchmark on real invoices is not complete
 - hosted object storage is not implemented

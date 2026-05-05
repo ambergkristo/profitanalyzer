@@ -1,5 +1,6 @@
 import type {
   AffectedDishImpact,
+  BillingStatus,
   CalculatedDish,
   CostDriverInsight,
   DemoDatasetSummary,
@@ -12,6 +13,7 @@ import type {
   IngredientCostHistory,
   IngredientCostHistoryView,
   IngredientCostBreakdown,
+  LicenseEntitlement,
   InvoiceConfirmationSummary,
   InvoiceUnit,
   ManualInvoiceDraftInput,
@@ -24,6 +26,7 @@ import type {
   OverviewMetrics,
   ParsedInvoiceDraft,
   PriceChangeAlert,
+  Plan,
   PriceSimulationResult,
   PurchaseInvoice,
   PurchaseInvoiceLine,
@@ -35,6 +38,7 @@ import type {
 
 export type {
   AffectedDishImpact,
+  BillingStatus,
   CalculatedDish,
   CostDriverInsight,
   DemoDatasetSummary,
@@ -47,6 +51,7 @@ export type {
   IngredientCostHistory,
   IngredientCostHistoryView,
   IngredientCostBreakdown,
+  LicenseEntitlement,
   InvoiceConfirmationSummary,
   InvoiceUnit,
   ManualInvoiceDraftInput,
@@ -59,6 +64,7 @@ export type {
   OverviewMetrics,
   ParsedInvoiceDraft,
   PriceChangeAlert,
+  Plan,
   PriceSimulationResult,
   PurchaseInvoice,
   PurchaseInvoiceLine,
@@ -216,6 +222,10 @@ export interface DatasetExportPayload {
   alerts: PriceChangeAlert[];
   invoices: StoredInvoiceView[];
   ocrJobs: OcrInvoiceJob[];
+  plans?: Plan[];
+  subscription?: BillingStatus["subscription"];
+  entitlements?: LicenseEntitlement[];
+  usage?: BillingStatus["usage"];
 }
 
 export interface ImportValidationSummary {

@@ -29,6 +29,104 @@ export interface Dish {
   salesVolume: number;
 }
 
+export type PlanCode = "starter" | "pro" | "multi_location" | "founding_partner" | "internal_demo";
+export type SubscriptionStatus =
+  | "trialing"
+  | "active"
+  | "past_due"
+  | "cancelled"
+  | "expired"
+  | "lifetime"
+  | "internal";
+export type BillingProviderId = "none" | "manual" | "stripe_future";
+export type LicenseEntitlementType =
+  | "founding_partner_lifetime"
+  | "internal_demo"
+  | "manual_comp"
+  | "paid_subscription"
+  | "trial";
+export type LicenseEntitlementStatus = "active" | "revoked" | "expired";
+
+export interface Plan {
+  id: string;
+  code: PlanCode;
+  name: string;
+  monthlyPriceCents: number;
+  currency: string;
+  includedRestaurants: number;
+  includedUsers: number;
+  includedInvoicesPerMonth?: number;
+  features: string[];
+  isPublic: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface WorkspaceSubscription {
+  id: string;
+  workspaceId: string;
+  planCode: PlanCode;
+  status: SubscriptionStatus;
+  billingProvider: BillingProviderId;
+  providerCustomerId?: string;
+  providerSubscriptionId?: string;
+  trialEndsAt?: string;
+  currentPeriodStart?: string;
+  currentPeriodEnd?: string;
+  lifetimeAccessReason?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface LicenseEntitlement {
+  id: string;
+  workspaceId: string;
+  type: LicenseEntitlementType;
+  status: LicenseEntitlementStatus;
+  startsAt: string;
+  endsAt?: string;
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface UsageCounter {
+  id: string;
+  workspaceId: string;
+  period: string;
+  invoicesProcessed: number;
+  ocrUploads: number;
+  usersCount: number;
+  restaurantsCount: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface BillingProviderStatus {
+  id: BillingProviderId;
+  displayName: string;
+  isConfigured: boolean;
+  mode: "none" | "manual" | "external_future";
+  supportsCheckout: boolean;
+  message: string;
+}
+
+export type EffectiveAccessStatus = "active" | "trialing" | "lifetime" | "internal" | "no_access";
+
+export interface BillingStatus {
+  workspaceId: string;
+  plan: Plan;
+  subscription: WorkspaceSubscription;
+  entitlements: LicenseEntitlement[];
+  usage: UsageCounter;
+  billingProviderStatus: BillingProviderStatus;
+  effectiveAccess: {
+    hasAccess: boolean;
+    status: EffectiveAccessStatus;
+    reason: string;
+  };
+}
+
 export type DishStatus = "loss" | "warning" | "profitable";
 
 export type CalculationWarningCode = "MISSING_INGREDIENT" | "UNIT_MISMATCH" | "INVALID_YIELD";

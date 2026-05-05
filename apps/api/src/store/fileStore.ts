@@ -363,6 +363,22 @@ export function createFileStore(options: FileStoreOptions): AppStore {
       }
       return state;
     },
+    grantManualLicense(input, datasetId) {
+      const status = baseStore.grantManualLicense(input, datasetId);
+      const resolvedDatasetId = resolveDatasetId(datasetId);
+      if (status && resolvedDatasetId) {
+        persistDatasetFromStore(resolvedDatasetId);
+      }
+      return status;
+    },
+    startTrial(datasetId) {
+      const status = baseStore.startTrial(datasetId);
+      const resolvedDatasetId = resolveDatasetId(datasetId);
+      if (status && resolvedDatasetId) {
+        persistDatasetFromStore(resolvedDatasetId);
+      }
+      return status;
+    },
     confirmInvoice(invoiceId, datasetId, input) {
       const result = baseStore.confirmInvoice(invoiceId, datasetId, input);
       const resolvedDatasetId = resolveDatasetId(datasetId);

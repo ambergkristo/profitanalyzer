@@ -9,6 +9,10 @@ Phase 12 introduces the first production-oriented SaaS data model behind the exi
 - `User`
 - `Workspace`
 - `WorkspaceMembership`
+- `Plan`
+- `WorkspaceSubscription`
+- `LicenseEntitlement`
+- `UsageCounter`
 - `AuthSession`
 - `Restaurant`
 

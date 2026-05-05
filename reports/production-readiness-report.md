@@ -16,7 +16,7 @@
 - invoicePipeline: partial - Upload storage abstraction, OCR job lifecycle metadata, confidence policy, benchmark workflow, and invoice pipeline validation exist; live provider accuracy and production object storage remain unproven.
 - mobileReadiness: partial - Mobile readiness is documented and smoke-checked, including mobile invoice upload/onboarding assumptions, but not fully browser-automated yet.
 - backupExport: partial - Dataset export/import exists, but full database backup strategy remains a deployment concern.
-- billingLicense: blocked - Billing and subscription/license infrastructure are not implemented.
+- billingLicense: partial - Pricing plans, workspace subscription/license state, founding partner lifetime entitlements, usage counters, and billing provider seam exist; live payment processing is intentionally not implemented.
 - securityPrivacyLegal: blocked - Security, privacy, and legal launch gates are not finalized.
 
 ## Blockers

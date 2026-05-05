@@ -1,0 +1,10 @@
+{
+  "pass": true,
+  "plans": "5 plans exposed; founding partner plan present",
+  "licenseModel": "effective access reason: Internal demo entitlement is active.",
+  "usageCounters": "ocrUploads=1; invoicesProcessed=1",
+  "providerSeam": "manual/none provider works; stripe_future remains disabled without env",
+  "accessControl": "member blocked from manual license grant; owner allowed",
+  "database": "SKIPPED_DATABASE_BILLING_VALIDATION because DATABASE_URL is not configured.",
+  "failures": []
+}

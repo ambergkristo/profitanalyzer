@@ -186,12 +186,26 @@ Prepare monetization and founding-partner lifetime access handling.
 
 ### Scope
 
-- plans
+- pricing plans
 - trial and founding-partner license model
-- billing provider seam
-- subscription status model
-- usage limits if needed
-- lifetime access terms
+- workspace subscription status model
+- manual/no-provider billing seam
+- future Stripe provider seam without live checkout
+- workspace usage counters
+- billing status UI
+- billing validation report
+- lifetime access terms represented as explicit entitlements
+
+### Current Status
+
+Phase 17 is complete as a billing/license foundation.
+
+Important limits:
+
+- no real payment processing
+- no card collection
+- no live checkout
+- production SaaS readiness is still not claimed
 
 ## PHASE 18 - Security, Privacy, Legal, and Launch Gate
 

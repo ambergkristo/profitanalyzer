@@ -6,6 +6,7 @@ export type RuntimeNodeEnv = "development" | "test" | "production";
 export type RuntimeCheckStatus = "pass" | "warn" | "fail" | "skipped";
 export type LogLevel = "debug" | "info" | "warn" | "error";
 export type OcrProviderId = "fixture" | "external_env" | "disabled";
+export type BillingProviderId = "none" | "manual" | "stripe_future";
 
 const allowedNodeEnvs = ["development", "test", "production"] as const;
 const allowedAppModes = ["demo", "pilot", "production"] as const;
@@ -14,6 +15,7 @@ const allowedStoreDrivers = ["memory", "file", "database"] as const;
 const allowedOcrProviders = ["fixture", "external_env", "disabled"] as const;
 const allowedLogLevels = ["debug", "info", "warn", "error"] as const;
 const allowedUploadStorageDrivers = ["memory", "local_file"] as const;
+const allowedBillingProviders = ["none", "manual", "stripe_future"] as const;
 const obviousPlaceholderValues = new Set([
   "",
   "changeme",
@@ -38,6 +40,8 @@ export interface RuntimeProfileSnapshot {
   ocrProvider: OcrProviderId;
   logLevel: LogLevel;
   uploadStorageDriver: "memory" | "local_file";
+  billingProvider: BillingProviderId;
+  billingProviderConfigured: boolean;
   uploadDataDirConfigured: boolean;
   uploadMaxFileSizeBytes: number;
   databaseConfigured: boolean;
@@ -156,6 +160,7 @@ export function validateEnvironmentProfile(input: {
     nodeEnv === "production" ? "info" : nodeEnv === "test" ? "warn" : "debug"
   );
   const rawUploadStorageDriver = normalizeEnvValue(environment.UPLOAD_STORAGE_DRIVER, "memory");
+  const rawBillingProvider = normalizeEnvValue(environment.BILLING_PROVIDER, "none");
   const uploadMaxFileSizeBytes = Number(environment.UPLOAD_MAX_FILE_SIZE_BYTES ?? 10 * 1024 * 1024);
 
   const checks: RuntimeCheck[] = [];
@@ -172,12 +177,20 @@ export function validateEnvironmentProfile(input: {
   const uploadStorageDriver = isAllowedValue(rawUploadStorageDriver, allowedUploadStorageDrivers)
     ? rawUploadStorageDriver
     : "memory";
+  const billingProvider = isAllowedValue(rawBillingProvider, allowedBillingProviders)
+    ? rawBillingProvider
+    : "none";
 
   const sessionSecretConfigured = isSessionSecretConfigured(environment);
   const appBaseUrlConfigured = isConfigured(environment.APP_BASE_URL);
   const apiBaseUrlConfigured = isConfigured(environment.API_BASE_URL);
   const corsOriginConfigured = isConfigured(environment.CORS_ORIGIN);
   const databaseConfigured = isConfigured(environment.DATABASE_URL);
+  const billingProviderConfigured =
+    billingProvider === "stripe_future"
+      ? isConfigured(environment.BILLING_PROVIDER_SECRET_KEY) &&
+        !isPlaceholderValue(environment.BILLING_PROVIDER_SECRET_KEY)
+      : true;
   const externalOcrConfigured =
     ocrProvider === "external_env"
       ? isConfigured(environment.OCR_PROVIDER_API_KEY) &&
@@ -195,6 +208,8 @@ export function validateEnvironmentProfile(input: {
     ocrProvider,
     logLevel,
     uploadStorageDriver,
+    billingProvider,
+    billingProviderConfigured,
     uploadDataDirConfigured: isConfigured(environment.UPLOAD_DATA_DIR),
     uploadMaxFileSizeBytes:
       Number.isFinite(uploadMaxFileSizeBytes) && uploadMaxFileSizeBytes > 0
@@ -274,6 +289,46 @@ export function validateEnvironmentProfile(input: {
     Number.isFinite(uploadMaxFileSizeBytes) && uploadMaxFileSizeBytes > 0
       ? `UPLOAD_MAX_FILE_SIZE_BYTES is ${Math.floor(uploadMaxFileSizeBytes)}.`
       : "UPLOAD_MAX_FILE_SIZE_BYTES must be a positive number."
+  );
+
+  pushCheck(
+    "billing_provider",
+    isAllowedValue(rawBillingProvider, allowedBillingProviders) ? "pass" : "fail",
+    isAllowedValue(rawBillingProvider, allowedBillingProviders)
+      ? `BILLING_PROVIDER is ${rawBillingProvider}.`
+      : `BILLING_PROVIDER must be one of: ${allowedBillingProviders.join(", ")}.`
+  );
+
+  pushCheck(
+    "billing_provider_config",
+    billingProvider === "stripe_future"
+      ? billingProviderConfigured
+        ? "warn"
+        : appMode === "production"
+          ? "fail"
+          : "warn"
+      : "pass",
+    billingProvider === "stripe_future"
+      ? billingProviderConfigured
+        ? "Stripe future provider env is present, but live checkout is intentionally not implemented."
+        : appMode === "production"
+          ? "BILLING_PROVIDER_SECRET_KEY is required when BILLING_PROVIDER=stripe_future in production mode."
+          : "Stripe future provider is selected but not configured; checkout remains disabled."
+      : `Billing provider ${billingProvider} does not require external credentials.`
+  );
+
+  pushCheck(
+    "billing_production",
+    appMode === "production"
+      ? billingProvider === "none" || billingProvider === "manual"
+        ? "warn"
+        : "warn"
+      : "skipped",
+    appMode === "production"
+      ? billingProvider === "none" || billingProvider === "manual"
+        ? "Production mode has no live payment provider; this is acceptable only before paid launch."
+        : "Production mode uses a future billing provider seam; live checkout is still not implemented."
+      : "Production billing rules are not required for this mode."
   );
 
   pushCheck(

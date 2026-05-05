@@ -11,6 +11,7 @@ import {
 } from "../../../packages/core/src/index.js";
 import { buildAppConfig, buildDeepHealth, buildReadiness } from "./config.js";
 import { createAuditService } from "./audit/service.js";
+import { createBillingProvider } from "./billing/provider.js";
 import { createAuthService, DevAuthUnavailableError } from "./auth/service.js";
 import {
   getRequestAuthContext,
@@ -137,6 +138,15 @@ function isOnboardingStep(value: unknown): value is OnboardingStepId {
   );
 }
 
+function isManualLicenseType(
+  value: unknown
+): value is "founding_partner_lifetime" | "manual_comp" | "internal_demo" {
+  return (
+    typeof value === "string" &&
+    ["founding_partner_lifetime", "manual_comp", "internal_demo"].includes(value)
+  );
+}
+
 function isFiniteNonNegative(value: unknown): value is number {
   return typeof value === "number" && Number.isFinite(value) && value >= 0;
 }
@@ -215,6 +225,7 @@ export function createApp(options: CreateAppOptions = {}) {
   const dataStore = options.store ?? createStore({ env: options.env });
   const authService = options.authService ?? createAuthService({ env: options.env, store: dataStore });
   const auditService = createAuditService(options.env);
+  const billingProvider = createBillingProvider(options.env);
   const ocrRegistry = options.ocrRegistry ?? createOcrProviderRegistry({ env: options.env });
   const uploadStorage = createUploadStorage(options.env);
   const defaultOcrProvider = ocrRegistry.getDefaultProvider();
@@ -545,6 +556,115 @@ export function createApp(options: CreateAppOptions = {}) {
     }
 
     response.json(dataStore.getOnboardingChecklist(dataset.id));
+  });
+
+  app.get("/api/billing/plans", (_request, response) => {
+    const includeInternalPlans = (options.env?.APP_MODE ?? "demo") !== "production";
+    response.json(dataStore.getBillingPlans(includeInternalPlans));
+  });
+
+  app.get("/api/billing/status", memberAccess, (request, response) => {
+    const datasetId = parseDatasetId(request.query.dataset);
+    const dataset = resolveDatasetOrRespond(request, datasetId, response, dataStore);
+    if (!dataset) {
+      return;
+    }
+
+    const status = dataStore.getBillingStatus(dataset.id, billingProvider.getProviderStatus());
+    if (!status) {
+      response.status(404).json({ message: "Billing status is not available for this workspace." });
+      return;
+    }
+
+    response.json(status);
+  });
+
+  app.get("/api/billing/usage", memberAccess, (request, response) => {
+    const datasetId = parseDatasetId(request.query.dataset);
+    const dataset = resolveDatasetOrRespond(request, datasetId, response, dataStore);
+    if (!dataset) {
+      return;
+    }
+
+    const usage = dataStore.getBillingUsage(dataset.id);
+    if (!usage) {
+      response.status(404).json({ message: "Billing usage is not available for this workspace." });
+      return;
+    }
+
+    response.json(usage);
+  });
+
+  app.post("/api/billing/start-trial", adminAccess, async (request, response) => {
+    const body = request.body as { dataset?: unknown };
+    const datasetId = parseDatasetId(request.query.dataset) ?? parseDatasetId(body.dataset);
+    const dataset = resolveDatasetOrRespond(request, datasetId, response, dataStore);
+    if (!dataset) {
+      return;
+    }
+
+    const status = dataStore.startTrial(dataset.id);
+    if (!status) {
+      response.status(404).json({ message: "Billing status is not available for this workspace." });
+      return;
+    }
+
+    await recordAudit(auditService, dataStore, request, dataset.id, "billing_trial_started", "workspace", status.workspaceId);
+    await dataStore.flushDatasetAsync(dataset.id);
+    response.status(201).json(status);
+  });
+
+  app.post("/api/billing/manual-license", adminAccess, async (request, response) => {
+    const body = request.body as {
+      dataset?: unknown;
+      workspaceId?: unknown;
+      type?: unknown;
+      notes?: unknown;
+    };
+    const datasetId = parseDatasetId(request.query.dataset) ?? parseDatasetId(body.dataset);
+    const dataset = resolveDatasetOrRespond(request, datasetId, response, dataStore);
+    if (!dataset) {
+      return;
+    }
+
+    if (!isManualLicenseType(body.type)) {
+      response.status(400).json({
+        message: "type must be founding_partner_lifetime, manual_comp, or internal_demo."
+      });
+      return;
+    }
+
+    const status = dataStore.grantManualLicense(
+      {
+        workspaceId: isNonEmptyString(body.workspaceId) ? body.workspaceId : undefined,
+        type: body.type,
+        notes: isNonEmptyString(body.notes) ? body.notes : undefined
+      },
+      dataset.id
+    );
+
+    if (status === undefined) {
+      response.status(403).json({ message: "Manual license workspace must match the active workspace." });
+      return;
+    }
+
+    if (!status) {
+      response.status(404).json({ message: "Billing status is not available for this workspace." });
+      return;
+    }
+
+    await recordAudit(
+      auditService,
+      dataStore,
+      request,
+      dataset.id,
+      "billing_manual_license_granted",
+      "workspace",
+      status.workspaceId,
+      { type: body.type }
+    );
+    await dataStore.flushDatasetAsync(dataset.id);
+    response.status(201).json(status);
   });
 
   app.get("/api/ingredients", memberAccess, (request, response) => {

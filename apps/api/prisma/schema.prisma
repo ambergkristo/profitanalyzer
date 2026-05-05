@@ -69,6 +69,44 @@ enum OcrJobStatus {
   cancelled
 }
 
+enum PlanCode {
+  starter
+  pro
+  multi_location
+  founding_partner
+  internal_demo
+}
+
+enum SubscriptionStatus {
+  trialing
+  active
+  past_due
+  cancelled
+  expired
+  lifetime
+  internal
+}
+
+enum BillingProvider {
+  none
+  manual
+  stripe_future
+}
+
+enum LicenseEntitlementType {
+  founding_partner_lifetime
+  internal_demo
+  manual_comp
+  paid_subscription
+  trial
+}
+
+enum LicenseEntitlementStatus {
+  active
+  revoked
+  expired
+}
+
 model User {
   id           String                @id
   email        String                @unique
@@ -89,6 +127,9 @@ model Workspace {
   memberships    WorkspaceMembership[]
   restaurants    Restaurant[]
   auditLogs      AuditLog[]
+  subscriptions  WorkspaceSubscription[]
+  entitlements   LicenseEntitlement[]
+  usageCounters  UsageCounter[]
 }
 
 model WorkspaceMembership {
@@ -415,4 +456,71 @@ model AuditLog {
 
   @@index([workspaceId, restaurantId])
   @@index([actorUserId])
+}
+
+model Plan {
+  id                       String   @id
+  code                     PlanCode @unique
+  name                     String
+  monthlyPriceCents        Int
+  currency                 String
+  includedRestaurants      Int
+  includedUsers            Int
+  includedInvoicesPerMonth Int?
+  featuresJson             Json
+  isPublic                 Boolean
+  createdAt                DateTime @default(now())
+  updatedAt                DateTime @updatedAt
+}
+
+model WorkspaceSubscription {
+  id                     String             @id
+  workspaceId            String
+  planCode               PlanCode
+  status                 SubscriptionStatus
+  billingProvider        BillingProvider
+  providerCustomerId     String?
+  providerSubscriptionId String?
+  trialEndsAt            DateTime?
+  currentPeriodStart     DateTime?
+  currentPeriodEnd       DateTime?
+  lifetimeAccessReason   String?
+  createdAt              DateTime           @default(now())
+  updatedAt              DateTime           @updatedAt
+  workspace              Workspace          @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId])
+  @@index([status])
+}
+
+model LicenseEntitlement {
+  id          String                   @id
+  workspaceId String
+  type        LicenseEntitlementType
+  status      LicenseEntitlementStatus
+  startsAt    DateTime
+  endsAt      DateTime?
+  notes       String?
+  createdAt   DateTime                 @default(now())
+  updatedAt   DateTime                 @updatedAt
+  workspace   Workspace                @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId])
+  @@index([type, status])
+}
+
+model UsageCounter {
+  id                 String    @id
+  workspaceId        String
+  period             String
+  invoicesProcessed  Int       @default(0)
+  ocrUploads         Int       @default(0)
+  usersCount         Int       @default(0)
+  restaurantsCount   Int       @default(0)
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+  workspace          Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceId, period])
+  @@index([workspaceId])
 }

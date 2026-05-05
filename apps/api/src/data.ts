@@ -2,10 +2,15 @@ import {
   calculateCalculatedDishes,
   calculateOverview,
   calculateRecipeCost,
+  buildBillingStatus,
   confirmInvoiceReview,
   createDefaultSupplierProductMatches,
   createDefaultSuppliers,
+  createDefaultSubscription,
+  createDefaultUsageCounter,
+  createInternalDemoEntitlement,
   createInvoiceDraftFromOcrResult,
+  getDefaultPlans,
   evaluateOcrQuality,
   applyOcrConfidencePolicy,
   explainDishPerformance,
@@ -21,6 +26,8 @@ import {
   sampleRestaurantData,
   suggestPriceForTargetMargin,
   type AffectedDishImpact,
+  type BillingProviderStatus,
+  type BillingStatus,
   type CalculatedDish,
   type DemoDatasetDefinition,
   type DemoDatasetSummary,
@@ -29,6 +36,7 @@ import {
   type Ingredient,
   type IngredientCostHistory,
   type IngredientCostHistoryView,
+  type LicenseEntitlement,
   type ManualInvoiceDraftInput,
   type MockInvoiceSampleSummary,
   type OcrDraftResponse,
@@ -44,7 +52,9 @@ import {
   type SimulationTargetAction,
   type StoredInvoiceView,
   type Supplier,
-  type SupplierProductMatch
+  type SupplierProductMatch,
+  type UsageCounter,
+  type WorkspaceSubscription
 } from "../../../packages/core/src/index.js";
 import type {
   AnalyticsInputSnapshot,
@@ -66,7 +76,8 @@ import type {
   RestaurantProfileUpdateInput,
   ResetDatasetSummary,
   SupplierCreateInput,
-  SupplierUpdateInput
+  SupplierUpdateInput,
+  ManualLicenseInput
 } from "./store/types.js";
 
 interface StoredInvoiceRecord {
@@ -102,6 +113,9 @@ interface DatasetSession {
   ocrJobCounter: number;
   onboardingState: OnboardingState;
   restaurantProfile: RestaurantProfile;
+  subscription: WorkspaceSubscription;
+  entitlements: LicenseEntitlement[];
+  usage: UsageCounter;
   baseline: DatasetExportPayload;
 }
 
@@ -141,6 +155,7 @@ const onboardingStepLabels: Record<OnboardingStepId, string> = {
 };
 
 const deterministicOnboardingCreatedAt = "2026-04-30T00:00:00.000Z";
+const deterministicBillingUpdatedAt = "2026-05-05T00:00:00.000Z";
 
 function toDatasetSummary(dataset: DemoDatasetDefinition): DemoDatasetSummary {
   return {
@@ -241,6 +256,7 @@ function createDatasetSession(
     ocrJobCounter: 0,
     onboardingState: createOnboardingState(dataset.id),
     restaurantProfile: createRestaurantProfile(dataset),
+    ...createDefaultBillingState(dataset.id),
     baseline: {} as DatasetExportPayload
   };
 
@@ -337,6 +353,38 @@ function createRestaurantProfile(dataset: DemoDatasetDefinition, profile?: Resta
     concept: profile?.concept,
     averageMonthlyDishSalesEstimate: profile?.averageMonthlyDishSalesEstimate,
     updatedAt: profile?.updatedAt ?? deterministicOnboardingCreatedAt
+  };
+}
+
+function createDefaultBillingState(datasetId: string) {
+  const workspaceId = buildWorkspaceId(datasetId);
+  return {
+    subscription: createDefaultSubscription(workspaceId),
+    entitlements: [createInternalDemoEntitlement(workspaceId)],
+    usage: createDefaultUsageCounter(workspaceId)
+  };
+}
+
+function cloneSubscription(subscription: WorkspaceSubscription): WorkspaceSubscription {
+  return { ...subscription };
+}
+
+function cloneEntitlements(entitlements: LicenseEntitlement[]): LicenseEntitlement[] {
+  return entitlements.map((entitlement) => ({ ...entitlement }));
+}
+
+function cloneUsage(usage: UsageCounter): UsageCounter {
+  return { ...usage };
+}
+
+function defaultBillingProviderStatus(): BillingProviderStatus {
+  return {
+    id: "none",
+    displayName: "No payment provider",
+    isConfigured: true,
+    mode: "none",
+    supportsCheckout: false,
+    message: "Billing is tracked manually; no payment provider is connected."
   };
 }
 
@@ -523,7 +571,11 @@ function serializeDatasetSession(
         : undefined
     })),
     onboardingState: { ...session.onboardingState },
-    restaurantProfile: { ...session.restaurantProfile }
+    restaurantProfile: { ...session.restaurantProfile },
+    plans: getDefaultPlans(),
+    subscription: cloneSubscription(session.subscription),
+    entitlements: cloneEntitlements(session.entitlements),
+    usage: cloneUsage(session.usage)
   };
 }
 
@@ -629,6 +681,18 @@ function createSessionFromExportPayload(
     ocrJobCounter: imported.ocrJobs.length,
     onboardingState: normalizeOnboardingState(targetDatasetId, imported.onboardingState),
     restaurantProfile: createRestaurantProfile(dataset, imported.restaurantProfile),
+    subscription: imported.subscription
+      ? { ...imported.subscription, workspaceId: buildWorkspaceId(targetDatasetId) }
+      : createDefaultBillingState(targetDatasetId).subscription,
+    entitlements: imported.entitlements
+      ? imported.entitlements.map((entitlement) => ({
+          ...entitlement,
+          workspaceId: buildWorkspaceId(targetDatasetId)
+        }))
+      : createDefaultBillingState(targetDatasetId).entitlements,
+    usage: imported.usage
+      ? { ...imported.usage, workspaceId: buildWorkspaceId(targetDatasetId) }
+      : createDefaultBillingState(targetDatasetId).usage,
     baseline: {} as DatasetExportPayload
   };
 
@@ -785,6 +849,115 @@ export function createDataStore(options: CreateDataStoreOptions = {}): AppStore 
     },
     getDemoDatasets(): DemoDatasetSummary[] {
       return buildDatasetSummaries().map((dataset) => ({ ...dataset }));
+    },
+    getBillingPlans(includeInternal = false) {
+      return getDefaultPlans()
+        .filter((plan) => includeInternal || plan.isPublic)
+        .map((plan) => ({ ...plan, features: [...plan.features] }));
+    },
+    getBillingStatus(datasetId?: string, providerStatus = defaultBillingProviderStatus()): BillingStatus | null {
+      const session = getSession(datasetId);
+
+      if (!session) {
+        return null;
+      }
+
+      return buildBillingStatus({
+        workspaceId: buildWorkspaceId(session.dataset.id),
+        plans: getDefaultPlans(),
+        subscription: session.subscription,
+        entitlements: session.entitlements,
+        usage: {
+          ...session.usage,
+          usersCount: 1,
+          restaurantsCount: 1
+        },
+        billingProviderStatus: providerStatus
+      });
+    },
+    grantManualLicense(input: ManualLicenseInput, datasetId?: string): BillingStatus | null | undefined {
+      const session = getSession(datasetId);
+
+      if (!session) {
+        return null;
+      }
+
+      const workspaceId = buildWorkspaceId(session.dataset.id);
+      if (input.workspaceId && input.workspaceId !== workspaceId) {
+        return undefined;
+      }
+
+      const entitlement: LicenseEntitlement = {
+        id: `entitlement-${workspaceId}-${input.type}`,
+        workspaceId,
+        type: input.type,
+        status: "active",
+        startsAt: deterministicBillingUpdatedAt,
+        notes: input.notes?.trim() || undefined,
+        createdAt: deterministicBillingUpdatedAt,
+        updatedAt: deterministicBillingUpdatedAt
+      };
+
+      session.entitlements = [
+        ...session.entitlements.filter((candidate) => candidate.id !== entitlement.id),
+        entitlement
+      ];
+
+      if (input.type === "founding_partner_lifetime") {
+        session.subscription = {
+          ...session.subscription,
+          planCode: "founding_partner",
+          status: "lifetime",
+          billingProvider: "manual",
+          lifetimeAccessReason: input.notes?.trim() || "Founding partner lifetime access.",
+          updatedAt: deterministicBillingUpdatedAt
+        };
+      } else if (input.type === "manual_comp") {
+        session.subscription = {
+          ...session.subscription,
+          status: "active",
+          billingProvider: "manual",
+          updatedAt: deterministicBillingUpdatedAt
+        };
+      } else {
+        session.subscription = {
+          ...session.subscription,
+          planCode: "internal_demo",
+          status: "internal",
+          billingProvider: "none",
+          updatedAt: deterministicBillingUpdatedAt
+        };
+      }
+
+      return this.getBillingStatus(session.dataset.id);
+    },
+    startTrial(datasetId?: string): BillingStatus | null {
+      const session = getSession(datasetId);
+
+      if (!session) {
+        return null;
+      }
+
+      session.subscription = {
+        ...session.subscription,
+        planCode: "starter",
+        status: "trialing",
+        billingProvider: "none",
+        trialEndsAt: "2026-06-05T00:00:00.000Z",
+        updatedAt: deterministicBillingUpdatedAt
+      };
+
+      return this.getBillingStatus(session.dataset.id);
+    },
+    getBillingUsage(datasetId?: string) {
+      const session = getSession(datasetId);
+      return session
+        ? {
+            ...session.usage,
+            usersCount: 1,
+            restaurantsCount: 1
+          }
+        : null;
     },
     getMockInvoiceSampleSummaries(): MockInvoiceSampleSummary[] {
       return listMockInvoiceSampleSummaries();
@@ -1171,6 +1344,11 @@ export function createDataStore(options: CreateDataStoreOptions = {}): AppStore 
         return null;
       }
 
+      session.usage = {
+        ...session.usage,
+        ocrUploads: session.usage.ocrUploads + 1,
+        updatedAt: deterministicBillingUpdatedAt
+      };
       session.ocrJobCounter += 1;
       session.invoiceCounter += 1;
       const jobId = `ocr-job-${session.ocrJobCounter.toString().padStart(2, "0")}`;
@@ -1250,6 +1428,11 @@ export function createDataStore(options: CreateDataStoreOptions = {}): AppStore 
         return null;
       }
 
+      session.usage = {
+        ...session.usage,
+        ocrUploads: session.usage.ocrUploads + 1,
+        updatedAt: deterministicBillingUpdatedAt
+      };
       session.ocrJobCounter += 1;
       const jobId = `ocr-job-${session.ocrJobCounter.toString().padStart(2, "0")}`;
       const createdAt = `2026-04-28T10:${session.ocrJobCounter.toString().padStart(2, "0")}:00.000Z`;
@@ -1601,6 +1784,11 @@ export function createDataStore(options: CreateDataStoreOptions = {}): AppStore 
       record.confirmationSummary = result.confirmationSummary;
       record.affectedDishes = result.affectedDishes;
       record.alerts = result.alerts;
+      session.usage = {
+        ...session.usage,
+        invoicesProcessed: session.usage.invoicesProcessed + 1,
+        updatedAt: deterministicBillingUpdatedAt
+      };
 
       return result;
     },

@@ -28,6 +28,9 @@ This is not a claim that production SaaS readiness already exists.
 - `OCR_PROVIDER_ENDPOINT=`
 - `OCR_PROVIDER_TIMEOUT_MS=30000`
 - `OCR_PROVIDER_MAX_RETRIES=1`
+- `BILLING_PROVIDER=none|manual|stripe_future`
+- `BILLING_PROVIDER_SECRET_KEY=`
+- `BILLING_WEBHOOK_SECRET=`
 
 ## Defaults
 
@@ -40,6 +43,7 @@ This is not a claim that production SaaS readiness already exists.
 - `UPLOAD_DATA_DIR=.uploads`
 - `UPLOAD_MAX_FILE_SIZE_BYTES=10485760`
 - `OCR_PROVIDER=fixture`
+- `BILLING_PROVIDER=none`
 - `LOG_LEVEL=debug`
 
 ## Local Demo Example
@@ -104,6 +108,7 @@ API_BASE_URL=https://api.example.com
 CORS_ORIGIN=https://app.example.com
 LOG_LEVEL=info
 OCR_PROVIDER=disabled
+BILLING_PROVIDER=none
 ```
 
 ## OCR Example
@@ -125,6 +130,21 @@ Important:
 - OCR still creates drafts only
 - ingredient costs still update only after `review-confirm`
 - normal validation still passes without OCR provider credentials
+
+## Billing Example
+
+```bash
+BILLING_PROVIDER=none
+BILLING_PROVIDER_SECRET_KEY=
+BILLING_WEBHOOK_SECRET=
+```
+
+Rules:
+
+- `none` and `manual` require no external credentials.
+- `stripe_future` is a disabled provider seam and does not enable checkout yet.
+- frontend config and status responses must never expose billing secrets.
+- production-like validation warns or blocks unsafe billing settings.
 
 ## Upload Storage
 

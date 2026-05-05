@@ -1,6 +1,7 @@
 import type {
   AppConfigResponse,
   AuthMeResponse,
+  BillingStatus,
   DatasetExportPayload,
   DeepHealthResponse,
   DevLoginResponse,
@@ -40,7 +41,8 @@ import type {
   Supplier,
   SupplierCreateRequest,
   SupplierUpdateRequest,
-  OnboardingStepId
+  OnboardingStepId,
+  Plan
 } from "../types.js";
 
 const AUTH_TOKEN_STORAGE_KEY = "profit-analyzer-auth-token";
@@ -228,6 +230,26 @@ export const apiClient = {
     }),
   getOnboardingChecklist: (datasetId?: string) =>
     getJson<OnboardingChecklist>(buildDatasetPath("/api/onboarding/checklist", datasetId)),
+  getBillingPlans: () => getJson<Plan[]>("/api/billing/plans"),
+  getBillingStatus: (datasetId?: string) =>
+    getJson<BillingStatus>(buildDatasetPath("/api/billing/status", datasetId)),
+  getBillingUsage: (datasetId?: string) =>
+    getJson<BillingStatus["usage"]>(buildDatasetPath("/api/billing/usage", datasetId)),
+  startBillingTrial: (datasetId?: string) =>
+    postJson<BillingStatus>(buildDatasetPath("/api/billing/start-trial", datasetId), {
+      dataset: datasetId
+    }),
+  grantManualLicense: (
+    body: {
+      type: "founding_partner_lifetime" | "manual_comp" | "internal_demo";
+      notes?: string;
+    },
+    datasetId?: string
+  ) =>
+    postJson<BillingStatus>(buildDatasetPath("/api/billing/manual-license", datasetId), {
+      ...body,
+      dataset: datasetId
+    }),
   getRecipes: (datasetId?: string) =>
     getJson<Recipe[]>(buildDatasetPath("/api/recipes", datasetId)),
   getMenuDishes: (datasetId?: string) =>

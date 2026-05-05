@@ -376,6 +376,12 @@ export function Layout() {
                       </NavLink>
                       <NavLink
                         className={linkClass}
+                        to={{ pathname: "/billing", search: buildDatasetSearch(selectedDataset?.id) }}
+                      >
+                        Billing
+                      </NavLink>
+                      <NavLink
+                        className={linkClass}
                         to={{ pathname: "/pilot-tools", search: buildDatasetSearch(selectedDataset?.id) }}
                       >
                         Pilot Tools

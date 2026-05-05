@@ -1,6 +1,7 @@
 import { Prisma, PrismaClient } from "@prisma/client";
 
 import {
+  getDefaultPlans,
   getDemoDataset,
   listDemoDatasets,
   type AffectedDishImpact,
@@ -419,6 +420,34 @@ async function replaceRestaurantDataset(
   const workspaceId = buildWorkspaceId(payload.dataset.id);
   const restaurantId = payload.dataset.id;
   const workspaceName = payload.dataset.name;
+
+  for (const plan of getDefaultPlans()) {
+    await prisma.plan.upsert({
+      where: { code: plan.code },
+      update: {
+        name: plan.name,
+        monthlyPriceCents: plan.monthlyPriceCents,
+        currency: plan.currency,
+        includedRestaurants: plan.includedRestaurants,
+        includedUsers: plan.includedUsers,
+        includedInvoicesPerMonth: plan.includedInvoicesPerMonth ?? null,
+        featuresJson: plan.features,
+        isPublic: plan.isPublic
+      },
+      create: {
+        id: plan.id,
+        code: plan.code,
+        name: plan.name,
+        monthlyPriceCents: plan.monthlyPriceCents,
+        currency: plan.currency,
+        includedRestaurants: plan.includedRestaurants,
+        includedUsers: plan.includedUsers,
+        includedInvoicesPerMonth: plan.includedInvoicesPerMonth ?? null,
+        featuresJson: plan.features,
+        isPublic: plan.isPublic
+      }
+    });
+  }
 
   await prisma.user.upsert({
     where: { id: defaultUserId },

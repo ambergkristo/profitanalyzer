@@ -97,8 +97,8 @@ async function main() {
       summary: "Dataset export/import exists, but full database backup strategy remains a deployment concern."
     },
     billingLicense: {
-      status: "blocked",
-      summary: "Billing and subscription/license infrastructure are not implemented."
+      status: "partial",
+      summary: "Pricing plans, workspace subscription/license state, founding partner lifetime entitlements, usage counters, and billing provider seam exist; live payment processing is intentionally not implemented."
     },
     securityPrivacyLegal: {
       status: "blocked",
