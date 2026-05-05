@@ -320,6 +320,14 @@ export const apiClient = {
       summary?: import("../types.js").ParsedInvoiceDraft["summary"];
       qualityReport?: OcrQualityReport;
     }>(buildDatasetPath(`/api/ocr/jobs/${jobId}`, datasetId)),
+  retryOcrJob: (jobId: string, datasetId?: string) =>
+    postJson<OcrInvoiceDraftResponse>(buildDatasetPath(`/api/ocr/jobs/${jobId}/retry`, datasetId), {
+      dataset: datasetId
+    }),
+  cancelOcrJob: (jobId: string, datasetId?: string) =>
+    postJson<{ ocrJob: OcrInvoiceJob }>(buildDatasetPath(`/api/ocr/jobs/${jobId}/cancel`, datasetId), {
+      dataset: datasetId
+    }),
   getInvoice: (invoiceId: string, datasetId?: string) =>
     getJson<InvoiceDetailResponse>(buildDatasetPath(`/api/invoices/${invoiceId}`, datasetId)),
   confirmInvoiceReview: (

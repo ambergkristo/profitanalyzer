@@ -78,6 +78,10 @@ export interface ReadinessResponse {
     provider: string;
     externalConfigured: boolean;
   };
+  uploadStorage: {
+    driver: "memory" | "local_file";
+    maxFileSizeBytes: number;
+  };
   checks: RuntimeCheck[];
 }
 
@@ -158,6 +162,10 @@ export function buildReadiness(
     ocr: {
       provider,
       externalConfigured: validation.profile.externalOcrConfigured
+    },
+    uploadStorage: {
+      driver: validation.profile.uploadStorageDriver,
+      maxFileSizeBytes: validation.profile.uploadMaxFileSizeBytes
     },
     checks: validation.checks
   };

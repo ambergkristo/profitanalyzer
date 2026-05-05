@@ -9,6 +9,8 @@ coverage/
 benchmarks/ocr/private-samples/
 .data/
 data/
+.uploads/
+uploads/
 *.local.json
 *.private.json
 benchmarks/ocr/private-results/

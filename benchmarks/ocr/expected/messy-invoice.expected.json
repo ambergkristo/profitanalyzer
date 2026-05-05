@@ -1,10 +1,13 @@
 {
-  "fixtureId": "messy-invoice",
-  "supplierName": "KitchenHub Cash & Carry",
-  "invoiceDate": "2026-04-14",
-  "lineCount": 6,
-  "notes": [
-    "Expected to produce unresolved lines.",
-    "Expected to require careful review or manual entry."
+  "fixtureName": "blurry-invoice-photo.jpg",
+  "supplierName": "KitchenHub Cash Carry",
+  "invoiceDate": "2026-04-12",
+  "expectedLineCount": 5,
+  "expectedProducts": [
+    "Brioche Buns",
+    "Burger Dip",
+    "Flatbread Base",
+    "Mystery Herb Mix",
+    "Dessert Cream"
   ]
 }

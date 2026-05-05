@@ -12,6 +12,7 @@ RM1-RM9 are complete as a controlled pilot and founding-partner foundation. The 
 - Phase 13: complete as auth and workspace access foundation
 - Phase 14: complete as deployment and observability foundation
 - Phase 15: complete as mobile-first onboarding foundation
+- Phase 16: complete as production invoice/OCR pipeline foundation
 - production SaaS readiness: `false`
 - OCR safety boundary: unchanged
 
@@ -28,6 +29,7 @@ The current product already includes:
 - deployment profile, readiness checks, and runtime validation
 - mobile-first restaurant onboarding and invoice review flow
 - onboarding checklist for profile, ingredients, recipes, dishes, suppliers, first invoice, and dashboard review
+- upload storage abstraction, OCR retry/cancel lifecycle, confidence policy, and OCR benchmark workflow
 
 ## Safety Rules
 
@@ -42,6 +44,7 @@ The current product already includes:
 - `APP_MODE=demo|pilot|production`
 - `AUTH_MODE=dev|disabled|production_future`
 - `STORE_DRIVER=memory|file|database`
+- `UPLOAD_STORAGE_DRIVER=memory|local_file`
 - `OCR_PROVIDER=fixture|external_env|disabled`
 - `NODE_ENV=development|test|production`
 
@@ -52,6 +55,7 @@ Important:
 - `AUTH_MODE=dev` in production-like mode is a blocker
 - `SESSION_SECRET` is required for non-demo authenticated modes
 - external OCR remains optional
+- production mode cannot rely on memory-only upload storage
 
 ## Storage Drivers
 
@@ -64,6 +68,15 @@ If `DATABASE_URL` is missing:
 - `validate:db` skip-reports clearly
 - `STORE_DRIVER=database` routes fail clearly instead of silently falling back
 - readiness reports the DB blocker without exposing secrets
+
+## Invoice/OCR Pipeline
+
+- `UPLOAD_STORAGE_DRIVER=memory` remains the default for deterministic validation.
+- `UPLOAD_STORAGE_DRIVER=local_file` stores upload files under `UPLOAD_DATA_DIR` for local production-like operation.
+- Upload metadata is safe to return; local file paths and raw file contents are not exposed.
+- OCR jobs track upload metadata, provider attempts, failure codes, retry/cancel state, and confidence-policy output.
+- `npm run validate:invoice-pipeline` validates draft-only safety, retry/cancel behavior, upload metadata safety, and post-confirm cost history/alerts.
+- `npm run benchmark:ocr` runs deterministic fixture benchmarking and skips live provider benchmarking unless provider env and private samples are configured.
 
 ## Auth Modes
 
@@ -117,6 +130,8 @@ npm run validate:runtime
 npm run validate:production-readiness
 npm run validate:mobile
 npm run validate:onboarding
+npm run validate:invoice-pipeline
+npm run benchmark:ocr
 npm audit
 ```
 
@@ -206,6 +221,8 @@ Local URLs:
 - `GET /api/ocr/jobs`
 - `GET /api/ocr/jobs/:id`
 - `POST /api/ocr/invoices/upload`
+- `POST /api/ocr/jobs/:id/retry`
+- `POST /api/ocr/jobs/:id/cancel`
 - `GET /api/alerts/price-changes`
 - `GET /api/analytics/overview`
 - `GET /api/analytics/actions`
@@ -233,6 +250,17 @@ Local URLs:
 - `npm run validate:onboarding`
 - expanded `npm run validate:mobile` coverage for onboarding
 
+## What Phase 16 Added
+
+- upload storage abstraction with `memory` and `local_file` drivers
+- safe upload metadata and filename sanitization
+- stronger OCR job lifecycle with failed retry and safe cancellation
+- explicit OCR confidence policy and review-burden scoring
+- invoice/OCR audit event hooks for draft creation, parse failure, confirmation, cost updates, and alerts
+- mobile photo upload hardening with image/PDF accept and browser capture hint
+- `npm run validate:invoice-pipeline`
+- `npm run benchmark:ocr`
+
 ## What Is Still Not Claimed
 
 - production SaaS readiness
@@ -252,6 +280,8 @@ Local URLs:
 - [docs/PRODUCTION_RUNBOOK.md](docs/PRODUCTION_RUNBOOK.md)
 - [docs/MOBILE_READINESS.md](docs/MOBILE_READINESS.md)
 - [docs/OBSERVABILITY.md](docs/OBSERVABILITY.md)
+- [docs/INVOICE_PIPELINE_PRODUCTION.md](docs/INVOICE_PIPELINE_PRODUCTION.md)
+- [docs/REAL_INVOICE_BENCHMARK_GUIDE.md](docs/REAL_INVOICE_BENCHMARK_GUIDE.md)
 - [docs/PRODUCTION_SAAS_GAP_AUDIT.md](docs/PRODUCTION_SAAS_GAP_AUDIT.md)
 - [docs/DATABASE_MODEL.md](docs/DATABASE_MODEL.md)
 - [docs/AUTH_ACCESS_CONTROL.md](docs/AUTH_ACCESS_CONTROL.md)

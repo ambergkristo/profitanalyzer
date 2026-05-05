@@ -12,6 +12,8 @@
 - export, import, and reset
 - memory and file store drivers
 - database schema and DB store foundation
+- production-shaped invoice/OCR upload pipeline foundation
+- deterministic OCR benchmark workflow
 
 ## Partially Complete
 
@@ -27,19 +29,22 @@
 - mobile-first onboarding wizard added
 - restaurant profile, ingredient, recipe, dish, supplier, first invoice, and dashboard review setup steps added
 - onboarding validation command added
+- upload storage abstraction with `memory` and `local_file`
+- OCR job retry/cancel lifecycle and confidence policy added
+- invoice pipeline validation command added
 
 ## Missing For Production SaaS
 
 - live database rollout validated in target hosting environment
 - production-complete auth provider and account lifecycle
 - invite and workspace management flows
-- production object or file storage strategy for OCR uploads
+- hosted object storage strategy for OCR uploads
 - monitoring and operational alerting
 - production backup and restore process beyond controlled export/import
 - privacy, legal, and security baseline
 - billing and license model
 - full mobile browser validation for critical workflows
-- live OCR benchmark on realistic private invoice samples
+- live OCR benchmark on realistic private invoice samples with configured provider
 - real restaurant onboarding rehearsal with messy customer data
 - full mobile browser automation for onboarding and invoice workflows
 

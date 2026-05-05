@@ -1383,15 +1383,28 @@ describe("api", () => {
       });
 
     const uploadBody = uploadResponse.body as {
-      ocrJob: { id: string; status: string; invoiceDraftId?: string };
+      ocrJob: {
+        id: string;
+        status: string;
+        invoiceDraftId?: string;
+        uploadObjectId?: string;
+        sanitizedFileName?: string;
+        uploadObject?: { storageProvider: string; storageKey: string };
+      };
       ocrResult: { confidence: string };
       invoiceDraft: { id: string; sourceType: string };
+      qualityReport: { policyWarnings?: string[] };
     };
 
     expect(uploadResponse.status).toBe(200);
     expect(uploadBody.invoiceDraft.sourceType).toBe("ocr_future");
     expect(uploadBody.ocrJob.status).toBe("parsed");
+    expect(uploadBody.ocrJob.uploadObjectId).toBeTruthy();
+    expect(uploadBody.ocrJob.sanitizedFileName).toBe("clean-invoice-photo.jpg");
+    expect(uploadBody.ocrJob.uploadObject?.storageProvider).toBe("memory");
+    expect(JSON.stringify(uploadBody.ocrJob)).not.toContain(".uploads");
     expect(uploadBody.ocrResult.confidence).toBe("high");
+    expect(uploadBody.qualityReport.policyWarnings).toEqual([]);
 
     const jobResponse = await request(app).get(
       `/api/ocr/jobs/${uploadBody.ocrJob.id}?dataset=mixed-restaurant`
@@ -1404,6 +1417,39 @@ describe("api", () => {
     expect(jobResponse.status).toBe(200);
     expect(jobBody.ocrJob.invoiceDraftId).toBe(uploadBody.invoiceDraft.id);
     expect(jobBody.qualityReport.recommendedReviewMode).toBe("quick_review");
+  });
+
+  it("stores OCR upload metadata in local_file storage without exposing local paths", async () => {
+    const uploadDir = path.resolve(".tmp", "api-test-uploads");
+    fs.rmSync(uploadDir, { recursive: true, force: true });
+    const app = buildApp({
+      env: {
+        ...process.env,
+        UPLOAD_STORAGE_DRIVER: "local_file",
+        UPLOAD_DATA_DIR: uploadDir
+      }
+    });
+
+    const response = await request(app)
+      .post("/api/ocr/invoices/upload?dataset=mixed-restaurant")
+      .attach("file", Buffer.from("fixture"), {
+        filename: "../clean-invoice-photo.jpg",
+        contentType: "image/jpeg"
+      });
+    const body = response.body as {
+      ocrJob: {
+        uploadObject?: { storageProvider: string; storageKey: string };
+        sanitizedFileName?: string;
+      };
+    };
+
+    expect(response.status).toBe(200);
+    expect(body.ocrJob.sanitizedFileName).toBe("clean-invoice-photo.jpg");
+    expect(body.ocrJob.uploadObject?.storageProvider).toBe("local_file");
+    expect(fs.existsSync(path.join(uploadDir, body.ocrJob.uploadObject?.storageKey ?? "missing"))).toBe(true);
+    expect(JSON.stringify(body.ocrJob)).not.toContain(uploadDir);
+
+    fs.rmSync(uploadDir, { recursive: true, force: true });
   });
 
   it("lists OCR jobs with quality summaries", async () => {
@@ -1469,6 +1515,42 @@ describe("api", () => {
     const jobs = jobsResponse.body as Array<{ status: string }>;
 
     expect(jobs.some((job) => job.status === "failed")).toBe(true);
+  });
+
+  it("retries and cancels failed OCR jobs without mutating costs", async () => {
+    const app = buildApp();
+    const beforeResponse = await request(app).get("/api/analytics/overview?dataset=mixed-restaurant");
+    const before = beforeResponse.body as OverviewMetrics;
+    const uploadResponse = await request(app)
+      .post("/api/ocr/invoices/upload?dataset=mixed-restaurant&provider=disabled")
+      .attach("file", Buffer.from("fixture"), {
+        filename: "clean-invoice-photo.jpg",
+        contentType: "image/jpeg"
+      });
+    const uploadBody = uploadResponse.body as { ocrJob: { id: string; status: string } };
+
+    const retryResponse = await request(app).post(
+      `/api/ocr/jobs/${uploadBody.ocrJob.id}/retry?dataset=mixed-restaurant`
+    );
+    const retryBody = retryResponse.body as {
+      ocrJob: { id: string; status: string; providerAttemptCount?: number };
+    };
+
+    expect(retryResponse.status).toBe(422);
+    expect(retryBody.ocrJob.status).toBe("failed");
+    expect(retryBody.ocrJob.providerAttemptCount).toBe(2);
+
+    const cancelResponse = await request(app).post(
+      `/api/ocr/jobs/${retryBody.ocrJob.id}/cancel?dataset=mixed-restaurant`
+    );
+    const cancelBody = cancelResponse.body as { ocrJob: { status: string } };
+
+    expect(cancelResponse.status).toBe(200);
+    expect(cancelBody.ocrJob.status).toBe("cancelled");
+
+    const afterResponse = await request(app).get("/api/analytics/overview?dataset=mixed-restaurant");
+    const after = afterResponse.body as OverviewMetrics;
+    expect(after.estimatedPeriodProfitCents).toBe(before.estimatedPeriodProfitCents);
   });
 
   it("rejects oversized OCR uploads", async () => {

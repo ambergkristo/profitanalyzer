@@ -162,6 +162,10 @@ export interface ReadinessResponse {
     provider: string;
     externalConfigured: boolean;
   };
+  uploadStorage: {
+    driver: "memory" | "local_file";
+    maxFileSizeBytes: number;
+  };
   checks: Array<{
     name: string;
     status: "pass" | "warn" | "fail" | "skipped";

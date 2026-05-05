@@ -31,6 +31,9 @@ npm run build -w @profit-analyzer/web
 - `CORS_ORIGIN=https://app.example.com`
 - `LOG_LEVEL=info`
 - `OCR_PROVIDER=fixture|external_env|disabled`
+- `UPLOAD_STORAGE_DRIVER=local_file`
+- `UPLOAD_DATA_DIR=/var/lib/profit-analyzer/uploads`
+- `UPLOAD_MAX_FILE_SIZE_BYTES=10485760`
 
 ## Pre-Deploy Checks
 
@@ -47,6 +50,9 @@ npm run validate:auth
 npm run validate:runtime
 npm run validate:production-readiness
 npm run validate:mobile
+npm run validate:onboarding
+npm run validate:invoice-pipeline
+npm run benchmark:ocr
 ```
 
 ## Migration And Seed
@@ -108,6 +114,8 @@ Current state:
 - dataset export/import exists
 - file-store data can be copied from `DATA_DIR`
 - database backup is still expected to come from the DB provider or hosting layer
+- `UPLOAD_DATA_DIR` must be backed up separately when `UPLOAD_STORAGE_DRIVER=local_file`
+- raw uploaded invoice files are not included in normal dataset export by default
 
 This is not a full production backup strategy yet.
 
@@ -117,4 +125,5 @@ This is not a full production backup strategy yet.
 - billing is not live
 - legal/privacy launch gates are not complete
 - live OCR benchmark on real invoices is not complete
+- hosted object storage is not implemented
 - full monitoring stack is not live

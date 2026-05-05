@@ -61,10 +61,12 @@ const reviewStatusTone = {
 
 const ocrJobTone = {
   uploaded: "border-white/10 bg-white/[0.04] text-muted",
+  queued: "border-accent/30 bg-accent/10 text-accent",
   processing: "border-accent/30 bg-accent/10 text-accent",
   parsed: "border-profit/30 bg-profit/10 text-profit",
   needs_review: "border-warning/30 bg-warning/10 text-warning",
-  failed: "border-danger/30 bg-danger/12 text-danger"
+  failed: "border-danger/30 bg-danger/12 text-danger",
+  cancelled: "border-white/10 bg-white/[0.03] text-muted"
 } as const;
 
 const reviewModeLabel = {
@@ -406,12 +408,12 @@ export function InvoicesPage() {
     }
 
     if (!allowedOcrMimeTypes.includes(file.type)) {
-      setOcrError("Unsupported file type. Use JPEG, PNG, WEBP, or PDF for RM8 adapter mode.");
+      setOcrError("Unsupported file type. Use JPEG, PNG, WEBP, or PDF for invoice OCR draft creation.");
       return;
     }
 
     if (file.size > maxOcrFileSizeBytes) {
-      setOcrError("File is too large. Keep OCR fixture uploads under 10MB.");
+      setOcrError(`File is too large. Keep invoice uploads under ${Math.round(maxOcrFileSizeBytes / (1024 * 1024))}MB.`);
       return;
     }
 
@@ -451,6 +453,34 @@ export function InvoicesPage() {
       }
     } finally {
       setIsUploadingOcr(false);
+    }
+  }
+
+  async function handleRetryOcrJob(jobId: string) {
+    setOcrError(null);
+
+    try {
+      const parsed = await apiClient.retryOcrJob(jobId, datasetId);
+      loadDraft(parsed);
+      setOcrJobs((current) => [parsed.ocrJob, ...current.filter((job) => job.id !== parsed.ocrJob.id)]);
+    } catch (reason) {
+      setOcrError(reason instanceof Error ? reason.message : "Failed to retry OCR job.");
+      try {
+        setOcrJobs(await apiClient.getOcrJobs(datasetId));
+      } catch {
+        // Preserve the retry error if job refresh also fails.
+      }
+    }
+  }
+
+  async function handleCancelOcrJob(jobId: string) {
+    setOcrError(null);
+
+    try {
+      const response = await apiClient.cancelOcrJob(jobId, datasetId);
+      setOcrJobs((current) => current.map((job) => (job.id === response.ocrJob.id ? response.ocrJob : job)));
+    } catch (reason) {
+      setOcrError(reason instanceof Error ? reason.message : "Failed to cancel OCR job.");
     }
   }
 
@@ -857,7 +887,8 @@ export function InvoicesPage() {
                 <label className="mt-5 block text-sm text-muted">
                   Choose file
                   <input
-                    accept={allowedOcrMimeTypes.join(",")}
+                    accept="image/*,application/pdf"
+                    capture="environment"
                     className="mt-2 block w-full rounded-tile border border-border bg-black/20 px-4 py-3 text-text file:mr-4 file:rounded-full file:border-0 file:bg-accent/15 file:px-4 file:py-2 file:text-sm file:font-medium file:text-accent"
                     onChange={(event) => handleOcrFileChange(event.target.files?.[0] ?? null)}
                     type="file"
@@ -873,15 +904,15 @@ export function InvoicesPage() {
                   </ActionButton>
                   <p className="text-sm leading-6 text-muted">
                     {selectedOcrProvider?.id === "fixture"
-                      ? "Use `clean-invoice-photo.jpg`, `blurry-invoice-photo.jpg`, or `cropped-invoice-photo.jpg` to drive the fixture adapter."
+                      ? "Upload creates a review draft. Costs update only after confirmation. Fixture names: `clean-invoice-photo.jpg`, `blurry-invoice-photo.jpg`, or `cropped-invoice-photo.jpg`."
                       : selectedOcrProvider?.isConfigured
-                        ? "External OCR still creates review drafts only. Ingredient costs update only after review-confirm."
+                        ? "External OCR creates review drafts only. Ingredient costs update only after review-confirm."
                         : "External OCR stays disabled until environment configuration is present."}
                   </p>
                 </div>
                 {ocrFile ? (
                   <p className="mt-4 text-sm leading-6 text-text">
-                    Selected {ocrFile.name} ({Math.max(1, Math.round(ocrFile.size / 1024))} KB)
+                    Selected {ocrFile.name} · {ocrFile.type || "unknown type"} · {Math.max(1, Math.round(ocrFile.size / 1024))} KB
                   </p>
                 ) : null}
                 {ocrError ? <p className="mt-4 text-sm leading-6 text-danger">{ocrError}</p> : null}
@@ -925,6 +956,26 @@ export function InvoicesPage() {
                             Open draft {job.invoiceDraftId}
                           </button>
                         ) : null}
+                        <div className="mt-3 flex flex-wrap gap-3">
+                          {job.status === "failed" ? (
+                            <button
+                              className="inline-flex rounded-full border border-accent/30 px-4 py-2 text-sm font-medium text-accent"
+                              onClick={() => void handleRetryOcrJob(job.id)}
+                              type="button"
+                            >
+                              Retry OCR job
+                            </button>
+                          ) : null}
+                          {["uploaded", "queued", "processing", "failed"].includes(job.status) ? (
+                            <button
+                              className="inline-flex rounded-full border border-white/15 px-4 py-2 text-sm font-medium text-muted"
+                              onClick={() => void handleCancelOcrJob(job.id)}
+                              type="button"
+                            >
+                              Cancel job
+                            </button>
+                          ) : null}
+                        </div>
                       </div>
                     ))
                   )}
@@ -1051,12 +1102,28 @@ export function InvoicesPage() {
                     <Stat label="Needs review" value={`${ocrDraft.qualityReport.unresolvedLineCount}`} />
                     <Stat label="Missing prices" value={`${ocrDraft.qualityReport.missingPricesCount}`} />
                     <Stat label="Unknown products" value={`${ocrDraft.qualityReport.unknownProductCount}`} />
+                    <Stat
+                      label="Unresolved rate"
+                      value={
+                        ocrDraft.qualityReport.unresolvedLineRate === undefined
+                          ? "n/a"
+                          : `${Math.round(ocrDraft.qualityReport.unresolvedLineRate * 100)}%`
+                      }
+                    />
+                    <Stat
+                      label="Review burden"
+                      value={
+                        ocrDraft.qualityReport.reviewBurdenScore === undefined
+                          ? "n/a"
+                          : `${ocrDraft.qualityReport.reviewBurdenScore}/100`
+                      }
+                    />
                   </div>
                   <p className="mt-4 text-sm leading-6 text-text">
                     Recommended mode: {reviewModeLabel[ocrDraft.qualityReport.recommendedReviewMode]}.
                   </p>
                   <div className="mt-3 space-y-2">
-                    {ocrDraft.qualityReport.warnings.map((warning: string) => (
+                    {[...ocrDraft.qualityReport.warnings, ...(ocrDraft.qualityReport.policyWarnings ?? [])].map((warning: string) => (
                       <p key={warning} className="text-sm leading-6 text-warning">
                         {warning}
                       </p>

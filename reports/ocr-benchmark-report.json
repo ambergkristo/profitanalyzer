@@ -1,0 +1,36 @@
+{
+  "providerConfigured": false,
+  "liveRunExecuted": false,
+  "liveProviderStatus": "LIVE_PROVIDER_SKIPPED",
+  "fixtureCount": 2,
+  "fixtures": [
+    {
+      "fixtureName": "clean-invoice-photo.jpg",
+      "supplierDetected": true,
+      "dateDetected": true,
+      "lineCountDetected": 7,
+      "expectedLineCount": 7,
+      "productNameMatchRate": 1,
+      "unresolvedLineRate": 0,
+      "reviewBurdenScore": 0,
+      "recommendation": "ready_for_demo",
+      "safetyStatus": "draft_only_review_confirm_required"
+    },
+    {
+      "fixtureName": "blurry-invoice-photo.jpg",
+      "supplierDetected": false,
+      "dateDetected": false,
+      "lineCountDetected": 6,
+      "expectedLineCount": 5,
+      "productNameMatchRate": 0.2,
+      "unresolvedLineRate": 0.8333333333333334,
+      "reviewBurdenScore": 64,
+      "recommendation": "not_ready_for_customer_demo",
+      "safetyStatus": "draft_only_review_confirm_required"
+    }
+  ],
+  "safetyStatus": "PASS_DRAFT_ONLY_NO_PRIVATE_FILES_COMMITTED",
+  "warnings": [
+    "External OCR provider env is missing; live benchmark skipped."
+  ]
+}

@@ -1,3 +1,6 @@
+import fs from "node:fs";
+import path from "node:path";
+
 import { getAuthMode } from "../apps/api/src/auth/service.js";
 import { validateEnvironmentProfile } from "../apps/api/src/runtime/profile.js";
 
@@ -11,6 +14,7 @@ function main() {
     console.log("FAIL env validation");
     console.log(`appMode=${result.profile.appMode}`);
     console.log(`storeDriver=${result.profile.storeDriver}`);
+    console.log(`uploadStorageDriver=${result.profile.uploadStorageDriver}`);
     console.log(`ocrProvider=${result.profile.ocrProvider}`);
     console.log(`authMode=${result.profile.authMode}`);
     console.log("production readiness blockers:");
@@ -21,9 +25,26 @@ function main() {
     return;
   }
 
+  if (result.profile.uploadStorageDriver === "local_file") {
+    const uploadDir = path.resolve(process.env.UPLOAD_DATA_DIR?.trim() || ".uploads");
+    try {
+      fs.mkdirSync(uploadDir, { recursive: true });
+      fs.accessSync(uploadDir, fs.constants.W_OK);
+    } catch {
+      console.log("FAIL env validation");
+      console.log(`uploadDataDir=${uploadDir}`);
+      console.log("production readiness blockers:");
+      console.log(" - UPLOAD_DATA_DIR must be writable when UPLOAD_STORAGE_DRIVER=local_file.");
+      process.exitCode = 1;
+      return;
+    }
+  }
+
   console.log("PASS env validation");
   console.log(`appMode=${result.profile.appMode}`);
   console.log(`storeDriver=${result.profile.storeDriver}`);
+  console.log(`uploadStorageDriver=${result.profile.uploadStorageDriver}`);
+  console.log(`uploadMaxFileSizeBytes=${result.profile.uploadMaxFileSizeBytes}`);
   console.log(`ocrProvider=${result.profile.ocrProvider}`);
   console.log(`authMode=${result.profile.authMode}`);
   console.log(

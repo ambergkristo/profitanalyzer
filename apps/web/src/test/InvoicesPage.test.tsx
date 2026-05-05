@@ -11,6 +11,8 @@ vi.mock("../api/client.js", () => ({
     getSuppliers: vi.fn(),
     getOcrProviders: vi.fn(),
     getOcrJobs: vi.fn(),
+    retryOcrJob: vi.fn(),
+    cancelOcrJob: vi.fn(),
     getInvoiceSamples: vi.fn(),
     parseMockInvoiceSample: vi.fn(),
     createManualInvoiceDraft: vi.fn(),
@@ -228,6 +230,9 @@ describe("InvoicesPage", () => {
             "RM8 development adapter: fixture OCR result.",
             "Photo was blurry. Review low-confidence lines before confirming."
           ],
+          unresolvedLineRate: 0.5,
+          reviewBurdenScore: 50,
+          policyWarnings: ["OCR confidence policy requires careful review."],
           recommendedReviewMode: "careful_review"
         }
       },
@@ -290,6 +295,9 @@ describe("InvoicesPage", () => {
           "RM8 development adapter: fixture OCR result.",
           "Photo was blurry. Review low-confidence lines before confirming."
         ],
+        unresolvedLineRate: 0.5,
+        reviewBurdenScore: 50,
+        policyWarnings: ["OCR confidence policy requires careful review."],
         recommendedReviewMode: "careful_review"
       },
       lines: [
@@ -617,9 +625,11 @@ describe("InvoicesPage", () => {
         "Development fixture OCR stays local and deterministic for demo-safe draft creation."
       )
     ).toBeInTheDocument();
-    expect(await screen.findByText("Use `clean-invoice-photo.jpg`, `blurry-invoice-photo.jpg`, or `cropped-invoice-photo.jpg` to drive the fixture adapter.")).toBeInTheDocument();
+    expect(await screen.findByText(/Upload creates a review draft\. Costs update only after confirmation\./)).toBeInTheDocument();
     expect(await screen.findByText("Latest OCR jobs")).toBeInTheDocument();
     expect(await screen.findByText("failed-upload.jpg")).toBeInTheDocument();
     expect(await screen.findByText("OCR provider is unavailable.")).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: "Retry OCR job" })).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: "Cancel job" })).toBeInTheDocument();
   });
 });

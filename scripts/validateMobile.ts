@@ -32,6 +32,24 @@ function main() {
   );
   assertContains(
     invoicePagePath,
+    /accept="image\/\*,application\/pdf"/u,
+    "Invoice upload should accept mobile images and PDFs.",
+    failures
+  );
+  assertContains(
+    invoicePagePath,
+    /capture="environment"/u,
+    "Invoice upload should expose browser camera capture when supported.",
+    failures
+  );
+  assertContains(
+    invoicePagePath,
+    /Upload creates a review draft\. Costs update only after confirmation\./u,
+    "Invoice upload should show mobile-safe review-confirm safety copy.",
+    failures
+  );
+  assertContains(
+    invoicePagePath,
     /Confirm cost updates/u,
     "Invoice page should include review-confirm CTA.",
     failures

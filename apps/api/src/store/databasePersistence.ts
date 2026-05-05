@@ -15,7 +15,8 @@ import {
   type PurchaseInvoiceLine,
   type StoredInvoiceView,
   type Supplier,
-  type SupplierProductMatch
+  type SupplierProductMatch,
+  type UploadStorageObject
 } from "../../../../packages/core/src/index.js";
 import { createDataStore } from "../data.js";
 import type {
@@ -339,13 +340,21 @@ function mapOcrJobs(jobs: RestaurantWithRelations["ocrJobs"]): OcrInvoiceJob[] {
     provider: job.provider as OcrInvoiceJob["provider"],
     status: job.status,
     originalFileName: job.originalFileName,
+    sanitizedFileName: job.sanitizedFileName ?? undefined,
     mimeType: job.mimeType,
     fileSizeBytes: job.fileSizeBytes,
+    uploadObjectId: job.uploadObjectId ?? undefined,
     createdAt: job.createdAt.toISOString(),
+    updatedAt: job.updatedAt.toISOString(),
     parsedAt: toIsoString(job.parsedAt),
+    providerAttemptCount: job.providerAttemptCount ?? undefined,
+    lastAttemptAt: toIsoString(job.lastAttemptAt),
+    nextRetryAt: toIsoString(job.nextRetryAt),
+    failureCode: job.failureCode ?? undefined,
     failureReason: job.failureReason ?? undefined,
     invoiceDraftId: job.invoiceDraftId ?? undefined,
-    qualityReport: cloneJson<OcrQualityReport>(job.qualityReportJson)
+    qualityReport: cloneJson<OcrQualityReport>(job.qualityReportJson),
+    uploadObject: cloneJson<UploadStorageObject>(job.uploadObjectJson)
   }));
 }
 
@@ -685,13 +694,21 @@ async function replaceRestaurantDataset(
           provider: job.provider,
           status: job.status,
           originalFileName: job.originalFileName,
+          sanitizedFileName: job.sanitizedFileName ?? null,
           mimeType: job.mimeType,
           fileSizeBytes: job.fileSizeBytes,
+          uploadObjectId: job.uploadObjectId ?? null,
+          providerAttemptCount: job.providerAttemptCount ?? null,
+          lastAttemptAt: parseDate(job.lastAttemptAt) ?? null,
+          nextRetryAt: parseDate(job.nextRetryAt) ?? null,
           createdAt: new Date(job.createdAt),
+          updatedAt: parseDate(job.updatedAt) ?? new Date(job.createdAt),
           parsedAt: parseDate(job.parsedAt) ?? null,
+          failureCode: job.failureCode ?? null,
           failureReason: job.failureReason ?? null,
           invoiceDraftId: job.invoiceDraftId ?? null,
           qualityReportJson: toInputJson(job.qualityReport),
+          uploadObjectJson: toInputJson(job.uploadObject),
           resultJson: toInputJson(linkedInvoice?.ocrResult)
         };
       })

@@ -61,10 +61,12 @@ enum PriceChangeAlertStatus {
 
 enum OcrJobStatus {
   uploaded
+  queued
   processing
   parsed
   needs_review
   failed
+  cancelled
 }
 
 model User {
@@ -368,24 +370,33 @@ model PriceChangeAlert {
 }
 
 model OcrJob {
-  id                String      @id
-  workspaceId       String
-  restaurantId      String
-  provider          String
-  status            OcrJobStatus
-  originalFileName  String
-  mimeType          String
-  fileSizeBytes     Int
-  createdAt         DateTime    @default(now())
-  parsedAt          DateTime?
-  failureReason     String?
-  invoiceDraftId    String?
-  qualityReportJson Json?
-  resultJson        Json?
-  restaurant        Restaurant  @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  id                   String      @id
+  workspaceId          String
+  restaurantId         String
+  provider             String
+  status               OcrJobStatus
+  originalFileName     String
+  sanitizedFileName    String?
+  mimeType             String
+  fileSizeBytes        Int
+  uploadObjectId       String?
+  providerAttemptCount Int?
+  lastAttemptAt        DateTime?
+  nextRetryAt          DateTime?
+  createdAt            DateTime    @default(now())
+  updatedAt            DateTime    @updatedAt
+  parsedAt             DateTime?
+  failureCode          String?
+  failureReason        String?
+  invoiceDraftId       String?
+  qualityReportJson    Json?
+  uploadObjectJson     Json?
+  resultJson           Json?
+  restaurant           Restaurant  @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
 
   @@index([workspaceId, restaurantId])
   @@index([invoiceDraftId])
+  @@index([uploadObjectId])
 }
 
 model AuditLog {

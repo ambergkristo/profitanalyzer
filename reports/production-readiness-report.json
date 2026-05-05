@@ -26,9 +26,13 @@
       "status": "pass",
       "summary": "OCR and invoice upload remain draft-only and still require review-confirm before cost mutation."
     },
+    "invoicePipeline": {
+      "status": "partial",
+      "summary": "Upload storage abstraction, OCR job lifecycle metadata, confidence policy, benchmark workflow, and invoice pipeline validation exist; live provider accuracy and production object storage remain unproven."
+    },
     "mobileReadiness": {
       "status": "partial",
-      "summary": "Mobile readiness is documented and smoke-checked, but not fully browser-automated yet."
+      "summary": "Mobile readiness is documented and smoke-checked, including mobile invoice upload/onboarding assumptions, but not fully browser-automated yet."
     },
     "backupExport": {
       "status": "partial",

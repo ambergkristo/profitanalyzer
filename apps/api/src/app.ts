@@ -6,7 +6,8 @@ import {
   listDemoDatasets,
   simulateDishPriceChange,
   type IngredientUnit,
-  type InvoiceUnit
+  type InvoiceUnit,
+  type UploadStorageObject
 } from "../../../packages/core/src/index.js";
 import { buildAppConfig, buildDeepHealth, buildReadiness } from "./config.js";
 import { createAuditService } from "./audit/service.js";
@@ -42,6 +43,7 @@ import {
 } from "./store/exportImport.js";
 import { getCorsOrigin, getNodeEnv } from "./runtime/profile.js";
 import { normalizeRecipeIngredientEntries } from "./store/validation.js";
+import { createUploadStorage } from "./uploads/storage.js";
 import type { AppStore, OnboardingStepId } from "./store/types.js";
 import type { AuthService } from "./auth/service.js";
 
@@ -214,11 +216,12 @@ export function createApp(options: CreateAppOptions = {}) {
   const authService = options.authService ?? createAuthService({ env: options.env, store: dataStore });
   const auditService = createAuditService(options.env);
   const ocrRegistry = options.ocrRegistry ?? createOcrProviderRegistry({ env: options.env });
+  const uploadStorage = createUploadStorage(options.env);
   const defaultOcrProvider = ocrRegistry.getDefaultProvider();
   const upload = multer({
     storage: multer.memoryStorage(),
     limits: {
-      fileSize: defaultOcrProvider.maxFileSizeBytes
+      fileSize: Math.min(defaultOcrProvider.maxFileSizeBytes, uploadStorage.getConfig().maxFileSizeBytes)
     }
   });
 
@@ -1475,6 +1478,44 @@ export function createApp(options: CreateAppOptions = {}) {
     }
 
     const sanitizedFileName = sanitizeUploadedFileName(file.originalname);
+    const storeContext = dataStore.getStoreContext(dataset.id);
+    if (!storeContext) {
+      response.status(500).json({ message: "Workspace context is unavailable for upload storage." });
+      return;
+    }
+    let uploadObject: UploadStorageObject;
+    try {
+      uploadObject = uploadStorage.save({
+        context: storeContext,
+        originalFileName: file.originalname,
+        sanitizedFileName,
+        mimeType: file.mimetype,
+        fileSizeBytes: file.size,
+        buffer: file.buffer,
+        createdAt: "2026-04-28T10:00:00.000Z"
+      });
+    } catch (error) {
+      response.status(500).json({
+        message: error instanceof Error ? error.message : "Upload storage failed."
+      });
+      return;
+    }
+
+    await recordAudit(
+      auditService,
+      dataStore,
+      request,
+      dataset.id,
+      "ocr_upload_created",
+      "upload_object",
+      uploadObject.id,
+      {
+        provider: provider.config.id,
+        storageProvider: uploadObject.storageProvider,
+        mimeType: uploadObject.mimeType,
+        fileSizeBytes: uploadObject.fileSizeBytes
+      }
+    );
 
     try {
       const { provider: resolvedProvider, result } = await ocrRegistry.parse(provider.config.id, {
@@ -1489,7 +1530,8 @@ export function createApp(options: CreateAppOptions = {}) {
           parsedResult: result,
           fileName: sanitizedFileName,
           mimeType: file.mimetype,
-          fileSizeBytes: file.size
+          fileSizeBytes: file.size,
+          uploadObject
         },
         dataset.id
       );
@@ -1512,6 +1554,16 @@ export function createApp(options: CreateAppOptions = {}) {
         draft.ocrJob.id,
         { provider: resolvedProvider.id, invoiceDraftId: draft.invoiceDraft.id }
       );
+      await recordAudit(
+        auditService,
+        dataStore,
+        request,
+        dataset.id,
+        "invoice_draft_created",
+        "invoice",
+        draft.invoiceDraft.id,
+        { sourceType: draft.invoiceDraft.sourceType, ocrJobId: draft.ocrJob.id }
+      );
       response.json(draft);
     } catch (error: unknown) {
       const failureReason = error instanceof Error ? error.message : "OCR parse failed.";
@@ -1521,7 +1573,14 @@ export function createApp(options: CreateAppOptions = {}) {
           fileName: sanitizedFileName,
           mimeType: file.mimetype,
           fileSizeBytes: file.size,
-          failureReason
+          failureReason,
+          failureCode:
+            error instanceof OcrProviderNotConfiguredError
+              ? "provider_not_configured"
+              : error instanceof OcrProviderExecutionError
+                ? "provider_execution_error"
+                : "ocr_parse_failed",
+          uploadObject
         },
         dataset.id
       );
@@ -1537,6 +1596,16 @@ export function createApp(options: CreateAppOptions = {}) {
           "ocr_job",
           failedJob.id,
           { provider: provider.config.id, failureReason }
+        );
+        await recordAudit(
+          auditService,
+          dataStore,
+          request,
+          dataset.id,
+          "ocr_parse_failed",
+          "ocr_job",
+          failedJob.id,
+          { provider: provider.config.id, failureCode: failedJob.failureCode }
         );
       }
 
@@ -1594,6 +1663,132 @@ export function createApp(options: CreateAppOptions = {}) {
     }
 
     response.json(ocrJob);
+  });
+
+  app.post("/api/ocr/jobs/:id/retry", adminAccess, async (request, response) => {
+    const jobId = getRouteParam(request.params.id);
+    const datasetId = parseDatasetId(request.query.dataset);
+    const dataset = resolveDatasetOrRespond(request, datasetId, response, dataStore);
+    if (!dataset) {
+      return;
+    }
+
+    if (!jobId) {
+      response.status(400).json({ message: "OCR job id is required." });
+      return;
+    }
+
+    const existing = dataStore.getOcrJob(jobId, dataset.id);
+    if (!existing) {
+      response.status(404).json({ message: "OCR job not found." });
+      return;
+    }
+
+    if (existing.ocrJob.status !== "failed") {
+      response.status(409).json({ message: "Only failed OCR jobs can be retried." });
+      return;
+    }
+
+    const provider = ocrRegistry.getProvider(existing.ocrJob.provider);
+    if (!provider) {
+      response.status(400).json({ message: `Unknown OCR provider "${existing.ocrJob.provider}".` });
+      return;
+    }
+
+    const attemptCount = (existing.ocrJob.providerAttemptCount ?? 1) + 1;
+    await recordAudit(
+      auditService,
+      dataStore,
+      request,
+      dataset.id,
+      "ocr_retry_requested",
+      "ocr_job",
+      existing.ocrJob.id,
+      { provider: existing.ocrJob.provider, attemptCount }
+    );
+
+    try {
+      const { provider: resolvedProvider, result } = await ocrRegistry.parse(provider.config.id, {
+        fileName: existing.ocrJob.sanitizedFileName ?? sanitizeUploadedFileName(existing.ocrJob.originalFileName),
+        mimeType: existing.ocrJob.mimeType,
+        fileSizeBytes: existing.ocrJob.fileSizeBytes,
+        buffer: Buffer.alloc(0)
+      });
+      const draft = dataStore.createOcrDraft(
+        {
+          providerConfig: resolvedProvider,
+          parsedResult: result,
+          fileName: existing.ocrJob.sanitizedFileName ?? existing.ocrJob.originalFileName,
+          mimeType: existing.ocrJob.mimeType,
+          fileSizeBytes: existing.ocrJob.fileSizeBytes,
+          uploadObject: existing.ocrJob.uploadObject,
+          providerAttemptCount: attemptCount
+        },
+        dataset.id
+      );
+
+      if (!draft) {
+        response.status(404).json({ message: `Unknown dataset "${datasetId}".` });
+        return;
+      }
+
+      await dataStore.flushDatasetAsync(dataset.id);
+      response.json(draft);
+    } catch (error) {
+      const failureReason = error instanceof Error ? error.message : "OCR retry failed.";
+      const failedJob = dataStore.createFailedOcrJob(
+        {
+          providerConfig: provider.config,
+          fileName: existing.ocrJob.sanitizedFileName ?? existing.ocrJob.originalFileName,
+          mimeType: existing.ocrJob.mimeType,
+          fileSizeBytes: existing.ocrJob.fileSizeBytes,
+          failureReason,
+          failureCode: "ocr_retry_failed",
+          uploadObject: existing.ocrJob.uploadObject,
+          providerAttemptCount: attemptCount
+        },
+        dataset.id
+      );
+      await dataStore.flushDatasetAsync(dataset.id);
+      response.status(422).json({ message: failureReason, ocrJob: failedJob });
+    }
+  });
+
+  app.post("/api/ocr/jobs/:id/cancel", adminAccess, async (request, response) => {
+    const jobId = getRouteParam(request.params.id);
+    const datasetId = parseDatasetId(request.query.dataset);
+    const dataset = resolveDatasetOrRespond(request, datasetId, response, dataStore);
+    if (!dataset) {
+      return;
+    }
+
+    if (!jobId) {
+      response.status(400).json({ message: "OCR job id is required." });
+      return;
+    }
+
+    const cancelled = dataStore.cancelOcrJob(jobId, dataset.id);
+    if (cancelled === null) {
+      response.status(404).json({ message: `Unknown dataset "${datasetId}".` });
+      return;
+    }
+    if (cancelled === undefined) {
+      response.status(409).json({ message: "OCR job cannot be cancelled." });
+      return;
+    }
+
+    await dataStore.flushDatasetAsync(dataset.id);
+    await recordAudit(
+      auditService,
+      dataStore,
+      request,
+      dataset.id,
+      "ocr_job_cancelled",
+      "ocr_job",
+      cancelled.id,
+      { provider: cancelled.provider }
+    );
+    response.json({ ocrJob: cancelled });
   });
 
   app.get("/api/invoices/:id", memberAccess, (request, response) => {
@@ -1743,6 +1938,52 @@ export function createApp(options: CreateAppOptions = {}) {
           alertCount: result.confirmationSummary?.alertCount ?? 0
         }
       );
+      await recordAudit(
+        auditService,
+        dataStore,
+        request,
+        dataset.id,
+        "invoice_confirmed",
+        "invoice",
+        result.confirmedInvoice.id,
+        { confirmedLineCount: result.confirmationSummary?.confirmedLineCount ?? 0 }
+      );
+      for (const line of result.confirmedLines) {
+        await recordAudit(
+          auditService,
+          dataStore,
+          request,
+          dataset.id,
+          "invoice_line_reviewed",
+          "invoice_line",
+          line.id,
+          { reviewStatus: line.reviewStatus, matchedIngredientId: line.matchedIngredientId }
+        );
+      }
+      for (const history of result.costHistory) {
+        await recordAudit(
+          auditService,
+          dataStore,
+          request,
+          dataset.id,
+          "ingredient_cost_updated",
+          "ingredient",
+          history.ingredientId,
+          { invoiceLineId: history.invoiceLineId, newCostPerUnitCents: history.newCostPerUnitCents }
+        );
+      }
+      for (const alert of result.alerts) {
+        await recordAudit(
+          auditService,
+          dataStore,
+          request,
+          dataset.id,
+          "price_alert_created",
+          "price_change_alert",
+          alert.id,
+          { severity: alert.severity, ingredientId: alert.ingredientId }
+        );
+      }
       response.json({
         confirmationSummary: result.confirmationSummary,
         costHistory: result.costHistory,

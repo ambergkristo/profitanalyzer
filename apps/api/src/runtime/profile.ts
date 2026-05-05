@@ -13,6 +13,7 @@ const allowedAuthModes = ["disabled", "dev", "production_future"] as const;
 const allowedStoreDrivers = ["memory", "file", "database"] as const;
 const allowedOcrProviders = ["fixture", "external_env", "disabled"] as const;
 const allowedLogLevels = ["debug", "info", "warn", "error"] as const;
+const allowedUploadStorageDrivers = ["memory", "local_file"] as const;
 const obviousPlaceholderValues = new Set([
   "",
   "changeme",
@@ -36,6 +37,9 @@ export interface RuntimeProfileSnapshot {
   authMode: AuthMode;
   ocrProvider: OcrProviderId;
   logLevel: LogLevel;
+  uploadStorageDriver: "memory" | "local_file";
+  uploadDataDirConfigured: boolean;
+  uploadMaxFileSizeBytes: number;
   databaseConfigured: boolean;
   externalOcrConfigured: boolean;
   sessionSecretConfigured: boolean;
@@ -151,6 +155,8 @@ export function validateEnvironmentProfile(input: {
     environment.LOG_LEVEL,
     nodeEnv === "production" ? "info" : nodeEnv === "test" ? "warn" : "debug"
   );
+  const rawUploadStorageDriver = normalizeEnvValue(environment.UPLOAD_STORAGE_DRIVER, "memory");
+  const uploadMaxFileSizeBytes = Number(environment.UPLOAD_MAX_FILE_SIZE_BYTES ?? 10 * 1024 * 1024);
 
   const checks: RuntimeCheck[] = [];
   const warnings: string[] = [];
@@ -163,6 +169,9 @@ export function validateEnvironmentProfile(input: {
     ? rawOcrProvider
     : "fixture";
   const logLevel = isAllowedValue(rawLogLevel, allowedLogLevels) ? rawLogLevel : "info";
+  const uploadStorageDriver = isAllowedValue(rawUploadStorageDriver, allowedUploadStorageDrivers)
+    ? rawUploadStorageDriver
+    : "memory";
 
   const sessionSecretConfigured = isSessionSecretConfigured(environment);
   const appBaseUrlConfigured = isConfigured(environment.APP_BASE_URL);
@@ -185,6 +194,12 @@ export function validateEnvironmentProfile(input: {
     authMode,
     ocrProvider,
     logLevel,
+    uploadStorageDriver,
+    uploadDataDirConfigured: isConfigured(environment.UPLOAD_DATA_DIR),
+    uploadMaxFileSizeBytes:
+      Number.isFinite(uploadMaxFileSizeBytes) && uploadMaxFileSizeBytes > 0
+        ? Math.floor(uploadMaxFileSizeBytes)
+        : 0,
     databaseConfigured,
     externalOcrConfigured,
     sessionSecretConfigured,
@@ -243,6 +258,36 @@ export function validateEnvironmentProfile(input: {
     isAllowedValue(rawLogLevel, allowedLogLevels)
       ? `LOG_LEVEL is ${rawLogLevel}.`
       : `LOG_LEVEL must be one of: ${allowedLogLevels.join(", ")}.`
+  );
+
+  pushCheck(
+    "upload_storage_driver",
+    isAllowedValue(rawUploadStorageDriver, allowedUploadStorageDrivers) ? "pass" : "fail",
+    isAllowedValue(rawUploadStorageDriver, allowedUploadStorageDrivers)
+      ? `UPLOAD_STORAGE_DRIVER is ${rawUploadStorageDriver}.`
+      : `UPLOAD_STORAGE_DRIVER must be one of: ${allowedUploadStorageDrivers.join(", ")}.`
+  );
+
+  pushCheck(
+    "upload_max_file_size",
+    Number.isFinite(uploadMaxFileSizeBytes) && uploadMaxFileSizeBytes > 0 ? "pass" : "fail",
+    Number.isFinite(uploadMaxFileSizeBytes) && uploadMaxFileSizeBytes > 0
+      ? `UPLOAD_MAX_FILE_SIZE_BYTES is ${Math.floor(uploadMaxFileSizeBytes)}.`
+      : "UPLOAD_MAX_FILE_SIZE_BYTES must be a positive number."
+  );
+
+  pushCheck(
+    "upload_storage_production",
+    appMode === "production"
+      ? uploadStorageDriver === "local_file"
+        ? "warn"
+        : "fail"
+      : "skipped",
+    appMode === "production"
+      ? uploadStorageDriver === "local_file"
+        ? "Local upload file storage requires a persistent disk or external storage before production launch."
+        : "APP_MODE=production cannot rely on memory upload storage."
+      : "Production upload storage rules are not required for this mode."
   );
 
   pushCheck(

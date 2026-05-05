@@ -55,6 +55,9 @@ Core:
 - `STORE_DRIVER=memory|file|database`
 - `DATA_DIR=.data`
 - `DATABASE_URL=` when `STORE_DRIVER=database`
+- `UPLOAD_STORAGE_DRIVER=memory|local_file`
+- `UPLOAD_DATA_DIR=.uploads`
+- `UPLOAD_MAX_FILE_SIZE_BYTES=10485760`
 
 OCR:
 
@@ -102,6 +105,8 @@ Readiness behaviors:
 - DB selection without `DATABASE_URL` is a fail check
 - `AUTH_MODE=dev` in `APP_MODE=production` is a fail check
 - fixture OCR in production is a warning, not a secret leak
+- memory upload storage in production is a readiness blocker
+- local file upload storage requires persistent disk
 
 ## Production Build And Start
 
@@ -128,12 +133,16 @@ Run before any serious hosted environment:
 - `npm run validate:runtime`
 - `npm run validate:production-readiness`
 - `npm run validate:mobile`
+- `npm run validate:onboarding`
+- `npm run validate:invoice-pipeline`
+- `npm run benchmark:ocr`
 
 ## Hosted Production Caveats
 
 - `STORE_DRIVER=file` is not a durable production choice on ephemeral filesystems
 - production hosting should move toward managed Postgres
-- OCR upload storage strategy is still future work
+- `UPLOAD_STORAGE_DRIVER=local_file` requires persistent disk and is not equivalent to managed object storage
+- external object storage remains future work for hosted production
 - the current auth layer is a production-shaped foundation, not the final customer identity system
 - monitoring, backups, and rollout playbooks are foundations, not final operations maturity
 
@@ -143,5 +152,5 @@ Run before any serious hosted environment:
 - billing is not live
 - production backup flow is not fully implemented
 - full monitoring stack is not live
-- OCR provider benchmark is not complete
+- live OCR provider benchmark is not complete without configured provider env and private samples
 - legal/privacy launch gates are still open

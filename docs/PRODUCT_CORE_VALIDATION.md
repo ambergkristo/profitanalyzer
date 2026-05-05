@@ -14,6 +14,8 @@ Validated now:
 - environment validation
 - file-store persistence behavior
 - mobile-first onboarding API and UI smoke behavior
+- invoice/OCR upload pipeline behavior
+- OCR confidence-policy and benchmark workflow
 
 ## Readiness Shift
 
@@ -69,6 +71,19 @@ Phase 15 introduces:
 - onboarding export safety checks
 - expanded `validate:mobile` coverage for onboarding wizard, recipe builder, supplier setup, and first invoice step
 
+## What Phase 16 Adds To Validation
+
+Phase 16 introduces:
+
+- `validate:invoice-pipeline`
+- `benchmark:ocr`
+- upload storage validation for `memory` and `local_file`
+- OCR job lifecycle validation for parsed, failed, retry, and cancelled states
+- confidence-policy and review-burden validation
+- draft-only pre-confirm safety checks
+- post-confirm cost-history, alerts, and supplier-action checks
+- deterministic benchmark reports with live provider skip behavior
+
 ## Production SaaS Validation Gates
 
 Production SaaS readiness now requires:
@@ -78,6 +93,9 @@ Production SaaS readiness now requires:
 - auth and access validation
 - deployment validation
 - OCR live benchmark
+- invoice pipeline validation
+- upload storage validation
+- OCR confidence-policy validation
 - mobile invoice workflow validation
 - backup and export validation
 - security and privacy baseline
@@ -90,6 +108,7 @@ Production SaaS readiness now requires:
 - authenticated isolation under a live DB in a production-like deployment
 - production backup and restore maturity
 - live OCR accuracy on real restaurant invoices
+- hosted object storage behavior
 - full mobile browser coverage for the invoice flow
 - real restaurant onboarding time and data cleanup burden
 - willingness to pay

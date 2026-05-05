@@ -18,6 +18,9 @@ This is not a claim that production SaaS readiness already exists.
 - `LOG_LEVEL=debug|info|warn|error`
 - `STORE_DRIVER=memory|file|database`
 - `DATA_DIR=.data`
+- `UPLOAD_STORAGE_DRIVER=memory|local_file`
+- `UPLOAD_DATA_DIR=.uploads`
+- `UPLOAD_MAX_FILE_SIZE_BYTES=10485760`
 - `DATABASE_URL=`
 - `OCR_PROVIDER=fixture|external_env|disabled`
 - `OCR_PROVIDER_API_KEY=`
@@ -33,6 +36,9 @@ This is not a claim that production SaaS readiness already exists.
 - `AUTH_MODE=dev`
 - `STORE_DRIVER=memory`
 - `DATA_DIR=.data`
+- `UPLOAD_STORAGE_DRIVER=memory`
+- `UPLOAD_DATA_DIR=.uploads`
+- `UPLOAD_MAX_FILE_SIZE_BYTES=10485760`
 - `OCR_PROVIDER=fixture`
 - `LOG_LEVEL=debug`
 
@@ -44,6 +50,7 @@ APP_MODE=demo
 AUTH_MODE=disabled
 STORE_DRIVER=memory
 DATA_DIR=.data
+UPLOAD_STORAGE_DRIVER=memory
 OCR_PROVIDER=fixture
 ```
 
@@ -56,6 +63,8 @@ AUTH_MODE=dev
 SESSION_SECRET=local-dev-session-secret
 STORE_DRIVER=file
 DATA_DIR=.data
+UPLOAD_STORAGE_DRIVER=local_file
+UPLOAD_DATA_DIR=.uploads
 APP_BASE_URL=http://localhost:5173
 API_BASE_URL=http://localhost:3001
 CORS_ORIGIN=http://localhost:5173
@@ -71,6 +80,8 @@ AUTH_MODE=dev
 SESSION_SECRET=local-dev-session-secret
 STORE_DRIVER=database
 DATABASE_URL=postgresql://user:password@localhost:5432/profit_analyzer
+UPLOAD_STORAGE_DRIVER=local_file
+UPLOAD_DATA_DIR=.uploads
 APP_BASE_URL=http://localhost:5173
 API_BASE_URL=http://localhost:3001
 CORS_ORIGIN=http://localhost:5173
@@ -86,6 +97,8 @@ AUTH_MODE=production_future
 SESSION_SECRET=replace-with-real-secret
 STORE_DRIVER=database
 DATABASE_URL=postgresql://user:password@db:5432/profit_analyzer
+UPLOAD_STORAGE_DRIVER=local_file
+UPLOAD_DATA_DIR=/var/lib/profit-analyzer/uploads
 APP_BASE_URL=https://app.example.com
 API_BASE_URL=https://api.example.com
 CORS_ORIGIN=https://app.example.com
@@ -113,6 +126,22 @@ Important:
 - ingredient costs still update only after `review-confirm`
 - normal validation still passes without OCR provider credentials
 
+## Upload Storage
+
+```bash
+UPLOAD_STORAGE_DRIVER=memory
+UPLOAD_DATA_DIR=.uploads
+UPLOAD_MAX_FILE_SIZE_BYTES=10485760
+```
+
+Rules:
+
+- `memory` is the deterministic default for tests/demo.
+- `local_file` writes uploaded invoice files under `UPLOAD_DATA_DIR`.
+- `.uploads/` and `uploads/` are ignored and must not be committed.
+- production mode fails readiness if it relies on memory-only upload storage.
+- local file storage requires a persistent disk when hosted.
+
 ## Validation
 
 Run:
@@ -132,6 +161,8 @@ This checks:
 - `SESSION_SECRET` in non-demo authenticated modes
 - `APP_BASE_URL`, `API_BASE_URL`, and `CORS_ORIGIN` in production mode
 - OCR env completeness only when `OCR_PROVIDER=external_env`
+- upload storage driver and max upload size
+- writable upload directory when `UPLOAD_STORAGE_DRIVER=local_file`
 - placeholder-like secrets in production-like mode
 - unsafe production blockers such as `AUTH_MODE=dev` or `STORE_DRIVER=memory`
 

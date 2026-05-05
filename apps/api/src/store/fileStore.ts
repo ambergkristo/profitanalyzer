@@ -259,6 +259,14 @@ export function createFileStore(options: FileStoreOptions): AppStore {
       }
       return job;
     },
+    cancelOcrJob(jobId, datasetId) {
+      const job = baseStore.cancelOcrJob(jobId, datasetId);
+      const resolvedDatasetId = resolveDatasetId(datasetId);
+      if (job && resolvedDatasetId) {
+        persistDatasetFromStore(resolvedDatasetId);
+      }
+      return job;
+    },
     createIngredient(input, datasetId) {
       const ingredient = baseStore.createIngredient(input, datasetId);
       const resolvedDatasetId = resolveDatasetId(datasetId);

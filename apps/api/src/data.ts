@@ -7,6 +7,7 @@ import {
   createDefaultSuppliers,
   createInvoiceDraftFromOcrResult,
   evaluateOcrQuality,
+  applyOcrConfidencePolicy,
   explainDishPerformance,
   getCostDriverInsight,
   getDemoDataset,
@@ -1159,6 +1160,8 @@ export function createDataStore(options: CreateDataStoreOptions = {}): AppStore 
         fileName: string;
         mimeType: string;
         fileSizeBytes: number;
+        uploadObject?: import("./store/types.js").UploadStorageObject;
+        providerAttemptCount?: number;
       },
       datasetId?: string
     ): OcrDraftResponse | null {
@@ -1172,7 +1175,7 @@ export function createDataStore(options: CreateDataStoreOptions = {}): AppStore 
       session.invoiceCounter += 1;
       const jobId = `ocr-job-${session.ocrJobCounter.toString().padStart(2, "0")}`;
       const createdAt = `2026-04-28T10:${session.ocrJobCounter.toString().padStart(2, "0")}:00.000Z`;
-      const qualityReport = evaluateOcrQuality(input.parsedResult);
+      const qualityReport = applyOcrConfidencePolicy(input.parsedResult, evaluateOcrQuality(input.parsedResult));
       const draft = createInvoiceDraftFromOcrResult(
         input.parsedResult,
         session.suppliers,
@@ -1193,13 +1196,19 @@ export function createDataStore(options: CreateDataStoreOptions = {}): AppStore 
         provider: input.providerConfig.id,
         providerDisplayName: input.providerConfig.displayName,
         status,
+        uploadObjectId: input.uploadObject?.id,
         originalFileName: input.fileName,
+        sanitizedFileName: input.uploadObject?.sanitizedFileName ?? input.fileName,
         mimeType: input.mimeType,
         fileSizeBytes: input.fileSizeBytes,
         createdAt,
+        updatedAt: createdAt,
         parsedAt: createdAt,
+        providerAttemptCount: input.providerAttemptCount ?? 1,
+        lastAttemptAt: createdAt,
         invoiceDraftId: draft.invoiceDraft.id,
-        qualityReport
+        qualityReport,
+        uploadObject: input.uploadObject
       };
 
       session.invoices.set(draft.invoiceDraft.id, {
@@ -1229,6 +1238,9 @@ export function createDataStore(options: CreateDataStoreOptions = {}): AppStore 
         mimeType: string;
         fileSizeBytes: number;
         failureReason: string;
+        failureCode?: string;
+        uploadObject?: import("./store/types.js").UploadStorageObject;
+        providerAttemptCount?: number;
       },
       datasetId?: string
     ) {
@@ -1247,11 +1259,18 @@ export function createDataStore(options: CreateDataStoreOptions = {}): AppStore 
         provider: input.providerConfig.id,
         providerDisplayName: input.providerConfig.displayName,
         status: "failed",
+        uploadObjectId: input.uploadObject?.id,
         originalFileName: input.fileName,
+        sanitizedFileName: input.uploadObject?.sanitizedFileName ?? input.fileName,
         mimeType: input.mimeType,
         fileSizeBytes: input.fileSizeBytes,
         createdAt,
-        failureReason: input.failureReason
+        updatedAt: createdAt,
+        providerAttemptCount: input.providerAttemptCount ?? 1,
+        lastAttemptAt: createdAt,
+        failureCode: input.failureCode,
+        failureReason: input.failureReason,
+        uploadObject: input.uploadObject
       };
 
       session.ocrJobs.set(jobId, {
@@ -1259,6 +1278,34 @@ export function createDataStore(options: CreateDataStoreOptions = {}): AppStore 
       });
 
       return ocrJob;
+    },
+    cancelOcrJob(jobId: string, datasetId?: string) {
+      const session = getSession(datasetId);
+
+      if (!session) {
+        return null;
+      }
+
+      const record = session.ocrJobs.get(jobId);
+
+      if (!record) {
+        return undefined;
+      }
+
+      if (record.job.status === "parsed" || record.job.status === "needs_review") {
+        return undefined;
+      }
+
+      const updatedAt = record.job.createdAt;
+      record.job = {
+        ...record.job,
+        status: "cancelled",
+        updatedAt,
+        failureCode: "cancelled",
+        failureReason: "OCR job was cancelled before creating a review draft."
+      };
+      session.ocrJobs.set(jobId, record);
+      return record.job;
     },
     getOcrJob(jobId: string, datasetId?: string) {
       const session = getSession(datasetId);

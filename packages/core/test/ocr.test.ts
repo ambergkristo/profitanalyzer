@@ -4,7 +4,9 @@ import {
   createDefaultSupplierProductMatches,
   createDefaultSuppliers,
   createInvoiceDraftFromOcrResult,
+  applyOcrConfidencePolicy,
   evaluateOcrQuality,
+  evaluateOcrConfidencePolicy,
   getDemoDataset,
   mapOcrConfidenceToMatchConfidence,
   normalizeOcrResultToInvoiceInput,
@@ -105,6 +107,22 @@ describe("ocr adapter", () => {
     expect(quality.recommendedReviewMode).toBe("manual_entry_recommended");
     expect(validation.pass).toBe(false);
     expect(validation.failures).toContain("OCR result did not contain any lines.");
+  });
+
+  it("applies explicit OCR confidence policy thresholds to quality reports", () => {
+    const clean = resolveFixtureOcrResult("clean-invoice-photo.jpg");
+    const cleanQuality = applyOcrConfidencePolicy(clean, evaluateOcrQuality(clean));
+
+    expect(cleanQuality.recommendedReviewMode).toBe("quick_review");
+    expect(cleanQuality.unresolvedLineRate).toBe(0);
+    expect(cleanQuality.reviewBurdenScore).toBeLessThan(20);
+
+    const blurry = resolveFixtureOcrResult("blurry-invoice-photo.jpg");
+    const blurryPolicy = evaluateOcrConfidencePolicy(blurry, evaluateOcrQuality(blurry));
+
+    expect(blurryPolicy.recommendedReviewMode).toBe("manual_entry_recommended");
+    expect(blurryPolicy.unresolvedLineRate).toBeGreaterThan(0.4);
+    expect(blurryPolicy.warnings.length).toBeGreaterThan(0);
   });
 
   it("recommends manual entry when many OCR rows have missing prices or unknown products", () => {

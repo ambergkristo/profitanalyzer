@@ -13,7 +13,9 @@ The app must support:
 - opening the app on a phone
 - choosing or taking an invoice photo through browser file input when available
 - uploading image or PDF from mobile
+- seeing file type and size before upload
 - OCR creating a review draft only
+- seeing confidence policy and quality warnings after parse
 - mobile review and confirm
 - no cost update before confirmation
 
@@ -48,6 +50,8 @@ For the current web product:
 - supplier setup renders
 - first invoice step links to invoice intake
 - invoice upload mode renders
+- invoice upload accepts `image/*,application/pdf`
+- invoice upload exposes browser camera capture hint where supported
 - invoice review-confirm CTA renders
 - invoice page does not depend on a desktop-only table
 - dashboard supplier/action surfaces still render
@@ -63,7 +67,7 @@ npm run validate:mobile
 
 Current validation is a smoke gate, not full browser automation.
 
-It now checks onboarding source/tests for mobile-first setup coverage in addition to invoice, dashboard, and dish-detail smoke coverage.
+It now checks onboarding source/tests and mobile invoice upload assumptions, including image/PDF accept, browser capture hint, and draft-only safety copy.
 
 ## Launch Blockers
 

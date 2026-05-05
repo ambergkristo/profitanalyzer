@@ -151,6 +151,8 @@ Make a real restaurant able to onboard without desktop-only friction.
 
 ## PHASE 16 - Production Invoice/OCR Pipeline
 
+Status: complete as production invoice/OCR pipeline foundation.
+
 ### Goal
 
 Make the invoice and OCR pipeline production-safe.
@@ -167,6 +169,14 @@ Make the invoice and OCR pipeline production-safe.
 - no blind import
 - mobile photo upload flow
 - OCR accuracy reporting
+
+### Honest Current Position
+
+- upload storage now has `memory` and `local_file` drivers, but hosted object storage remains future work
+- OCR job metadata tracks upload linkage, attempts, failure codes, retry, cancel, and quality policy output
+- deterministic benchmark and invoice-pipeline validation exist
+- live provider accuracy is still not claimed without configured provider env and private benchmark samples
+- review-confirm remains the only cost mutation path
 
 ## PHASE 17 - Billing + License Model Readiness
 

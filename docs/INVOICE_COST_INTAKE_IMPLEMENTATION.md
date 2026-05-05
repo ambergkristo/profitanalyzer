@@ -100,6 +100,8 @@ Sprint 8 closes RM8 without changing the trust model:
 - low-confidence OCR lines become `needs_review`
 - OCR warnings stay visible in the shared review UI
 - OCR jobs expose provider, status, quality summary, and failure reason
+- OCR jobs track upload metadata, provider attempts, failure codes, retry/cancel state, and confidence-policy output
+- uploaded invoice files go through `memory` or `local_file` upload storage, not a git-tracked path
 - confirmation still happens only through `POST /api/invoices/:id/review-confirm`
 
 This means OCR can plug into the product without inventing a second confirmation path.
@@ -120,6 +122,9 @@ The quality report checks:
 - unknown products
 - missing supplier or invoice date
 - unit warnings
+- unresolved line rate
+- review burden score
+- policy warnings
 
 This report informs the user, but it does not confirm data automatically.
 

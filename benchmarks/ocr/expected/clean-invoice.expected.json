@@ -1,9 +1,9 @@
 {
-  "fixtureId": "clean-invoice",
+  "fixtureName": "clean-invoice-photo.jpg",
   "supplierName": "Metro Fresh Wholesale",
   "invoiceDate": "2026-04-08",
-  "lineCount": 7,
-  "lineNames": [
+  "expectedLineCount": 7,
+  "expectedProducts": [
     "Romaine Lettuce Hearts",
     "Parmesan Grated",
     "Avocado Halves",

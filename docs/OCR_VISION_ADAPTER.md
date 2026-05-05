@@ -137,7 +137,54 @@ Current validation:
 - max file size is enforced per provider
 - original filenames are sanitized before response output
 - failed OCR parses create failed jobs instead of crashing the server
-- files are processed in memory only
+- files are stored through the upload storage abstraction
+- `UPLOAD_STORAGE_DRIVER=memory` stores metadata only for deterministic tests/demo
+- `UPLOAD_STORAGE_DRIVER=local_file` writes under `UPLOAD_DATA_DIR` without exposing local paths to the frontend
+
+Upload storage env:
+
+- `UPLOAD_STORAGE_DRIVER=memory|local_file`
+- `UPLOAD_DATA_DIR=.uploads`
+- `UPLOAD_MAX_FILE_SIZE_BYTES=10485760`
+
+OCR job lifecycle now includes:
+
+- `uploaded`
+- `queued`
+- `processing`
+- `parsed`
+- `needs_review`
+- `failed`
+- `cancelled`
+
+Jobs can be listed, inspected, retried after failure, or cancelled before a parsed/needs-review draft. Retry still creates a draft only; it never confirms costs.
+
+## Confidence Policy
+
+`packages/core/src/ocrPolicy.ts` defines the explicit review policy:
+
+- low or no confidence lines require review unless ignored
+- missing product names require review
+- missing price requires review unless the system can derive unit price from line total and quantity
+- unsupported units require review
+- high unresolved-line rate recommends manual entry
+- supplier/date gaps create warnings, not cost updates
+
+The policy adds unresolved-line rate, review burden score, and policy warnings to the quality report.
+
+## Benchmark Workflow
+
+`npm run benchmark:ocr` runs deterministic fixture benchmarking and writes:
+
+- `reports/ocr-benchmark-report.json`
+- `reports/ocr-benchmark-report.md`
+
+Private live samples must stay under ignored folders:
+
+- `benchmarks/ocr/private-samples/`
+- `benchmarks/ocr/private-results/`
+
+Missing live provider env produces `LIVE_PROVIDER_SKIPPED` and exits successfully. That is a workflow safety result, not proof of live OCR accuracy.
 
 Accepted mime types:
 

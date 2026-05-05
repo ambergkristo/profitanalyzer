@@ -22,8 +22,11 @@ import type {
   ReviewedInvoiceLineInput,
   StoredInvoiceView,
   Supplier,
-  SupplierProductMatch
+  SupplierProductMatch,
+  UploadStorageObject
 } from "../../../../packages/core/src/index.js";
+
+export type { UploadStorageObject } from "../../../../packages/core/src/index.js";
 
 export type AppMode = "demo" | "pilot" | "production";
 export type PersistenceType = "memory" | "file" | "database";
@@ -275,6 +278,8 @@ export interface AppStore {
       fileName: string;
       mimeType: string;
       fileSizeBytes: number;
+      uploadObject?: UploadStorageObject;
+      providerAttemptCount?: number;
     },
     datasetId?: string
   ): OcrDraftResponse | null;
@@ -285,9 +290,13 @@ export interface AppStore {
       mimeType: string;
       fileSizeBytes: number;
       failureReason: string;
+      failureCode?: string;
+      uploadObject?: UploadStorageObject;
+      providerAttemptCount?: number;
     },
     datasetId?: string
   ): OcrInvoiceJob | null;
+  cancelOcrJob(jobId: string, datasetId?: string): OcrInvoiceJob | null | undefined;
   getOcrJob(
     jobId: string,
     datasetId?: string

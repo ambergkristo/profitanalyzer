@@ -321,13 +321,36 @@ export interface ManualInvoiceDraftInput {
 }
 
 export type OcrProvider = "fixture" | "external_env" | "disabled";
-export type OcrJobStatus = "uploaded" | "processing" | "parsed" | "needs_review" | "failed";
+export type OcrJobStatus =
+  | "uploaded"
+  | "queued"
+  | "processing"
+  | "parsed"
+  | "needs_review"
+  | "failed"
+  | "cancelled";
 export type OcrConfidence = "high" | "medium" | "low" | "none";
 export type OcrProviderMode = "development" | "external" | "disabled";
 export type OcrRecommendedReviewMode =
   | "quick_review"
   | "careful_review"
   | "manual_entry_recommended";
+export type UploadStorageProvider = "memory" | "local_file" | "external_future";
+
+export interface UploadStorageObject {
+  id: string;
+  workspaceId: string;
+  restaurantId: string;
+  originalFileName: string;
+  sanitizedFileName: string;
+  mimeType: string;
+  fileSizeBytes: number;
+  storageProvider: UploadStorageProvider;
+  storageKey: string;
+  createdAt: string;
+  deletedAt?: string;
+  checksum?: string;
+}
 
 export interface OcrParsedLine {
   rawProductName: string;
@@ -372,6 +395,9 @@ export interface OcrQualityReport {
   unitWarningCount: number;
   warnings: string[];
   recommendedReviewMode: OcrRecommendedReviewMode;
+  unresolvedLineRate?: number;
+  reviewBurdenScore?: number;
+  policyWarnings?: string[];
 }
 
 export interface OcrInvoiceJob {
@@ -380,14 +406,22 @@ export interface OcrInvoiceJob {
   provider: OcrProvider;
   providerDisplayName?: string;
   status: OcrJobStatus;
+  uploadObjectId?: string;
   originalFileName: string;
+  sanitizedFileName?: string;
   mimeType: string;
   fileSizeBytes: number;
   createdAt: string;
+  updatedAt?: string;
   parsedAt?: string;
+  providerAttemptCount?: number;
+  lastAttemptAt?: string;
+  nextRetryAt?: string;
+  failureCode?: string;
   failureReason?: string;
   invoiceDraftId?: string;
   qualityReport?: OcrQualityReport;
+  uploadObject?: UploadStorageObject;
 }
 
 export interface MockInvoiceSampleSummary {

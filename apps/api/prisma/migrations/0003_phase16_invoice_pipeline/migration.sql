@@ -1,0 +1,14 @@
+-- Phase 16: production-shaped invoice/OCR pipeline metadata.
+ALTER TYPE "OcrJobStatus" ADD VALUE IF NOT EXISTS 'queued';
+ALTER TYPE "OcrJobStatus" ADD VALUE IF NOT EXISTS 'cancelled';
+
+ALTER TABLE "OcrJob" ADD COLUMN IF NOT EXISTS "sanitizedFileName" TEXT;
+ALTER TABLE "OcrJob" ADD COLUMN IF NOT EXISTS "uploadObjectId" TEXT;
+ALTER TABLE "OcrJob" ADD COLUMN IF NOT EXISTS "providerAttemptCount" INTEGER;
+ALTER TABLE "OcrJob" ADD COLUMN IF NOT EXISTS "lastAttemptAt" TIMESTAMP(3);
+ALTER TABLE "OcrJob" ADD COLUMN IF NOT EXISTS "nextRetryAt" TIMESTAMP(3);
+ALTER TABLE "OcrJob" ADD COLUMN IF NOT EXISTS "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP;
+ALTER TABLE "OcrJob" ADD COLUMN IF NOT EXISTS "failureCode" TEXT;
+ALTER TABLE "OcrJob" ADD COLUMN IF NOT EXISTS "uploadObjectJson" JSONB;
+
+CREATE INDEX IF NOT EXISTS "OcrJob_uploadObjectId_idx" ON "OcrJob"("uploadObjectId");
