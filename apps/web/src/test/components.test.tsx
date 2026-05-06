@@ -3,6 +3,7 @@ import { MemoryRouter } from "react-router-dom";
 import { describe, expect, it } from "vitest";
 
 import { DishRow } from "../components/DishRow.js";
+import { FieldLabel, NumberInput, SelectInput, TextInput } from "../components/Form.js";
 import { SeverityBadge } from "../components/SeverityBadge.js";
 import { StatusTag } from "../components/StatusTag.js";
 import { formatEuro } from "../utils/format.js";
@@ -67,5 +68,27 @@ describe("status rendering", () => {
     expect(screen.getByText("Warning")).toBeInTheDocument();
     expect(screen.getByText("Beef Burger sells often but margin is thin.")).toBeInTheDocument();
     expect(screen.getByText(/13\.90/)).toBeInTheDocument();
+  });
+
+  it("renders shared form primitives with consistent labels", () => {
+    render(
+      <form>
+        <FieldLabel label="Ingredient name">
+          <TextInput name="name" />
+        </FieldLabel>
+        <FieldLabel label="Cost">
+          <NumberInput name="cost" />
+        </FieldLabel>
+        <FieldLabel label="Unit">
+          <SelectInput name="unit">
+            <option value="g">g</option>
+          </SelectInput>
+        </FieldLabel>
+      </form>
+    );
+
+    expect(screen.getByLabelText("Ingredient name")).toBeInTheDocument();
+    expect(screen.getByLabelText("Cost")).toHaveAttribute("type", "number");
+    expect(screen.getByLabelText("Unit")).toBeInTheDocument();
   });
 });

@@ -16,7 +16,16 @@ export const translations = {
     newInvoice: "New invoice",
     export: "Export",
     confirm: "Confirm",
-    reviewRequired: "Review required"
+    reviewRequired: "Review required",
+    reviewBeforeCostsUpdate: "Review required before costs update",
+    theme: "Theme",
+    language: "Language",
+    workspace: "Workspace",
+    recipeBuilder: "Recipe builder",
+    ingredientCosts: "Ingredient costs",
+    invoiceCostIntake: "Invoice cost intake",
+    supplierCostPressure: "Supplier cost pressure",
+    workspaceAccess: "Workspace access"
   },
   et: {
     overview: "Ülevaade",
@@ -31,7 +40,16 @@ export const translations = {
     newInvoice: "Uus arve",
     export: "Ekspordi",
     confirm: "Kinnita",
-    reviewRequired: "Vajab ülevaatamist"
+    reviewRequired: "Vajab ülevaatamist",
+    reviewBeforeCostsUpdate: "Kulud muutuvad alles pärast ülevaatamist",
+    theme: "Teema",
+    language: "Keel",
+    workspace: "Tööala",
+    recipeBuilder: "Retseptikoostaja",
+    ingredientCosts: "Koostisosade kulud",
+    invoiceCostIntake: "Arvete kulusisestus",
+    supplierCostPressure: "Tarnijakulude surve",
+    workspaceAccess: "Tööala ligipääs"
   }
 } as const;
 

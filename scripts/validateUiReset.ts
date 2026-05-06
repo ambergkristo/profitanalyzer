@@ -4,6 +4,7 @@ import path from "node:path";
 const requiredFiles = [
   "apps/web/src/components/Layout.tsx",
   "apps/web/src/components/Workspace.tsx",
+  "apps/web/src/components/Form.tsx",
   "apps/web/src/components/ThemeToggle.tsx",
   "apps/web/src/components/LanguageToggle.tsx",
   "apps/web/src/design/theme.ts",
@@ -16,8 +17,16 @@ const requiredNavLabels = [
   "Ülevaade",
   "Menu",
   "Menüü",
+  "Recipes",
+  "Retseptid",
+  "Ingredients",
+  "Koostisosad",
   "Invoices",
   "Arved",
+  "Alerts",
+  "Hoiatused",
+  "Onboarding",
+  "Seadistus",
   "Billing",
   "Litsents",
   "Settings",
@@ -52,7 +61,9 @@ const forbiddenPatterns = [
   /\boperative\b/iu,
   /\bidle\b/iu,
   /AI-powered/iu,
-  /\bmagic\b/iu
+  /\bmagic\b/iu,
+  /demo cockpit/iu,
+  /productionReady\s*[:=]\s*true/iu
 ];
 
 function ensureReportsDirectory() {
@@ -78,6 +89,8 @@ function main() {
   const styles = read("apps/web/src/styles.css");
   const invoices = read("apps/web/src/pages/Invoices.tsx");
   const dashboard = read("apps/web/src/pages/Dashboard.tsx");
+  const recipePage = read("apps/web/src/pages/Recipes.tsx");
+  const ingredientPage = read("apps/web/src/pages/Ingredients.tsx");
 
   for (const label of requiredNavLabels) {
     if (!layout.includes(label) && !i18n.includes(label)) {
@@ -97,8 +110,14 @@ function main() {
   if (!invoices.includes("capture=\"environment\"")) {
     failures.push("Mobile camera/file capture hint is missing.");
   }
+  if (!invoices.includes("rounded-panel border p-5")) {
+    failures.push("Invoice review card path is missing.");
+  }
   if (!dashboard.includes("Recent cost intake") || !dashboard.includes("Priority actions")) {
     failures.push("Dashboard compact work-view sections are missing.");
+  }
+  if (!recipePage.includes("FieldLabel") || !ingredientPage.includes("FieldLabel")) {
+    failures.push("Shared form primitives are not applied to recipe and ingredient editors.");
   }
   for (const page of requiredWorkspacePages) {
     if (!read(page.file).includes(page.marker)) {
@@ -119,9 +138,10 @@ function main() {
     pass: failures.length === 0,
     appShell: "left work-tree navigation, compact top bar, settings diagnostics",
     theme: "dark default and light theme tokens with localStorage toggle",
-    language: "EE/EN toggle and core navigation/action labels",
+    language: "EE/EN toggle and expanded navigation/action labels",
     demoSeparation: "scenario selector restrained to demo workspace area; diagnostics moved to settings",
     mobileInvoice: "invoice upload keeps capture hint and review-required safety copy",
+    formPrimitives: "shared FieldLabel/TextInput/NumberInput/SelectInput primitives applied to setup editors",
     consolidatedWorkspaces: requiredWorkspacePages.map((page) => page.marker),
     forbiddenCopyFailures: failures.filter((failure) => failure.includes("Forbidden")),
     failures
@@ -140,6 +160,7 @@ function main() {
 - language: ${report.language}
 - demoSeparation: ${report.demoSeparation}
 - mobileInvoice: ${report.mobileInvoice}
+- formPrimitives: ${report.formPrimitives}
 - consolidatedWorkspaces: ${report.consolidatedWorkspaces.join(", ")}
 - pass: ${report.pass}
 `,
@@ -156,7 +177,7 @@ function main() {
   }
 
   console.log("PASS UI reset validation");
-  console.log("App shell, nav tree, EE/EN toggle, dark/light theme, settings diagnostics, and mobile invoice safety passed.");
+  console.log("App shell, nav tree, EE/EN toggle, dark/light theme, settings diagnostics, form primitives, and mobile invoice safety passed.");
 }
 
 main();

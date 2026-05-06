@@ -65,11 +65,30 @@ Dark theme remains the default. Light theme is available through shared CSS vari
 
 The current token layer defines background, surface, elevated surface, border, text, muted text, accent, success, warning, danger, and info colors.
 
+Sprint 3 tightened light-mode usage by moving core panels and secondary buttons away from black-transparent surfaces onto token-driven elevated surfaces. Light mode should read as a deliberate product theme, not a default white page.
+
 ## Mobile Invoice Rule
 
 Invoice intake remains mobile-first. Upload creates a review draft only, review lines remain card/touch oriented, and ingredient costs update only after confirmation.
 
 Browser file input with image/PDF support and camera capture hint is acceptable for the current mobile web path.
+
+Sprint 3 reduced oversized responsive page header typography after mobile screenshots showed the invoice intake title consuming too much of the viewport.
+
+## Visual Audit Process
+
+Run:
+
+```bash
+npm run screenshot:ui
+```
+
+This expects a running local app and captures desktop, mobile, and light-theme screenshots into `reports/ui-screenshots/`, which is ignored from git to avoid committing binary artifacts. The committed audit summary lives in:
+
+- `reports/ui-visual-audit-report.json`
+- `reports/ui-visual-audit-report.md`
+
+Current audit coverage includes Overview, Menu, Dish Detail, Recipes, Ingredients, Invoices, Alerts, Onboarding, Billing, Settings, light Overview, light Invoices, and mobile Overview/Menu/Dish Detail/Invoices/Onboarding/Billing.
 
 ## Forbidden UI Patterns
 
@@ -97,7 +116,7 @@ Sprint 2 additionally validates that the primary workspace markers exist for Men
 ## Known Remaining Visual Gaps
 
 - Some deeper form controls still use page-local styling and can be folded further into shared input components later.
-- Invoices keeps existing review-confirm business logic and tests; only the surrounding workspace polish was intentionally limited in this sprint.
+- Invoices keeps existing review-confirm business logic and tests; surrounding visual polish improved, but the full review interaction remains complex enough to deserve a later focused pass.
 - Pilot Tools remains an admin/diagnostics utility rather than a primary product workspace.
 - EE/EN coverage is intentionally partial.
 - Full mobile browser automation is still future work; current checks are smoke/static/component-level gates.

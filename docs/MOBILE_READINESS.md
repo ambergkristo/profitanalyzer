@@ -73,6 +73,7 @@ Run:
 ```bash
 npm run validate:mobile
 npm run validate:ui-reset
+npm run screenshot:ui
 ```
 
 Current validation is a smoke gate, not full browser automation.
@@ -80,6 +81,8 @@ Current validation is a smoke gate, not full browser automation.
 It now checks onboarding source/tests and mobile invoice upload assumptions, including image/PDF accept, browser capture hint, and draft-only safety copy.
 
 `validate:ui-reset` adds a shell-level smoke gate for the work-tree navigation, theme/language controls, forbidden primary copy, and mobile invoice safety copy.
+
+`screenshot:ui` captures mobile screenshots for Overview, Menu, Dish Detail, Invoices, Onboarding, and Billing against a running local app. The screenshots are local artifacts; the committed report summarizes the visual audit.
 
 ## Launch Blockers
 

@@ -10,8 +10,8 @@ interface ActionButtonProps
 
 const variantClass: Record<ActionButtonVariant, string> = {
   primary: "bg-accent text-bg hover:opacity-90",
-  secondary: "border border-border bg-black/20 text-text hover:border-accent/40 hover:text-accent",
-  ghost: "border border-white/10 bg-white/[0.03] text-muted hover:text-text",
+  secondary: "border border-border bg-elevated text-text hover:border-accent/40 hover:text-accent",
+  ghost: "border border-border bg-panel text-muted hover:text-text",
   profit: "border border-profit/35 bg-profit/10 text-profit hover:border-profit/60"
 };
 

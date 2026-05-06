@@ -1,0 +1,153 @@
+{
+  "pass": true,
+  "baseUrl": "http://localhost:5173",
+  "viewports": {
+    "desktop": "1440x900",
+    "mobile": "390x844"
+  },
+  "pagesChecked": [
+    "desktop-overview",
+    "desktop-menu",
+    "desktop-dish-detail",
+    "desktop-recipes",
+    "desktop-ingredients",
+    "desktop-invoices",
+    "desktop-alerts",
+    "desktop-onboarding",
+    "desktop-billing",
+    "desktop-settings",
+    "light-overview",
+    "light-invoices",
+    "mobile-overview",
+    "mobile-menu",
+    "mobile-dish-detail",
+    "mobile-invoices",
+    "mobile-onboarding",
+    "mobile-billing"
+  ],
+  "issuesFound": [
+    "Invoice header was too large on mobile screenshots.",
+    "Light theme panels using black transparency looked flat and grey.",
+    "Recipe and ingredient editors still used page-local form styling."
+  ],
+  "issuesFixed": [
+    "Reduced responsive PageHeader scale.",
+    "Moved core panel/button surfaces to theme-token backgrounds.",
+    "Added shared form primitives and applied them to recipe and ingredient editors."
+  ],
+  "remainingVisualGaps": [
+    "Invoice review business flow is still complex and should receive a deeper interaction-specific pass later.",
+    "EE/EN coverage is broader but still not full-string localization.",
+    "Screenshots are generated locally and ignored from git to avoid heavy binary commits."
+  ],
+  "screenshots": [
+    {
+      "name": "desktop-overview",
+      "viewport": "desktop",
+      "theme": "dark",
+      "file": "reports\\ui-screenshots\\desktop-overview.png"
+    },
+    {
+      "name": "desktop-menu",
+      "viewport": "desktop",
+      "theme": "dark",
+      "file": "reports\\ui-screenshots\\desktop-menu.png"
+    },
+    {
+      "name": "desktop-dish-detail",
+      "viewport": "desktop",
+      "theme": "dark",
+      "file": "reports\\ui-screenshots\\desktop-dish-detail.png"
+    },
+    {
+      "name": "desktop-recipes",
+      "viewport": "desktop",
+      "theme": "dark",
+      "file": "reports\\ui-screenshots\\desktop-recipes.png"
+    },
+    {
+      "name": "desktop-ingredients",
+      "viewport": "desktop",
+      "theme": "dark",
+      "file": "reports\\ui-screenshots\\desktop-ingredients.png"
+    },
+    {
+      "name": "desktop-invoices",
+      "viewport": "desktop",
+      "theme": "dark",
+      "file": "reports\\ui-screenshots\\desktop-invoices.png"
+    },
+    {
+      "name": "desktop-alerts",
+      "viewport": "desktop",
+      "theme": "dark",
+      "file": "reports\\ui-screenshots\\desktop-alerts.png"
+    },
+    {
+      "name": "desktop-onboarding",
+      "viewport": "desktop",
+      "theme": "dark",
+      "file": "reports\\ui-screenshots\\desktop-onboarding.png"
+    },
+    {
+      "name": "desktop-billing",
+      "viewport": "desktop",
+      "theme": "dark",
+      "file": "reports\\ui-screenshots\\desktop-billing.png"
+    },
+    {
+      "name": "desktop-settings",
+      "viewport": "desktop",
+      "theme": "dark",
+      "file": "reports\\ui-screenshots\\desktop-settings.png"
+    },
+    {
+      "name": "light-overview",
+      "viewport": "desktop",
+      "theme": "light",
+      "file": "reports\\ui-screenshots\\light-overview.png"
+    },
+    {
+      "name": "light-invoices",
+      "viewport": "desktop",
+      "theme": "light",
+      "file": "reports\\ui-screenshots\\light-invoices.png"
+    },
+    {
+      "name": "mobile-overview",
+      "viewport": "mobile",
+      "theme": "dark",
+      "file": "reports\\ui-screenshots\\mobile-overview.png"
+    },
+    {
+      "name": "mobile-menu",
+      "viewport": "mobile",
+      "theme": "dark",
+      "file": "reports\\ui-screenshots\\mobile-menu.png"
+    },
+    {
+      "name": "mobile-dish-detail",
+      "viewport": "mobile",
+      "theme": "dark",
+      "file": "reports\\ui-screenshots\\mobile-dish-detail.png"
+    },
+    {
+      "name": "mobile-invoices",
+      "viewport": "mobile",
+      "theme": "dark",
+      "file": "reports\\ui-screenshots\\mobile-invoices.png"
+    },
+    {
+      "name": "mobile-onboarding",
+      "viewport": "mobile",
+      "theme": "dark",
+      "file": "reports\\ui-screenshots\\mobile-onboarding.png"
+    },
+    {
+      "name": "mobile-billing",
+      "viewport": "mobile",
+      "theme": "dark",
+      "file": "reports\\ui-screenshots\\mobile-billing.png"
+    }
+  ]
+}

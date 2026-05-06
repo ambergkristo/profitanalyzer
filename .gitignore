@@ -11,6 +11,7 @@ benchmarks/ocr/private-samples/
 data/
 .uploads/
 uploads/
+reports/ui-screenshots/
 *.local.json
 *.private.json
 benchmarks/ocr/private-results/

@@ -9,8 +9,8 @@ interface PanelProps extends PropsWithChildren {
 
 const panelToneClass: Record<PanelTone, string> = {
   default: "border-border bg-panel",
-  elevated: "border-white/10 bg-[color:var(--surface-2)]",
-  subtle: "border-white/8 bg-black/20",
+  elevated: "border-border bg-elevated",
+  subtle: "border-border bg-elevated/70",
   profit: "border-profit/20 bg-profit/[0.06]",
   warning: "border-warning/25 bg-warning/[0.08]",
   danger: "border-danger/25 bg-danger/[0.08]"

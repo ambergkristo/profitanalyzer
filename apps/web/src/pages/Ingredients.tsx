@@ -3,6 +3,7 @@ import { useSearchParams } from "react-router-dom";
 
 import { apiClient } from "../api/client.js";
 import { ActionButton } from "../components/ActionButton.js";
+import { FieldLabel, NumberInput, SelectInput, TextInput } from "../components/Form.js";
 import { StatePanel } from "../components/StatePanel.js";
 import {
   CompactMetric,
@@ -161,24 +162,21 @@ function IngredientForm({
   return (
     <form className="grid gap-3" onSubmit={(event) => void onSubmit(event, ingredient)}>
       {ingredient ? <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-accent">Quick edit</p> : null}
-      <label className="text-sm text-muted">
-        Name
-        <input className="mt-2 w-full rounded-2xl border border-border bg-bg px-4 py-3 text-text outline-none focus:border-accent/60" defaultValue={ingredient?.name ?? ""} name="name" required />
-      </label>
-      <label className="text-sm text-muted">
-        Cost cents per unit
-        <input className="mt-2 w-full rounded-2xl border border-border bg-bg px-4 py-3 text-text outline-none focus:border-accent/60" defaultValue={ingredient?.costPerUnitCents ?? 0} min={0} name="costPerUnitCents" type="number" />
-      </label>
-      <label className="text-sm text-muted">
-        Unit
-        <select className="mt-2 w-full rounded-2xl border border-border bg-bg px-4 py-3 text-text outline-none focus:border-accent/60" defaultValue={ingredient?.unit ?? "g"} name="unit">
+      <FieldLabel label="Name">
+        <TextInput defaultValue={ingredient?.name ?? ""} name="name" required />
+      </FieldLabel>
+      <FieldLabel label="Cost cents per unit">
+        <NumberInput defaultValue={ingredient?.costPerUnitCents ?? 0} min={0} name="costPerUnitCents" />
+      </FieldLabel>
+      <FieldLabel label="Unit">
+        <SelectInput defaultValue={ingredient?.unit ?? "g"} name="unit">
           {units.map((unit) => (
             <option key={unit} value={unit}>
               {unit}
             </option>
           ))}
-        </select>
-      </label>
+        </SelectInput>
+      </FieldLabel>
       <ActionButton type="submit" variant="primary">{ingredient ? "Save ingredient" : "Add ingredient"}</ActionButton>
     </form>
   );

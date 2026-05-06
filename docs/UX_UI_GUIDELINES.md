@@ -97,6 +97,7 @@ Rules:
 - Lists should be compact rows/cards with clear selected state, not raw tables.
 - Details should open in the main area or a right-side panel where practical.
 - Empty states should explain the next operational action without marketing copy.
+- Forms should use shared field primitives for consistent surfaces, focus rings, labels, and touch targets.
 
 ### Dashboard
 
@@ -178,6 +179,7 @@ Rules:
 ### Invoice Review View
 
 - Review screen must not depend on desktop tables.
+- On desktop, invoice review should resolve into source/job context, review line cards, and confirmation summary rather than a single wide grid.
 - On mobile, invoice lines should render as responsive line cards.
 - Each line should show raw product name, parsed quantity or unit, parsed price, matched ingredient, and confidence.
 - Problem rows must be visually highlighted.
@@ -231,6 +233,7 @@ Before founding partner launch, the product should pass:
 - dashboard mobile layout test
 - app shell navigation mobile smoke test
 - EE/EN and theme persistence smoke test
+- screenshot audit for desktop, mobile, and light-theme routes
 
 ## Language Requirements
 

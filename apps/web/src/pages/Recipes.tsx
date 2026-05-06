@@ -3,6 +3,7 @@ import { useSearchParams } from "react-router-dom";
 
 import { apiClient } from "../api/client.js";
 import { ActionButton } from "../components/ActionButton.js";
+import { FieldLabel, NumberInput, SelectInput, TextInput } from "../components/Form.js";
 import { StatePanel } from "../components/StatePanel.js";
 import {
   CompactMetric,
@@ -151,45 +152,40 @@ export function RecipesPage() {
         <WorkspaceDetailPanel className="min-h-0">
           <form className="grid gap-4" onSubmit={(event) => void saveRecipe(event)}>
             <div className="grid gap-3 md:grid-cols-[1fr_8rem]">
-              <label className="text-sm text-muted">
-                Recipe name
-                <input className="mt-2 w-full rounded-2xl border border-border bg-bg px-4 py-3 text-text outline-none focus:border-accent/60" onChange={(event) => setDraft((current) => ({ ...current, name: event.target.value }))} value={draft.name} />
-              </label>
-              <label className="text-sm text-muted">
-                Yield
-                <input className="mt-2 w-full rounded-2xl border border-border bg-bg px-4 py-3 text-text outline-none focus:border-accent/60" min={0.01} onChange={(event) => setDraft((current) => ({ ...current, yield: event.target.value }))} type="number" value={draft.yield} />
-              </label>
+              <FieldLabel label="Recipe name">
+                <TextInput onChange={(event) => setDraft((current) => ({ ...current, name: event.target.value }))} value={draft.name} />
+              </FieldLabel>
+              <FieldLabel label="Yield">
+                <NumberInput min={0.01} onChange={(event) => setDraft((current) => ({ ...current, yield: event.target.value }))} value={draft.yield} />
+              </FieldLabel>
             </div>
 
             <div className="work-scroll max-h-[24rem] space-y-3 overflow-y-auto pr-1">
               {draft.ingredients.map((line, index) => (
                 <div className="rounded-[1.35rem] border border-border bg-elevated p-4" key={`${line.ingredientId}-${index}`}>
                   <div className="grid gap-3 md:grid-cols-[1fr_7rem_7rem_auto] md:items-end">
-                    <label className="text-sm text-muted">
-                      Ingredient
-                      <select className="mt-2 w-full rounded-2xl border border-border bg-bg px-4 py-3 text-text outline-none focus:border-accent/60" onChange={(event) => updateLine(index, { ingredientId: event.target.value })} value={line.ingredientId}>
+                    <FieldLabel label="Ingredient">
+                      <SelectInput onChange={(event) => updateLine(index, { ingredientId: event.target.value })} value={line.ingredientId}>
                         <option value="">Choose ingredient</option>
                         {ingredients.map((ingredient) => (
                           <option key={ingredient.id} value={ingredient.id}>
                             {ingredient.name}
                           </option>
                         ))}
-                      </select>
-                    </label>
-                    <label className="text-sm text-muted">
-                      Quantity
-                      <input className="mt-2 w-full rounded-2xl border border-border bg-bg px-4 py-3 text-text outline-none focus:border-accent/60" min={0.01} onChange={(event) => updateLine(index, { quantity: event.target.value })} type="number" value={line.quantity} />
-                    </label>
-                    <label className="text-sm text-muted">
-                      Unit
-                      <select className="mt-2 w-full rounded-2xl border border-border bg-bg px-4 py-3 text-text outline-none focus:border-accent/60" onChange={(event) => updateLine(index, { unit: event.target.value as RecipeInputUnit })} value={line.unit}>
+                      </SelectInput>
+                    </FieldLabel>
+                    <FieldLabel label="Quantity">
+                      <NumberInput min={0.01} onChange={(event) => updateLine(index, { quantity: event.target.value })} value={line.quantity} />
+                    </FieldLabel>
+                    <FieldLabel label="Unit">
+                      <SelectInput onChange={(event) => updateLine(index, { unit: event.target.value as RecipeInputUnit })} value={line.unit}>
                         {recipeUnits.map((unit) => (
                           <option key={unit} value={unit}>
                             {unit}
                           </option>
                         ))}
-                      </select>
-                    </label>
+                      </SelectInput>
+                    </FieldLabel>
                     <button className="rounded-full border border-border px-4 py-3 text-sm text-muted hover:text-text" onClick={() => removeLine(index)} type="button">
                       Remove
                     </button>
