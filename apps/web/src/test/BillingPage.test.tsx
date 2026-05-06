@@ -136,7 +136,7 @@ describe("BillingPage", () => {
       </MemoryRouter>
     );
 
-    expect(await screen.findByText("Workspace access status")).toBeInTheDocument();
+    expect(await screen.findByText("Workspace access")).toBeInTheDocument();
     expect(await screen.findByText("Active subscription access")).toBeInTheDocument();
     expect(screen.getByText("Invoices confirmed")).toBeInTheDocument();
     expect(screen.getByText("Checkout is intentionally disabled until a payment provider is configured in a later phase.")).toBeInTheDocument();

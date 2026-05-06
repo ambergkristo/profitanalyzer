@@ -7,4 +7,5 @@
 - language: EE/EN toggle and core navigation/action labels
 - demoSeparation: scenario selector restrained to demo workspace area; diagnostics moved to settings
 - mobileInvoice: invoice upload keeps capture hint and review-required safety copy
+- consolidatedWorkspaces: Menu workspace, Dish workspace, Recipe workspace, Ingredient workspace, Review required before costs update, Alerts workspace, Onboarding workspace, Billing workspace
 - pass: true

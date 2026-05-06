@@ -5,13 +5,13 @@ import { apiClient } from "../api/client.js";
 import { ActionButton } from "../components/ActionButton.js";
 import { ActionCard } from "../components/ActionCard.js";
 import { MetricStrip } from "../components/MetricStrip.js";
-import { PageHeader } from "../components/PageHeader.js";
 import { Panel } from "../components/Panel.js";
 import { ReasonCodeBadge } from "../components/ReasonCodeBadge.js";
 import { SectionHeader } from "../components/SectionHeader.js";
 import { StatePanel } from "../components/StatePanel.js";
 import { StatusTag } from "../components/StatusTag.js";
 import { ValueDelta } from "../components/ValueDelta.js";
+import { WorkspaceHeader, WorkspacePage } from "../components/Workspace.js";
 import { useAsyncData } from "../hooks.js";
 import { formatEuro, formatPercent } from "../utils/format.js";
 import { buildDatasetSearch } from "../utils/scenario.js";
@@ -172,30 +172,35 @@ export function DishDetailPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <Panel className="p-7">
-        <PageHeader
-          actions={
-            <Panel className="rounded-tile p-4" tone="subtle">
-              <p className="text-[11px] uppercase tracking-[0.18em] text-muted">Primary next move</p>
-              <p className="mt-3 text-sm leading-6 text-text">{practicalNextMove}</p>
-              {detail.costDriverInsight ? (
-                <p className="mt-3 text-sm leading-6 text-warning">{detail.costDriverInsight.message}</p>
-              ) : null}
-            </Panel>
-          }
-          badges={
-            <>
-              <StatusTag status={detail.metrics.status} />
-              {detail.explanation.reasonCodes.map((reasonCode) => (
-                <ReasonCodeBadge key={reasonCode} reasonCode={reasonCode} />
-              ))}
-            </>
-          }
-          description={detail.explanation.summary}
-          eyebrow="Dish decision summary"
-          title={detail.dish.name}
-        />
+    <WorkspacePage>
+      <WorkspaceHeader
+        actions={
+          <Link
+            className="rounded-full border border-border px-4 py-2 text-sm font-semibold text-muted hover:text-text"
+            to={`/dishes${datasetId ? `?dataset=${encodeURIComponent(datasetId)}` : ""}`}
+          >
+            Back to menu
+          </Link>
+        }
+        description={detail.explanation.summary}
+        eyebrow="Dish workspace"
+        meta={
+          <>
+            <StatusTag status={detail.metrics.status} />
+            {detail.explanation.reasonCodes.map((reasonCode) => (
+              <ReasonCodeBadge key={reasonCode} reasonCode={reasonCode} />
+            ))}
+          </>
+        }
+        title={detail.dish.name}
+      />
+
+      <Panel className="rounded-[2rem] p-5" tone="subtle">
+        <p className="text-[11px] uppercase tracking-[0.18em] text-muted">Primary next move</p>
+        <p className="mt-3 text-sm leading-6 text-text">{practicalNextMove}</p>
+        {detail.costDriverInsight ? (
+          <p className="mt-3 text-sm leading-6 text-warning">{detail.costDriverInsight.message}</p>
+        ) : null}
       </Panel>
 
       <Panel>
@@ -497,6 +502,6 @@ export function DishDetailPage() {
           </div>
         </Panel>
       </section>
-    </div>
+    </WorkspacePage>
   );
 }

@@ -101,7 +101,7 @@ describe("DishesPage", () => {
     ]);
   });
 
-  it("renders scenario-aware controls and keeps sorting available after dataset selection", async () => {
+  it("renders the menu workspace and keeps sorting available after dataset selection", async () => {
     render(
       <MemoryRouter
         future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
@@ -111,14 +111,16 @@ describe("DishesPage", () => {
       </MemoryRouter>
     );
 
-    expect(await screen.findByText("Mixed performance. Fix leaks while protecting top contributors.")).toBeInTheDocument();
+    expect(await screen.findByText("Menu workspace")).toBeInTheDocument();
+    expect(await screen.findByText("Menu decisions")).toBeInTheDocument();
     expect(await screen.findByText("Risk priority")).toBeInTheDocument();
 
     fireEvent.change(screen.getByLabelText("Sort dishes"), {
       target: { value: "salesVolume" }
     });
 
-    expect(await screen.findByText("2 results")).toBeInTheDocument();
+    expect(await screen.findByText("2 visible dishes")).toBeInTheDocument();
+    expect(screen.getByText("Selected dish")).toBeInTheDocument();
     expect(vi.mocked(apiClient.getDishes)).toHaveBeenCalledWith("mixed-restaurant");
     expect(vi.mocked(apiClient.getActions)).toHaveBeenCalledWith("mixed-restaurant");
   });

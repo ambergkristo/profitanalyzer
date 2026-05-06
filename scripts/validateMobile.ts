@@ -68,8 +68,8 @@ function main() {
   );
   assertContains(
     onboardingPagePath,
-    /Mobile-first onboarding/u,
-    "Onboarding page should expose the mobile-first setup wizard.",
+    /Onboarding workspace/u,
+    "Onboarding page should expose the production setup workspace.",
     failures
   );
   assertContains(

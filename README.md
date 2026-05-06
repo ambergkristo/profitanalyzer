@@ -31,6 +31,7 @@ The current product already includes:
 - onboarding checklist for profile, ingredients, recipes, dishes, suppliers, first invoice, and dashboard review
 - upload storage abstraction, OCR retry/cancel lifecycle, confidence policy, and OCR benchmark workflow
 - production app shell with work-tree navigation, Settings diagnostics, EE/EN language foundation, and dark/light theme tokens
+- consolidated production workspaces for Menu, Dish Detail, Recipes, Ingredients, Alerts, Onboarding, and Billing
 
 ## Safety Rules
 
@@ -207,8 +208,12 @@ Local URLs:
 - `/onboarding`
 - `/dishes`
 - `/dishes/:dishId`
+- `/recipes`
+- `/ingredients`
 - `/invoices`
 - `/alerts`
+- `/billing`
+- `/settings`
 - `/pilot-tools`
 
 ## Key API Endpoints

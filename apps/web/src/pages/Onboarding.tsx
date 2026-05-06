@@ -2,9 +2,9 @@ import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react
 import { Link, useSearchParams } from "react-router-dom";
 
 import { apiClient } from "../api/client.js";
-import { PageHeader } from "../components/PageHeader.js";
 import { Panel } from "../components/Panel.js";
 import { StatePanel } from "../components/StatePanel.js";
+import { CompactMetric, WorkspaceGrid, WorkspaceHeader, WorkspacePage } from "../components/Workspace.js";
 import { useAsyncData } from "../hooks.js";
 import type {
   AppConfigResponse,
@@ -350,36 +350,28 @@ export function OnboardingPage() {
   const recipeCost = estimateRecipeCost(recipeDraft, ingredients);
 
   return (
-    <div className="space-y-5">
-      <Panel className="p-5 sm:p-7">
-        <PageHeader
-          eyebrow="Mobile-first onboarding"
-          title="Set up the restaurant workspace"
-          description="Add the minimum profile, menu, supplier, and invoice data needed for useful dish margins and supplier-price actions."
-          badges={
-            <>
-              <span className="rounded-full border border-white/10 px-4 py-2 text-[11px] uppercase tracking-[0.18em] text-text">
-                {config.appMode === "demo" ? "Demo mode" : `${config.appMode} mode`}
-              </span>
-              <span className="rounded-full border border-warning/20 bg-warning/10 px-4 py-2 text-[11px] uppercase tracking-[0.18em] text-warning">
-                {config.storage.driver} storage
-              </span>
-            </>
-          }
-        />
-        <div className="mt-5 grid gap-3 md:grid-cols-[1fr_auto] md:items-center">
-          <div>
-            <p className="text-sm text-muted">{storageMessage}</p>
-            <p className="mt-1 text-sm text-muted">
-              Invoice upload remains draft-only. Ingredient costs change only after review-confirm.
-            </p>
-          </div>
-          <div className="rounded-tile border border-border bg-white/[0.03] p-4">
-            <p className="text-[11px] uppercase tracking-[0.18em] text-muted">Progress</p>
-            <p className="mt-1 font-display text-3xl text-text">{status.progressPercent}%</p>
-          </div>
-        </div>
-      </Panel>
+    <WorkspacePage>
+      <WorkspaceHeader
+        description="Complete the profile, menu, suppliers, and first invoice path needed for useful margin decisions."
+        eyebrow="Onboarding workspace"
+        meta={
+          <>
+            <span className="rounded-full border border-border px-3 py-1 text-xs text-muted">{config.appMode === "demo" ? "Demo mode" : `${config.appMode} mode`}</span>
+            <span className="rounded-full border border-border px-3 py-1 text-xs text-muted">{storageMessage}</span>
+          </>
+        }
+        title="Set up the restaurant workspace"
+      />
+
+      <div className="grid gap-3 md:grid-cols-3">
+        <CompactMetric label="Progress" tone="accent" value={`${status.progressPercent}%`} />
+        <CompactMetric label="Ingredients" value={ingredients.length} />
+        <CompactMetric label="Dishes" value={dishes.length} />
+      </div>
+
+      <p className="rounded-[1.35rem] border border-border bg-elevated px-4 py-3 text-sm text-muted">
+        Invoice upload remains draft-only. Ingredient costs change only after review-confirm.
+      </p>
 
       {(statusMessage || errorMessage) && (
         <Panel className={errorMessage ? "border-danger/30 bg-danger/10" : "border-success/30 bg-success/10"}>
@@ -389,7 +381,7 @@ export function OnboardingPage() {
         </Panel>
       )}
 
-      <div className="grid gap-5 xl:grid-cols-[280px_1fr_320px]">
+      <WorkspaceGrid className="xl:grid-cols-[280px_1fr_320px]">
         <Panel className="p-4">
           <p className="text-[11px] uppercase tracking-[0.18em] text-muted">Setup steps</p>
           <div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-1">
@@ -656,7 +648,7 @@ export function OnboardingPage() {
             ))}
           </div>
         </Panel>
-      </div>
-    </div>
+      </WorkspaceGrid>
+    </WorkspacePage>
   );
 }

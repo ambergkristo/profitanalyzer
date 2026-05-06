@@ -1,155 +1,128 @@
-import { useCallback } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 
 import { apiClient } from "../api/client.js";
-import { PageHeader } from "../components/PageHeader.js";
-import { Panel } from "../components/Panel.js";
-import { SectionHeader } from "../components/SectionHeader.js";
 import { SeverityBadge } from "../components/SeverityBadge.js";
 import { StatePanel } from "../components/StatePanel.js";
+import {
+  CompactMetric,
+  ContextPanel,
+  EmptyWorkspaceState,
+  WorkspaceDetailPanel,
+  WorkspaceGrid,
+  WorkspaceHeader,
+  WorkspaceList,
+  WorkspacePage
+} from "../components/Workspace.js";
 import { useAsyncData } from "../hooks.js";
+import type { PriceChangeAlert } from "../types.js";
 import { formatEuro } from "../utils/format.js";
 import { buildDatasetSearch } from "../utils/scenario.js";
 
 export function AlertsPage() {
   const [searchParams] = useSearchParams();
   const datasetId = searchParams.get("dataset") ?? undefined;
-  const loadAlerts = useCallback(
-    () => apiClient.getPriceChangeAlerts(datasetId),
-    [datasetId]
-  );
+  const [selectedAlertId, setSelectedAlertId] = useState<string | null>(null);
+  const loadAlerts = useCallback(() => apiClient.getPriceChangeAlerts(datasetId), [datasetId]);
   const alerts = useAsyncData(loadAlerts);
 
+  const selectedAlert = useMemo(
+    () => alerts.data?.find((alert) => alert.id === selectedAlertId) ?? alerts.data?.[0],
+    [alerts.data, selectedAlertId]
+  );
+
   if (alerts.loading) {
-    return (
-      <StatePanel
-        message="Loading open supplier-price alerts and the dishes they can move first..."
-        title="Loading supplier alerts"
-        tone="loading"
-      />
-    );
+    return <StatePanel message="Loading open supplier-price alerts and affected dishes..." title="Loading supplier alerts" tone="loading" />;
   }
 
   if (alerts.error || !alerts.data) {
-    return (
-      <StatePanel
-        message="Backend is not reachable. Start the API with npm run dev."
-        title="Supplier alerts unavailable"
-        tone="error"
-        actions={[{ href: "/", label: "Open dashboard" }]}
-      />
-    );
+    return <StatePanel actions={[{ href: "/", label: "Open dashboard" }]} message="Backend is not reachable. Start the API with npm run dev." title="Supplier alerts unavailable" tone="error" />;
   }
 
   return (
-    <div className="space-y-6">
-      <Panel className="p-7">
-        <PageHeader
-          description="Open alerts show where confirmed supplier-cost changes have started to affect dish margin."
-          eyebrow="Supplier alerts"
-          title="Price changes that need a menu decision"
-        />
-      </Panel>
+    <WorkspacePage>
+      <WorkspaceHeader
+        description="Work confirmed supplier price movement as a prioritized menu risk list."
+        eyebrow="Alerts workspace"
+        title="Supplier cost pressure"
+      />
 
-      <Panel>
-        <SectionHeader
-          description="These alerts are sorted by severity so the first items are the best next review targets."
-          eyebrow="Open alerts"
-          title="Latest supplier cost pressure"
-        />
-        <div className="mt-6 space-y-4">
+      <div className="grid gap-3 md:grid-cols-3">
+        <CompactMetric label="Open alerts" value={alerts.data.length} />
+        <CompactMetric label="High severity" tone="warning" value={alerts.data.filter((alert) => alert.severity === "high").length} />
+        <CompactMetric label="Affected dishes" value={new Set(alerts.data.flatMap((alert) => alert.affectedDishIds)).size} />
+      </div>
+
+      <WorkspaceGrid>
+        <ContextPanel className="min-h-0">
           {alerts.data.length === 0 ? (
-            <StatePanel
-              message="No supplier price alerts yet. Confirm a sample or manual invoice to see cost-change impact."
-              title="No open supplier alerts."
-              tone="empty"
-            />
+            <EmptyWorkspaceState message="Confirm an invoice to see cost-change impact." title="No open supplier alerts" />
           ) : (
-            alerts.data.map((alert) => (
-              <div key={alert.id} className="rounded-panel border border-border bg-black/20 p-5">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div className="flex flex-wrap items-center gap-3">
+            <WorkspaceList className="max-h-[34rem]">
+              {alerts.data.map((alert) => (
+                <button
+                  className={`w-full rounded-[1.5rem] border p-4 text-left transition hover:border-accent/50 ${
+                    selectedAlert?.id === alert.id ? "border-accent/60 bg-accent/10" : "border-border bg-elevated"
+                  }`}
+                  key={alert.id}
+                  onClick={() => setSelectedAlertId(alert.id)}
+                  type="button"
+                >
+                  <div className="flex flex-wrap items-center justify-between gap-3">
                     <SeverityBadge severity={alert.severity} />
-                    <span className="text-xs uppercase tracking-[0.16em] text-muted">
-                      {alert.type.replaceAll("_", " ")}
-                    </span>
-                    <span className="text-xs uppercase tracking-[0.16em] text-muted">
-                      {alert.status}
-                    </span>
+                    <span className="text-sm text-muted">{alert.supplierName ?? "Unknown supplier"}</span>
                   </div>
-                  <span className="text-sm text-muted">
-                    {alert.supplierName ?? "Unknown supplier"}
-                  </span>
-                </div>
-
-                <p className="mt-4 text-sm leading-6 text-text">{alert.message}</p>
-                <p className="mt-2 text-sm leading-6 text-muted">{alert.recommendedAction}</p>
-
-                <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-                  <AlertMetric
-                    label="Previous cost"
-                    value={
-                      typeof alert.previousCostPerUnitCents === "number"
-                        ? formatEuro(alert.previousCostPerUnitCents)
-                        : "Baseline only"
-                    }
-                  />
-                  <AlertMetric label="New cost" value={formatEuro(alert.newCostPerUnitCents)} />
-                  <AlertMetric
-                    label="Delta"
-                    value={
-                      typeof alert.deltaPercent === "number"
-                        ? `${alert.deltaPercent > 0 ? "+" : ""}${alert.deltaPercent.toFixed(1)}%`
-                        : "n/a"
-                    }
-                  />
-                  <AlertMetric
-                    label="Est. period impact"
-                    value={
-                      typeof alert.estimatedMarginImpactCents === "number"
-                        ? formatEuro(alert.estimatedMarginImpactCents)
-                        : "n/a"
-                    }
-                  />
-                </div>
-
-                <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
-                  <p className="text-sm leading-6 text-muted">
-                    Source {alert.sourceInvoiceNumber ?? "manual draft"} on{" "}
-                    {alert.sourceInvoiceDate ?? "unknown date"}.
-                  </p>
-                  {alert.affectedDishIds[0] ? (
-                    <Link
-                      className="text-sm font-medium text-accent"
-                      to={{
-                        pathname: `/dishes/${alert.affectedDishIds[0]}`,
-                        search: buildDatasetSearch(datasetId)
-                      }}
-                    >
-                      View affected dish
-                    </Link>
-                  ) : null}
-                </div>
-
-                {alert.affectedDishNames && alert.affectedDishNames.length > 0 ? (
-                  <p className="mt-3 text-sm leading-6 text-muted">
-                    Affected dishes: {alert.affectedDishNames.join(", ")}.
-                  </p>
-                ) : null}
-              </div>
-            ))
+                  <p className="mt-3 text-sm leading-6 text-text">{alert.message}</p>
+                  <p className="mt-2 text-xs text-muted">{alert.affectedDishNames?.join(", ") ?? "No affected dish names"}</p>
+                </button>
+              ))}
+            </WorkspaceList>
           )}
-        </div>
-      </Panel>
-    </div>
+        </ContextPanel>
+
+        <WorkspaceDetailPanel>
+          {selectedAlert ? (
+            <AlertDetail alert={selectedAlert} datasetId={datasetId} />
+          ) : (
+            <EmptyWorkspaceState message="Select an alert to review affected dishes and source invoice context." title="No alert selected" />
+          )}
+        </WorkspaceDetailPanel>
+      </WorkspaceGrid>
+    </WorkspacePage>
   );
 }
 
-function AlertMetric({ label, value }: { label: string; value: string }) {
+function AlertDetail({ alert, datasetId }: { alert: PriceChangeAlert; datasetId?: string }) {
   return (
-    <div className="rounded-tile border border-white/8 bg-white/[0.03] p-4">
-      <p className="text-[11px] uppercase tracking-[0.16em] text-muted">{label}</p>
-      <p className="mt-2 text-lg text-text">{value}</p>
+    <div>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <SeverityBadge severity={alert.severity} />
+        <span className="rounded-full border border-border px-3 py-1 text-xs text-muted">{alert.status}</span>
+      </div>
+      <h2 className="mt-4 text-3xl font-bold tracking-[-0.04em] text-text">Supplier price alert</h2>
+      <p className="mt-3 text-sm leading-6 text-muted">{alert.recommendedAction}</p>
+
+      <div className="mt-5 grid gap-3">
+        <CompactMetric label="Previous cost" value={typeof alert.previousCostPerUnitCents === "number" ? formatEuro(alert.previousCostPerUnitCents) : "Baseline"} />
+        <CompactMetric label="New cost" value={formatEuro(alert.newCostPerUnitCents)} />
+        <CompactMetric label="Delta" tone="warning" value={typeof alert.deltaPercent === "number" ? `${alert.deltaPercent > 0 ? "+" : ""}${alert.deltaPercent.toFixed(1)}%` : "n/a"} />
+        <CompactMetric label="Period impact" tone="danger" value={typeof alert.estimatedMarginImpactCents === "number" ? formatEuro(alert.estimatedMarginImpactCents) : "n/a"} />
+      </div>
+
+      <div className="mt-5 rounded-[1.5rem] border border-border bg-elevated p-4">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">Source invoice</p>
+        <p className="mt-2 text-sm text-text">{alert.sourceInvoiceNumber ?? "Manual draft"}</p>
+        <p className="mt-1 text-sm text-muted">{alert.sourceInvoiceDate ?? "Unknown date"}</p>
+      </div>
+
+      {alert.affectedDishIds[0] ? (
+        <Link
+          className="mt-5 inline-flex rounded-full bg-accent px-4 py-2 text-sm font-semibold text-bg"
+          to={{ pathname: `/dishes/${alert.affectedDishIds[0]}`, search: buildDatasetSearch(datasetId) }}
+        >
+          Open affected dish
+        </Link>
+      ) : null}
     </div>
   );
 }

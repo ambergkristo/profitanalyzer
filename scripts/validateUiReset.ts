@@ -3,6 +3,7 @@ import path from "node:path";
 
 const requiredFiles = [
   "apps/web/src/components/Layout.tsx",
+  "apps/web/src/components/Workspace.tsx",
   "apps/web/src/components/ThemeToggle.tsx",
   "apps/web/src/components/LanguageToggle.tsx",
   "apps/web/src/design/theme.ts",
@@ -32,6 +33,17 @@ const primaryFiles = [
   "apps/web/src/pages/Alerts.tsx",
   "apps/web/src/pages/Onboarding.tsx",
   "apps/web/src/pages/Billing.tsx"
+];
+
+const requiredWorkspacePages = [
+  { file: "apps/web/src/pages/Dishes.tsx", marker: "Menu workspace" },
+  { file: "apps/web/src/pages/DishDetail.tsx", marker: "Dish workspace" },
+  { file: "apps/web/src/pages/Recipes.tsx", marker: "Recipe workspace" },
+  { file: "apps/web/src/pages/Ingredients.tsx", marker: "Ingredient workspace" },
+  { file: "apps/web/src/pages/Invoices.tsx", marker: "Review required before costs update" },
+  { file: "apps/web/src/pages/Alerts.tsx", marker: "Alerts workspace" },
+  { file: "apps/web/src/pages/Onboarding.tsx", marker: "Onboarding workspace" },
+  { file: "apps/web/src/pages/Billing.tsx", marker: "Billing workspace" }
 ];
 
 const forbiddenPatterns = [
@@ -88,6 +100,11 @@ function main() {
   if (!dashboard.includes("Recent cost intake") || !dashboard.includes("Priority actions")) {
     failures.push("Dashboard compact work-view sections are missing.");
   }
+  for (const page of requiredWorkspacePages) {
+    if (!read(page.file).includes(page.marker)) {
+      failures.push(`Workspace marker "${page.marker}" is missing from ${page.file}.`);
+    }
+  }
 
   for (const file of primaryFiles) {
     const content = read(file);
@@ -105,6 +122,7 @@ function main() {
     language: "EE/EN toggle and core navigation/action labels",
     demoSeparation: "scenario selector restrained to demo workspace area; diagnostics moved to settings",
     mobileInvoice: "invoice upload keeps capture hint and review-required safety copy",
+    consolidatedWorkspaces: requiredWorkspacePages.map((page) => page.marker),
     forbiddenCopyFailures: failures.filter((failure) => failure.includes("Forbidden")),
     failures
   };
@@ -122,6 +140,7 @@ function main() {
 - language: ${report.language}
 - demoSeparation: ${report.demoSeparation}
 - mobileInvoice: ${report.mobileInvoice}
+- consolidatedWorkspaces: ${report.consolidatedWorkspaces.join(", ")}
 - pass: ${report.pass}
 `,
     "utf8"

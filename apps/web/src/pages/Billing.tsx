@@ -5,6 +5,7 @@ import { apiClient } from "../api/client.js";
 import { useAsyncData } from "../hooks.js";
 import type { BillingStatus } from "../types.js";
 import { Panel } from "../components/Panel.js";
+import { CompactMetric, ContextPanel, WorkspaceGrid, WorkspaceHeader, WorkspacePage } from "../components/Workspace.js";
 
 function formatMoney(cents: number, currency: string) {
   return new Intl.NumberFormat("en-US", {
@@ -105,13 +106,24 @@ export function BillingPage() {
   }
 
   return (
-    <div className="grid gap-5 lg:grid-cols-[1.2fr_0.8fr]">
-      <Panel className="rounded-[2rem] border-white/10 bg-panel/90">
-        <p className="text-xs uppercase tracking-[0.24em] text-accent">Billing and license</p>
-        <h2 className="mt-3 font-display text-4xl leading-none md:text-5xl">Workspace access status</h2>
-        <p className="mt-4 max-w-2xl text-sm leading-6 text-muted">
-          This screen shows the current plan, license, and usage counters. Payments and checkout are not live in this build.
-        </p>
+    <WorkspacePage>
+      <WorkspaceHeader
+        description="Operational license, plan, and usage status for the active workspace. No card collection or checkout runs here."
+        eyebrow="Billing workspace"
+        title="Workspace access"
+      />
+
+      {status ? (
+        <div className="grid gap-3 md:grid-cols-4">
+          <CompactMetric label="Plan" value={status.plan.name} />
+          <CompactMetric label="Invoices" value={status.usage.invoicesProcessed} />
+          <CompactMetric label="OCR uploads" value={status.usage.ocrUploads} />
+          <CompactMetric label="Access" tone={status.effectiveAccess.hasAccess ? "success" : "warning"} value={status.effectiveAccess.status} />
+        </div>
+      ) : null}
+
+      <WorkspaceGrid>
+      <ContextPanel className="min-h-0">
 
         {billing.loading ? (
           <p className="mt-6 text-sm text-muted">Loading billing status...</p>
@@ -169,7 +181,7 @@ export function BillingPage() {
             </Panel>
           </div>
         ) : null}
-      </Panel>
+      </ContextPanel>
 
       <div className="grid gap-5">
         <Panel className="rounded-[2rem]" tone="subtle">
@@ -232,6 +244,7 @@ export function BillingPage() {
           )}
         </Panel>
       </div>
-    </div>
+      </WorkspaceGrid>
+    </WorkspacePage>
   );
 }

@@ -16,6 +16,21 @@ The app uses a production shell:
 - restrained demo scenario selector only when demo mode is active
 - bounded work areas instead of long stacked pages where practical
 
+## Workspace Standard
+
+Sprint 2 consolidates the remaining major pages into a shared workspace pattern:
+
+- `WorkspacePage` for screen-first page composition
+- `WorkspaceHeader` for compact operational page identity
+- `WorkspaceToolbar` for search, sort, and primary controls
+- `WorkspaceGrid` for split work areas
+- `WorkspaceList` for bounded internal scrolling
+- `WorkspaceDetailPanel` and `ContextPanel` for selected-item context
+- `CompactMetric` for restrained metric strips
+- `EmptyWorkspaceState` for clean empty/error paths
+
+The intent is consistency, not heavy abstraction. Pages should still own their business-specific workflow, but repeated stacked-card layout should move into shared workspace primitives.
+
 Primary navigation:
 
 - Overview
@@ -77,9 +92,12 @@ npm run validate:ui-reset
 
 This validates shell files, work-tree labels, theme/language controls, Settings diagnostics, forbidden primary copy, mobile invoice safety copy, and deterministic UI reset reports.
 
+Sprint 2 additionally validates that the primary workspace markers exist for Menu, Dish Detail, Recipes, Ingredients, Invoices, Alerts, Onboarding, and Billing.
+
 ## Known Remaining Visual Gaps
 
-- Menu, Recipes, and Ingredients still reuse existing pilot setup tooling in places and need dedicated production workspaces later.
-- Some legacy page components still use older panel styling even though the primary shell and Overview are token-driven.
+- Some deeper form controls still use page-local styling and can be folded further into shared input components later.
+- Invoices keeps existing review-confirm business logic and tests; only the surrounding workspace polish was intentionally limited in this sprint.
+- Pilot Tools remains an admin/diagnostics utility rather than a primary product workspace.
 - EE/EN coverage is intentionally partial.
 - Full mobile browser automation is still future work; current checks are smoke/static/component-level gates.

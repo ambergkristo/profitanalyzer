@@ -23,6 +23,7 @@ The app must support:
 
 - the app shell uses a compact navigation model that remains usable on mobile
 - primary work views avoid desktop-only long-page layouts where practical
+- Menu, Recipes, Ingredients, Alerts, Onboarding, and Billing use workspace layouts that collapse into compact panels rather than wide tables
 - onboarding uses compact step cards and mobile forms
 - restaurant profile, ingredients, recipes, dishes, suppliers, and first invoice setup must be usable on phone-sized screens
 - recipe setup uses line cards and large touch controls rather than a wide table
@@ -45,6 +46,11 @@ For the current web product:
 
 ## Mobile Smoke Checklist
 
+- app shell work-tree routes exist for primary workspaces
+- menu workspace renders compact dish cards/rows
+- recipe workspace renders editable ingredient line cards
+- ingredient workspace renders quick edit panels
+- alerts workspace renders a supplier-risk worklist
 - onboarding wizard renders
 - ingredient setup cards render
 - recipe builder renders

@@ -89,6 +89,15 @@ Rules:
 - Demo scenario selection may appear in demo mode only as a restrained control.
 - Avoid long stacked pages; use bounded internal scroll inside work panels when content is large.
 
+### Workspace Pages
+
+- Use shared workspace primitives for primary product pages: header, metric strip, toolbar, bounded list, selected-detail panel, and optional context panel.
+- Prefer split-pane workspaces over stacked SaaS cards.
+- Keep search, sort, and primary actions in a compact toolbar.
+- Lists should be compact rows/cards with clear selected state, not raw tables.
+- Details should open in the main area or a right-side panel where practical.
+- Empty states should explain the next operational action without marketing copy.
+
 ### Dashboard
 
 - Top metric strip: estimated profit, weighted margin, revenue, dishes at risk.
@@ -96,17 +105,25 @@ Rules:
 - Avoid synthetic/demo validation copy in the primary dashboard.
 - Fit the operating view into a 1440x900-style viewport where practical.
 
-### Dish Table
+### Menu / Dishes
 
 - Prioritize status, margin, profit contribution, and action
 - Avoid dense spreadsheet grids
 - Collapse secondary metadata behind row expansion or detail view
+- Use compact dish rows/cards with selected dish preview or clean navigation to detail.
 
 ### Dish Detail
 
 - Start with verdict and recommendation
 - Then show cost breakdown
 - Then show assumptions and calculation notes
+- Keep the simulator visible without deep desktop scrolling where practical.
+
+### Recipes And Ingredients
+
+- Recipe builder should use editable ingredient line cards, not a wide spreadsheet.
+- Ingredient setup should expose quick cost/unit editing without making the product feel like inventory software.
+- Cost previews should be visible when they materially help a restaurant owner understand margin impact.
 
 ### Mobile
 
