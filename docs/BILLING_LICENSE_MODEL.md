@@ -90,3 +90,16 @@ The command validates plan seed, billing status, manual founding partner license
 - no webhook handling exists
 - database-backed billing runtime remains environment-dependent until `DATABASE_URL` is configured and validated
 - production SaaS readiness remains false
+## Phase 18 Legal And Launch Gate Caveat
+
+The billing/license foundation is not live payment processing.
+
+Before public paid SaaS launch:
+
+- final pricing and terms must be legally reviewed
+- founding partner lifetime access must remain an explicit entitlement
+- manual licenses must not be confused with paid subscription automation
+- payment provider choice and webhook/security model must be decided
+- privacy/terms must cover billing data and provider processing
+
+Current status: billing/license foundation exists, live payment provider does not.

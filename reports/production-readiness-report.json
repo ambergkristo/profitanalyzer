@@ -43,11 +43,15 @@
       "summary": "Pricing plans, workspace subscription/license state, founding partner lifetime entitlements, usage counters, and billing provider seam exist; live payment processing is intentionally not implemented."
     },
     "securityPrivacyLegal": {
-      "status": "blocked",
-      "summary": "Security, privacy, and legal launch gates are not finalized."
+      "status": "partial",
+      "summary": "Security baseline, privacy/terms drafts, data retention, consent rules, security checklist, and launch gate exist; legal review is still required."
+    },
+    "launchGate": {
+      "status": "partial",
+      "summary": "Controlled demo is allowed, founding partner launch is conditional, and public paid SaaS launch remains NO-GO until blockers close."
     }
   },
   "blockers": [
-    "Production readiness remains false until billing, legal/privacy, and live DB deployment gates are closed."
+    "Production readiness remains false until legal review, live DB deployment, production auth, payment decision, live OCR benchmark, monitoring, and backup/restore gates are closed."
   ]
 }

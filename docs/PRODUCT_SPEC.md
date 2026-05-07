@@ -126,3 +126,24 @@ Still out of scope for the first production version:
 - mobile invoice workflow works without desktop-only interaction
 - restaurant onboarding works without desktop-only interaction
 - workspace data remains isolated and protected
+## Phase 18 Security, Privacy, Legal, And Launch Gate
+
+The product target remains production SaaS readiness, but production readiness is not claimed.
+
+Phase 18 adds the launch-gate foundation:
+
+- security baseline
+- privacy policy draft
+- terms of service draft
+- data retention/export/delete process
+- case-study and testimonial consent rules
+- security checklist
+- production launch gate
+
+Current launch status:
+
+- controlled demo: yes
+- founding partner controlled launch: conditional
+- public paid SaaS launch: no-go
+
+The app must continue to enforce OCR draft-only review-confirm safety. It must not guarantee profit increases, present itself as accounting/tax/legal advice, or use partner advocacy without permission.

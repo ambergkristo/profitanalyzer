@@ -118,3 +118,17 @@ If the product does not deliver value:
 - the founder should treat the feedback as product evidence
 - the relationship should stay respectful and low-friction
 - product learning matters more than forcing a testimonial
+## Phase 18 Consent And Trust Rules
+
+The founding partner program remains a controlled GTM layer, not permission to publish private data.
+
+Rules:
+
+- no fake endorsements
+- no required positive posts
+- no restaurant name/logo use without written permission
+- no screenshots with private invoice, supplier, cost, or sales data unless approved
+- case-study quotes and metrics must be approved before publication
+- lifetime access must be represented as an explicit license entitlement
+
+Founding partner controlled launch remains conditional. Public paid SaaS launch remains no-go until production launch blockers close.

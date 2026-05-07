@@ -137,3 +137,19 @@ npm run benchmark:ocr
 - live OCR accuracy is not claimed
 - production database runtime remains environment-dependent without `DATABASE_URL`
 - final production identity, billing, legal/privacy, and monitoring gates remain open
+## Phase 18 Launch Gate
+
+The invoice pipeline is production-shaped but not fully production-launched.
+
+Launch blockers:
+
+- hosted object storage is not implemented
+- live provider accuracy benchmark is not proven
+- privacy/legal review is not complete
+- backup/delete process for raw invoice files is not rehearsed
+
+Safety remains unchanged:
+
+- upload/OCR creates drafts only
+- unresolved lines block confirmation unless ignored
+- review-confirm is the only cost mutation path

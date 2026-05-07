@@ -17,32 +17,34 @@ Current roadmap:
 - Phase 15 - Mobile-First Restaurant Onboarding - complete as onboarding foundation
 - Phase 16 - Production Invoice/OCR Pipeline - complete as invoice/OCR pipeline foundation
 - Phase 17 - Billing + License Model Readiness - complete as billing/license foundation
-- Phase 18 - Security, Privacy, Legal, and Launch Gate - start next
+- Phase 18 - Security, Privacy, Legal, and Launch Gate - complete as launch-gate foundation
+- Next recommended sprint - Live Postgres + deployment validation
 
 Sprint name:
-`PHASE 18 - Security, Privacy, Legal, and Launch Gate`
+`PRODUCTION BLOCKER SPRINT 1 - Live Postgres + Deployment Validation`
 
 Primary goal:
-Create the final production SaaS launch gate foundation without falsely claiming production readiness.
+Close the highest production blocker by validating a real hosted or local-production Postgres runtime behind the existing database store driver and deployment profile.
 
 Required scope:
 
-- privacy policy draft
-- terms draft
-- data retention policy
-- data export and deletion process
-- security checklist
-- secret hygiene validation
-- case study and founding partner consent rules
-- production go/no-go report
-- launch readiness checklist
-- final production readiness report remains honest
+- configure `DATABASE_URL` for a safe non-production validation database
+- run Prisma generate/migrate/seed against that database
+- validate `STORE_DRIVER=database`
+- validate workspace/restaurant isolation through the database store
+- validate export/import scoped to workspace
+- validate invoice review-confirm through database-backed persistence if adapter parity supports it
+- validate OCR job metadata persistence through database store where implemented
+- document migration and rollback runbook
+- keep memory/file store working for demo/tests
+- do not claim production SaaS readiness unless all launch-gate blockers are closed
 
 Important:
 
 - preserve the production app shell, work-tree navigation, EE/EN toggle, and dark/light theme token system
 - keep technical diagnostics in Settings rather than primary work views
 - do not add billing/payment implementation beyond the current foundation
+- do not add new product features
 - do not add POS integration
 - do not add accounting
 - do not add inventory management
@@ -71,6 +73,7 @@ npm run validate:db
 npm run validate:auth
 npm run validate:runtime
 npm run validate:production-readiness
+npm run validate:launch-gate
 npm run validate:mobile
 npm run validate:onboarding
 npm run validate:invoice-pipeline
@@ -81,6 +84,6 @@ npm audit
 
 Git:
 
-- commit with: `feat: add security privacy and launch gate foundation`
+- commit with: `feat: validate live database deployment foundation`
 - push to `origin/main`
 - verify `HEAD == origin/main`

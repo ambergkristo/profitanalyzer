@@ -121,3 +121,23 @@ The DB adapter is additive:
 - invoice and OCR output remain draft-only until review-confirm
 - ingredient costs update only after confirmation
 - mobile invoice upload and review remain a product requirement
+## Phase 18 Launch-Gate Technical Status
+
+Phase 18 does not add new product features. It adds the technical and documentation gate for production launch.
+
+Added validation:
+
+- `npm run validate:launch-gate`
+- Phase 18 coverage in `npm run validate:production-readiness`
+
+Production readiness remains false because:
+
+- live Postgres runtime validation is skipped without `DATABASE_URL`
+- final production identity provider is not implemented
+- live payment processing is not implemented
+- hosted upload/object storage is not implemented
+- monitoring is foundational, not complete
+- backup/restore rehearsal is not complete
+- legal/privacy drafts are not lawyer-reviewed
+
+Technical safety remains unchanged: OCR/upload creates drafts only, and review-confirm is still the only cost mutation path.

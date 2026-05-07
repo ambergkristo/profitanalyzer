@@ -99,3 +99,19 @@
 ## Final Rule
 
 The product is not production SaaS launch ready until the sections above are complete or explicitly waived with a conscious go or no-go decision.
+## Phase 18 Launch Gate Additions
+
+- partial: security baseline exists.
+- partial: privacy policy draft exists.
+- partial: terms of service draft exists.
+- partial: data retention/export/delete process exists.
+- partial: case-study/testimonial consent rules exist.
+- partial: security checklist exists.
+- partial: production launch gate exists.
+- pass: controlled demo status is separated from public paid SaaS status.
+- pass: public paid SaaS launch is explicitly no-go while blockers remain.
+- blocked: legal review is not complete.
+- blocked: live DB validation is not complete.
+- blocked: final production auth provider is not implemented.
+- blocked: live OCR benchmark is not proven.
+- blocked: backup/restore rehearsal is not complete.

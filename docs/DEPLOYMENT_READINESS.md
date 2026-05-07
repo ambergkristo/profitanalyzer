@@ -154,3 +154,17 @@ Run before any serious hosted environment:
 - full monitoring stack is not live
 - live OCR provider benchmark is not complete without configured provider env and private samples
 - legal/privacy launch gates are still open
+## Phase 18 Deployment Launch Gate
+
+Deployment readiness is not the same as production launch readiness.
+
+Before public paid SaaS launch:
+
+- `PRODUCTION_LAUNCH_GATE.md` must change from no-go to go.
+- `validate:launch-gate` must pass.
+- `validate:production-readiness` must still be honest and only return `productionReady=true` when blockers are actually closed.
+- live database migration/seed/backup must be rehearsed.
+- production auth must replace or harden dev-session auth.
+- legal/privacy drafts must be reviewed.
+
+Current status: public paid SaaS launch is no-go.

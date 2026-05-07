@@ -17,8 +17,9 @@
 - mobileReadiness: partial - Mobile readiness is documented and smoke-checked, including mobile invoice upload/onboarding assumptions, but not fully browser-automated yet.
 - backupExport: partial - Dataset export/import exists, but full database backup strategy remains a deployment concern.
 - billingLicense: partial - Pricing plans, workspace subscription/license state, founding partner lifetime entitlements, usage counters, and billing provider seam exist; live payment processing is intentionally not implemented.
-- securityPrivacyLegal: blocked - Security, privacy, and legal launch gates are not finalized.
+- securityPrivacyLegal: partial - Security baseline, privacy/terms drafts, data retention, consent rules, security checklist, and launch gate exist; legal review is still required.
+- launchGate: partial - Controlled demo is allowed, founding partner launch is conditional, and public paid SaaS launch remains NO-GO until blockers close.
 
 ## Blockers
 
-- Production readiness remains false until billing, legal/privacy, and live DB deployment gates are closed.
+- Production readiness remains false until legal review, live DB deployment, production auth, payment decision, live OCR benchmark, monitoring, and backup/restore gates are closed.

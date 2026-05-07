@@ -16,6 +16,10 @@ function ensureReportsDirectory() {
   return reportsDir;
 }
 
+function docExists(filePath: string) {
+  return fs.existsSync(path.resolve(filePath));
+}
+
 function toMarkdown(report: {
   productionReady: false;
   currentMode: string;
@@ -49,6 +53,16 @@ ${blockerLines}
 
 async function main() {
   const reportsDir = ensureReportsDirectory();
+  const phase18Docs = [
+    "docs/SECURITY_BASELINE.md",
+    "docs/PRIVACY_POLICY_DRAFT.md",
+    "docs/TERMS_OF_SERVICE_DRAFT.md",
+    "docs/DATA_RETENTION_AND_DELETION.md",
+    "docs/CASE_STUDY_AND_TESTIMONIAL_CONSENT.md",
+    "docs/SECURITY_CHECKLIST.md",
+    "docs/PRODUCTION_LAUNCH_GATE.md"
+  ];
+  const missingPhase18Docs = phase18Docs.filter((doc) => !docExists(doc));
 
   const currentApp = createApp({ env: process.env });
   const currentReadinessResponse = await request(currentApp).get("/api/health/readiness");
@@ -101,8 +115,14 @@ async function main() {
       summary: "Pricing plans, workspace subscription/license state, founding partner lifetime entitlements, usage counters, and billing provider seam exist; live payment processing is intentionally not implemented."
     },
     securityPrivacyLegal: {
-      status: "blocked",
-      summary: "Security, privacy, and legal launch gates are not finalized."
+      status: missingPhase18Docs.length === 0 ? "partial" : "blocked",
+      summary: missingPhase18Docs.length === 0
+        ? "Security baseline, privacy/terms drafts, data retention, consent rules, security checklist, and launch gate exist; legal review is still required."
+        : `Security/privacy/legal launch-gate docs are missing: ${missingPhase18Docs.join(", ")}.`
+    },
+    launchGate: {
+      status: missingPhase18Docs.length === 0 ? "partial" : "blocked",
+      summary: "Controlled demo is allowed, founding partner launch is conditional, and public paid SaaS launch remains NO-GO until blockers close."
     }
   };
 
@@ -110,7 +130,7 @@ async function main() {
     ...currentReadiness.checks
       .filter((check) => check.status === "fail")
       .map((check) => check.message),
-    "Production readiness remains false until billing, legal/privacy, and live DB deployment gates are closed."
+    "Production readiness remains false until legal review, live DB deployment, production auth, payment decision, live OCR benchmark, monitoring, and backup/restore gates are closed."
   ];
 
   const report = {

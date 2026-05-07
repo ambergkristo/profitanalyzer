@@ -26,6 +26,7 @@
     "validate:onboarding": "tsx scripts/validateOnboarding.ts",
     "validate:invoice-pipeline": "tsx scripts/validateInvoicePipeline.ts",
     "validate:billing": "tsx scripts/validateBilling.ts",
+    "validate:launch-gate": "tsx scripts/validateLaunchGate.ts",
     "validate:ui-reset": "tsx scripts/validateUiReset.ts",
     "screenshot:ui": "tsx scripts/screenshotUi.ts",
     "benchmark:ocr": "tsx scripts/benchmarkOcr.ts",

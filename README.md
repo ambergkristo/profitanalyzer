@@ -13,6 +13,8 @@ RM1-RM9 are complete as a controlled pilot and founding-partner foundation. The 
 - Phase 14: complete as deployment and observability foundation
 - Phase 15: complete as mobile-first onboarding foundation
 - Phase 16: complete as production invoice/OCR pipeline foundation
+- Phase 17: complete as billing/license foundation
+- Phase 18: complete as security/privacy/legal launch-gate foundation
 - production SaaS readiness: `false`
 - OCR safety boundary: unchanged
 
@@ -146,6 +148,7 @@ npm run validate:mobile
 npm run validate:onboarding
 npm run validate:invoice-pipeline
 npm run validate:billing
+npm run validate:launch-gate
 npm run benchmark:ocr
 npm run validate:ui-reset
 npm audit
@@ -300,8 +303,25 @@ Local URLs:
 - production-complete auth provider, invite flow, or hardened session lifecycle
 - live DB runtime validation in this environment without `DATABASE_URL`
 - live OCR accuracy benchmark on real restaurant invoices
-- billing readiness
-- final monitoring, backup, and legal/privacy maturity
+- live payment processing
+- final monitoring and backup maturity
+- lawyer-reviewed legal/privacy documents
+
+## What Phase 18 Added
+
+- security baseline and checklist
+- privacy policy draft and terms draft with not-lawyer-reviewed disclaimers
+- data retention, export, and deletion process
+- case-study/testimonial consent rules that prohibit fake endorsements
+- central production launch gate
+- `npm run validate:launch-gate`
+- production-readiness report coverage for Phase 18
+
+Current launch verdict:
+
+- controlled demo: yes
+- founding partner controlled launch: conditional
+- public paid SaaS launch: no-go
 
 ## Documentation
 
@@ -314,6 +334,13 @@ Local URLs:
 - [docs/MOBILE_READINESS.md](docs/MOBILE_READINESS.md)
 - [docs/OBSERVABILITY.md](docs/OBSERVABILITY.md)
 - [docs/INVOICE_PIPELINE_PRODUCTION.md](docs/INVOICE_PIPELINE_PRODUCTION.md)
+- [docs/SECURITY_BASELINE.md](docs/SECURITY_BASELINE.md)
+- [docs/PRIVACY_POLICY_DRAFT.md](docs/PRIVACY_POLICY_DRAFT.md)
+- [docs/TERMS_OF_SERVICE_DRAFT.md](docs/TERMS_OF_SERVICE_DRAFT.md)
+- [docs/DATA_RETENTION_AND_DELETION.md](docs/DATA_RETENTION_AND_DELETION.md)
+- [docs/CASE_STUDY_AND_TESTIMONIAL_CONSENT.md](docs/CASE_STUDY_AND_TESTIMONIAL_CONSENT.md)
+- [docs/SECURITY_CHECKLIST.md](docs/SECURITY_CHECKLIST.md)
+- [docs/PRODUCTION_LAUNCH_GATE.md](docs/PRODUCTION_LAUNCH_GATE.md)
 - [docs/REAL_INVOICE_BENCHMARK_GUIDE.md](docs/REAL_INVOICE_BENCHMARK_GUIDE.md)
 - [docs/PRODUCTION_SAAS_GAP_AUDIT.md](docs/PRODUCTION_SAAS_GAP_AUDIT.md)
 - [docs/DATABASE_MODEL.md](docs/DATABASE_MODEL.md)

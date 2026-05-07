@@ -121,3 +121,26 @@ Production SaaS readiness now requires:
 The current product is a materially stronger SaaS foundation than the earlier pilot-only state.
 
 It is still not production SaaS ready until the gates above are met.
+## Phase 18 Validation Layer
+
+Controlled pilot validation is not the final readiness gate.
+
+Phase 18 adds launch-gate validation:
+
+- required legal/security docs exist
+- privacy and terms drafts include not-lawyer-reviewed disclaimers
+- OCR review-confirm safety language exists
+- no profit guarantee language exists
+- no fake endorsement language exists
+- data export/delete process is documented
+- dependency audit status is documented
+- production readiness report remains `productionReady=false`
+
+Additional production validation still required:
+
+- live DB validation
+- production auth validation
+- live OCR benchmark
+- backup/restore rehearsal
+- legal review
+- production monitoring validation

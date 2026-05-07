@@ -127,3 +127,15 @@ This is not a full production backup strategy yet.
 - live OCR benchmark on real invoices is not complete
 - hosted object storage is not implemented
 - full monitoring stack is not live
+## Phase 18 Launch Gate Runbook Step
+
+Before any public paid SaaS launch:
+
+1. Run the full validation command set including `npm run validate:launch-gate`.
+2. Review `reports/production-readiness-report.md`.
+3. Review `reports/launch-gate-report.md`.
+4. Confirm `PRODUCTION_LAUNCH_GATE.md` no longer lists critical blockers.
+5. Confirm legal/privacy documents are reviewed and approved.
+6. Confirm live DB, auth, OCR benchmark, backup/restore, monitoring, and billing decisions are complete.
+
+Current expected result: production launch remains no-go.

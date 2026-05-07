@@ -96,3 +96,14 @@ After real partner proof exists:
 - broad market demand from a handful of partner relationships
 
 Influencer-owner posts can create attention only if the product experience is genuinely strong.
+## Phase 18 Launch Gate Rule
+
+Founder-led GTM can continue only within the launch gate:
+
+- controlled demo: allowed
+- founding partner controlled launch: conditional
+- public paid SaaS launch: no-go
+
+Public advocacy must be based on real product value and explicit permission. Influential restaurant owners must not be pressured to post positive content, and case-study material must follow `CASE_STUDY_AND_TESTIMONIAL_CONSENT.md`.
+
+No GTM material should claim production SaaS readiness until `PRODUCTION_LAUNCH_GATE.md` changes to go.

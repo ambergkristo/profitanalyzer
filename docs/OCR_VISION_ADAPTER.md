@@ -335,3 +335,17 @@ Do not commit real supplier invoices or sensitive commercial documents.
 - provider cost or latency under production load
 - production file retention and storage strategy
 - camera UX
+## Phase 18 Legal And Safety Gate
+
+OCR remains a safety-sensitive workflow.
+
+Launch-gate requirements:
+
+- OCR/upload creates review drafts only.
+- Review-confirm remains mandatory before ingredient cost mutation, cost history, or alerts.
+- Privacy policy draft must disclose OCR provider processing.
+- Terms draft must state OCR/imported data requires review.
+- Live OCR accuracy must not be claimed until benchmarked with permissioned private samples.
+- Private invoice samples must never be committed.
+
+Current status: OCR safety boundary is intact; live OCR accuracy is not proven.
