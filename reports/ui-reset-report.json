@@ -5,6 +5,7 @@
   "language": "EE/EN toggle and expanded navigation/action labels",
   "demoSeparation": "scenario selector restrained to demo workspace area; diagnostics moved to settings",
   "mobileInvoice": "invoice upload keeps capture hint and review-required safety copy",
+  "invoiceReviewInteraction": "line cards, unresolved reason, and confirm CTA state are statically verified",
   "formPrimitives": "shared FieldLabel/TextInput/NumberInput/SelectInput primitives applied to setup editors",
   "consolidatedWorkspaces": [
     "Menu workspace",

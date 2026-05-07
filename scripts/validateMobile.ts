@@ -54,10 +54,34 @@ function main() {
     "Invoice page should include review-confirm CTA.",
     failures
   );
+  assertContains(
+    invoicePagePath,
+    /confirmDisabledReason/u,
+    "Invoice page should show why confirmation is disabled.",
+    failures
+  );
+  assertContains(
+    invoicePagePath,
+    /aria-label=\{`Review line/u,
+    "Invoice review should expose line cards instead of a desktop-table dependency.",
+    failures
+  );
+  assertContains(
+    invoicePagePath,
+    /Selected \{ocrFile\.name\}/u,
+    "Invoice upload should render selected file metadata.",
+    failures
+  );
   assertNotContains(
     invoicePagePath,
     /<table/iu,
     "Invoice page should not rely on a desktop-only table layout.",
+    failures
+  );
+  assertNotContains(
+    invoicePagePath,
+    /overflow-x-auto/iu,
+    "Invoice page should not use horizontal scrolling as the primary mobile workflow.",
     failures
   );
   assertContains(

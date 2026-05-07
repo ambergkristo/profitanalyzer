@@ -3,6 +3,7 @@ import { Link, useSearchParams } from "react-router-dom";
 
 import { apiClient } from "../api/client.js";
 import { ActionButton } from "../components/ActionButton.js";
+import { FieldLabel, NumberInput, SelectInput, TextInput } from "../components/Form.js";
 import { MetricStrip } from "../components/MetricStrip.js";
 import { PageHeader } from "../components/PageHeader.js";
 import { Panel } from "../components/Panel.js";
@@ -55,7 +56,7 @@ const confidenceTone = {
 const reviewStatusTone = {
   ready: "border-profit/30 bg-profit/10 text-profit",
   confirmed: "border-profit/35 bg-profit/12 text-profit",
-  ignored: "border-white/10 bg-white/[0.04] text-muted",
+  ignored: "border-border bg-elevated text-muted",
   needs_review: "border-warning/30 bg-warning/10 text-warning"
 } as const;
 
@@ -263,6 +264,12 @@ export function InvoicesPage() {
       : unresolvedLineCount > 0
         ? `Resolve or ignore ${unresolvedLineCount} ${isOcrDraft ? "OCR " : ""}lines before confirming.`
         : "All non-ignored lines are ready. Confirming now will update current ingredient costs for this scenario.";
+  const confirmDisabledReason =
+    reviewLines.length === 0
+      ? "Create a draft before confirming."
+      : unresolvedLineCount > 0
+        ? `Resolve or ignore ${unresolvedLineCount} ${isOcrDraft ? "OCR " : ""}lines before confirming.`
+        : null;
 
   const confirmDisabled =
     isConfirming || reviewLines.length === 0 || unresolvedLineCount > 0 || isInvoiceConfirmed;
@@ -566,19 +573,9 @@ export function InvoicesPage() {
               </p>
             </Panel>
           }
-          badges={
-            <>
-              <span className="rounded-full border border-white/10 px-4 py-2 text-[11px] uppercase tracking-[0.18em] text-muted">
-                {selectedDataset.profile}
-              </span>
-              <span className="rounded-full border border-profit/20 bg-profit/10 px-4 py-2 text-[11px] uppercase tracking-[0.18em] text-profit">
-                Review before update
-              </span>
-            </>
-          }
-          description="Turn supplier invoices into confirmed ingredient cost updates, cost-history entries, price-change alerts, and affected-dish margin impact."
+          description="Review supplier invoice lines, resolve uncertain matches, then confirm the cost updates that should affect margins."
           eyebrow="Invoice cost intake"
-          title="Review supplier costs before they hit margin"
+          title="Supplier invoice review"
         />
       </Panel>
 
@@ -588,33 +585,34 @@ export function InvoicesPage() {
         </Panel>
       ) : null}
 
-      <Panel>
-        <SectionHeader
-          description="Start from a sample, structured entry, or photo upload. Every path creates a review draft first."
-          eyebrow="Draft source"
-          title="Choose how to start the review"
-        />
+      <section className="grid gap-5 xl:grid-cols-[21rem_minmax(0,1fr)]">
+        <Panel className="xl:sticky xl:top-4 xl:self-start">
+          <SectionHeader
+            description="Start from a sample, structured entry, or photo upload. Every path creates a review draft first."
+            eyebrow="Start review"
+            title="Choose source"
+          />
 
-        <div className="mt-6 flex flex-wrap gap-3">
-          {entryModes.map((mode) => (
-            <button
-              key={mode.id}
-              className={`rounded-full border px-4 py-2 text-sm transition ${
-                entryMode === mode.id
-                  ? "border-accent/40 bg-accent/10 text-accent"
-                  : "border-white/10 bg-white/[0.03] text-muted hover:text-text"
-              }`}
-              onClick={() => setEntryMode(mode.id)}
-              type="button"
-            >
-              {mode.label}
-            </button>
-          ))}
-        </div>
+          <div className="mt-6 grid gap-3">
+            {entryModes.map((mode) => (
+              <button
+                key={mode.id}
+                className={`rounded-tile border px-4 py-3 text-left text-sm transition ${
+                  entryMode === mode.id
+                    ? "border-accent/40 bg-accent/10 text-accent"
+                    : "border-border bg-elevated text-muted hover:text-text"
+                }`}
+                onClick={() => setEntryMode(mode.id)}
+                type="button"
+              >
+                {mode.label}
+              </button>
+            ))}
+          </div>
 
         {entryMode === "sample" ? (
           <>
-            <div className="mt-6 grid gap-4 xl:grid-cols-3">
+            <div className="mt-6 grid gap-4">
               {pageData.samples.map((sample) => (
                 <button
                   key={sample.id}
@@ -629,7 +627,7 @@ export function InvoicesPage() {
                   <p className="text-[11px] uppercase tracking-[0.18em] text-muted">{sample.invoiceDate}</p>
                   <h2 className="mt-3 font-display text-3xl text-text">{sample.name}</h2>
                   <p className="mt-2 text-sm leading-6 text-muted">{sample.description}</p>
-                  <div className="mt-4 rounded-tile border border-white/8 bg-black/20 p-4">
+                  <div className="mt-4 rounded-tile border border-border bg-panel p-4">
                     <p className="text-[11px] uppercase tracking-[0.18em] text-warning">Expected impact</p>
                     <p className="mt-2 text-sm leading-6 text-text">{sample.expectedImpact}</p>
                   </div>
@@ -651,41 +649,35 @@ export function InvoicesPage() {
           </>
         ) : entryMode === "manual" ? (
           <>
-            <div className="mt-6 grid gap-4 xl:grid-cols-3">
-              <label className="text-sm text-muted">
-                Supplier
-                <input
-                  className="mt-2 w-full rounded-tile border border-border bg-black/20 px-4 py-3 text-text outline-none transition focus:border-accent/40"
+            <div className="mt-6 grid gap-4">
+              <FieldLabel label="Supplier">
+                <TextInput
                   onChange={(event) => setManualSupplierName(event.target.value)}
                   placeholder="Supplier name"
                   type="text"
                   value={manualSupplierName}
                 />
-              </label>
-              <label className="text-sm text-muted">
-                Invoice number
-                <input
-                  className="mt-2 w-full rounded-tile border border-border bg-black/20 px-4 py-3 text-text outline-none transition focus:border-accent/40"
+              </FieldLabel>
+              <FieldLabel label="Invoice number">
+                <TextInput
                   onChange={(event) => setManualInvoiceNumber(event.target.value)}
                   placeholder="Optional invoice number"
                   type="text"
                   value={manualInvoiceNumber}
                 />
-              </label>
-              <label className="text-sm text-muted">
-                Invoice date
-                <input
-                  className="mt-2 w-full rounded-tile border border-border bg-black/20 px-4 py-3 text-text outline-none transition focus:border-accent/40"
+              </FieldLabel>
+              <FieldLabel label="Invoice date">
+                <TextInput
                   onChange={(event) => setManualInvoiceDate(event.target.value)}
                   type="date"
                   value={manualInvoiceDate}
                 />
-              </label>
+              </FieldLabel>
             </div>
 
             <div className="mt-6 space-y-4">
               {manualLines.map((line, index) => (
-                <div key={line.id} className="rounded-panel border border-border bg-black/20 p-5">
+                <div key={line.id} className="rounded-panel border border-border bg-elevated p-5">
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
                       <p className="text-[11px] uppercase tracking-[0.18em] text-muted">
@@ -704,11 +696,9 @@ export function InvoicesPage() {
                     </ActionButton>
                   </div>
 
-                  <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-                    <label className="text-sm text-muted">
-                      Product name
-                      <input
-                        className="mt-2 w-full rounded-tile border border-border bg-black/20 px-4 py-3 text-text outline-none transition focus:border-accent/40"
+                  <div className="mt-5 grid gap-4">
+                    <FieldLabel label="Product name">
+                      <TextInput
                         onChange={(event) =>
                           updateManualLine(line.id, { rawProductName: event.target.value })
                         }
@@ -716,23 +706,18 @@ export function InvoicesPage() {
                         type="text"
                         value={line.rawProductName}
                       />
-                    </label>
-                    <label className="text-sm text-muted">
-                      Quantity
-                      <input
-                        className="mt-2 w-full rounded-tile border border-border bg-black/20 px-4 py-3 text-text outline-none transition focus:border-accent/40"
+                    </FieldLabel>
+                    <FieldLabel label="Quantity">
+                      <NumberInput
                         onChange={(event) =>
                           updateManualLine(line.id, { parsedQuantity: event.target.value })
                         }
                         step="0.01"
-                        type="number"
                         value={line.parsedQuantity}
                       />
-                    </label>
-                    <label className="text-sm text-muted">
-                      Unit
-                      <select
-                        className="mt-2 w-full rounded-tile border border-border bg-black/20 px-4 py-3 text-text outline-none transition focus:border-accent/40"
+                    </FieldLabel>
+                    <FieldLabel label="Unit">
+                      <SelectInput
                         onChange={(event) =>
                           updateManualLine(line.id, {
                             parsedUnit: event.target.value as InvoiceUnit
@@ -745,12 +730,10 @@ export function InvoicesPage() {
                             {unit}
                           </option>
                         ))}
-                      </select>
-                    </label>
-                    <label className="text-sm text-muted">
-                      Matched ingredient
-                      <select
-                        className="mt-2 w-full rounded-tile border border-border bg-black/20 px-4 py-3 text-text outline-none transition focus:border-accent/40"
+                      </SelectInput>
+                    </FieldLabel>
+                    <FieldLabel label="Matched ingredient">
+                      <SelectInput
                         onChange={(event) =>
                           updateManualLine(line.id, {
                             matchedIngredientId: event.target.value
@@ -764,37 +747,31 @@ export function InvoicesPage() {
                             {ingredient.name}
                           </option>
                         ))}
-                      </select>
-                    </label>
+                      </SelectInput>
+                    </FieldLabel>
                   </div>
 
-                  <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-2">
-                    <label className="text-sm text-muted">
-                      Unit price
-                      <input
-                        className="mt-2 w-full rounded-tile border border-border bg-black/20 px-4 py-3 text-text outline-none transition focus:border-accent/40"
+                  <div className="mt-4 grid gap-4">
+                    <FieldLabel label="Unit price">
+                      <NumberInput
                         onChange={(event) =>
                           updateManualLine(line.id, { parsedUnitPrice: event.target.value })
                         }
                         placeholder="Leave blank if only line total is known"
                         step="0.01"
-                        type="number"
                         value={line.parsedUnitPrice}
                       />
-                    </label>
-                    <label className="text-sm text-muted">
-                      Line total
-                      <input
-                        className="mt-2 w-full rounded-tile border border-border bg-black/20 px-4 py-3 text-text outline-none transition focus:border-accent/40"
+                    </FieldLabel>
+                    <FieldLabel label="Line total">
+                      <NumberInput
                         onChange={(event) =>
                           updateManualLine(line.id, { parsedLineTotal: event.target.value })
                         }
                         placeholder="Optional if unit price is known"
                         step="0.01"
-                        type="number"
                         value={line.parsedLineTotal}
                       />
-                    </label>
+                    </FieldLabel>
                   </div>
                 </div>
               ))}
@@ -812,8 +789,8 @@ export function InvoicesPage() {
           </>
         ) : (
           <>
-            <div className="mt-6 grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
-              <Panel className="rounded-panel border border-border bg-black/20 p-5">
+            <div className="mt-6 grid gap-4">
+              <Panel className="rounded-panel border border-border bg-elevated p-5">
                 <p className="text-[11px] uppercase tracking-[0.18em] text-muted">Photo upload</p>
                 <h2 className="mt-3 font-display text-3xl text-text">Photo/OCR upload creates a draft only</h2>
                 <p className="mt-3 text-sm leading-6 text-muted">
@@ -827,10 +804,8 @@ export function InvoicesPage() {
                     Treat OCR as a starting point, not a source of truth.
                   </p>
                 </div>
-                <label className="mt-5 block text-sm text-muted">
-                  OCR provider
-                  <select
-                    className="mt-2 w-full rounded-tile border border-border bg-black/20 px-4 py-3 text-text outline-none transition focus:border-accent/40"
+                <FieldLabel className="mt-5" label="OCR provider">
+                  <SelectInput
                     onChange={(event) =>
                       setSelectedOcrProviderId(event.target.value as OcrProviderConfig["id"])
                     }
@@ -846,8 +821,8 @@ export function InvoicesPage() {
                         {provider.isConfigured ? "" : " (not configured)"}
                       </option>
                     ))}
-                  </select>
-                </label>
+                  </SelectInput>
+                </FieldLabel>
                 {selectedOcrProvider ? (
                   <div className="mt-4 rounded-tile border border-white/8 bg-white/[0.02] p-4">
                     <div className="flex flex-wrap items-center gap-2">
@@ -877,23 +852,22 @@ export function InvoicesPage() {
                     </p>
                     <p className="mt-2 text-sm leading-6 text-muted">
                       {selectedOcrProvider.id === "fixture"
-                        ? "Development upload adapter is local and deterministic for draft creation."
+                        ? "Local review adapter creates deterministic drafts for validation."
                         : selectedOcrProvider.isConfigured
                           ? "Creates review drafts only. Confirmation still required before ingredient costs change."
                           : "Configure OCR_PROVIDER_API_KEY and OCR_PROVIDER_MODEL on the API server to enable."}
                     </p>
                   </div>
                 ) : null}
-                <label className="mt-5 block text-sm text-muted">
-                  Choose file
+                <FieldLabel className="mt-5" label="Choose file">
                   <input
                     accept="image/*,application/pdf"
                     capture="environment"
-                    className="mt-2 block w-full rounded-tile border border-border bg-black/20 px-4 py-3 text-text file:mr-4 file:rounded-full file:border-0 file:bg-accent/15 file:px-4 file:py-2 file:text-sm file:font-medium file:text-accent"
+                    className="mt-2 block w-full rounded-tile border border-border bg-elevated px-4 py-3 text-text file:mr-4 file:rounded-full file:border-0 file:bg-accent/15 file:px-4 file:py-2 file:text-sm file:font-medium file:text-accent"
                     onChange={(event) => handleOcrFileChange(event.target.files?.[0] ?? null)}
                     type="file"
                   />
-                </label>
+                </FieldLabel>
                 <div className="mt-5 flex flex-wrap items-center gap-3">
                   <ActionButton
                     disabled={!ocrFile || isUploadingOcr || !selectedOcrProvider?.isConfigured}
@@ -911,8 +885,8 @@ export function InvoicesPage() {
                   </p>
                 </div>
                 {ocrFile ? (
-                  <p className="mt-4 text-sm leading-6 text-text">
-                    Selected {ocrFile.name} · {ocrFile.type || "unknown type"} · {Math.max(1, Math.round(ocrFile.size / 1024))} KB
+                  <p className="mt-4 rounded-tile border border-border bg-panel p-4 text-sm leading-6 text-text">
+                    Selected {ocrFile.name} - {ocrFile.type || "unknown type"} - {Math.max(1, Math.round(ocrFile.size / 1024))} KB
                   </p>
                 ) : null}
                 {ocrError ? <p className="mt-4 text-sm leading-6 text-danger">{ocrError}</p> : null}
@@ -929,7 +903,7 @@ export function InvoicesPage() {
                     />
                   ) : (
                     ocrJobs.slice(0, 4).map((job) => (
-                      <div key={job.id} className="rounded-tile border border-white/10 bg-black/20 p-4">
+                      <div key={job.id} className="rounded-tile border border-border bg-elevated p-4">
                         <div className="flex flex-wrap items-center gap-2">
                           <span className={`rounded-full border px-3 py-1 text-[11px] uppercase tracking-[0.16em] ${ocrJobTone[job.status]}`}>
                             {job.status.replaceAll("_", " ")}
@@ -980,22 +954,22 @@ export function InvoicesPage() {
                     ))
                   )}
                 </div>
-                <p className="mt-6 text-[11px] uppercase tracking-[0.18em] text-muted">Fixture behavior</p>
+                <p className="mt-6 text-[11px] uppercase tracking-[0.18em] text-muted">Quality examples</p>
                 <div className="mt-4 space-y-4">
                   <div className="rounded-tile border border-profit/20 bg-profit/10 p-4">
-                    <p className="font-medium text-text">Clean fixture</p>
+                    <p className="font-medium text-text">Clean invoice image</p>
                     <p className="mt-2 text-sm leading-6 text-muted">
                       Mostly high-confidence lines. Quality gate should mark this as quick review.
                     </p>
                   </div>
                   <div className="rounded-tile border border-warning/20 bg-warning/10 p-4">
-                    <p className="font-medium text-text">Blurry fixture</p>
+                    <p className="font-medium text-text">Blurry invoice image</p>
                     <p className="mt-2 text-sm leading-6 text-muted">
                       Includes low-confidence and missing-price lines. Confirmation stays blocked until you resolve or ignore them.
                     </p>
                   </div>
-                  <div className="rounded-tile border border-white/10 bg-black/20 p-4">
-                    <p className="font-medium text-text">Cropped fixture</p>
+                  <div className="rounded-tile border border-border bg-elevated p-4">
+                    <p className="font-medium text-text">Cropped invoice image</p>
                     <p className="mt-2 text-sm leading-6 text-muted">
                       Header data is incomplete, but the adapter still creates a safe draft with warnings and careful review mode.
                     </p>
@@ -1008,7 +982,7 @@ export function InvoicesPage() {
       </Panel>
 
       {draft ? (
-        <section className="grid gap-6 xl:grid-cols-[1.18fr_0.82fr]">
+        <section className="grid min-w-0 gap-5 xl:grid-cols-[minmax(0,1fr)_23rem]">
           <Panel>
             <SectionHeader
               description={
@@ -1020,11 +994,9 @@ export function InvoicesPage() {
               title="Review before applying cost changes"
             />
 
-            <div className="mt-6 grid gap-4 xl:grid-cols-4">
-              <label className="text-sm text-muted">
-                Supplier
-                <select
-                  className="mt-2 w-full rounded-tile border border-border bg-black/20 px-4 py-3 text-text outline-none transition focus:border-accent/40"
+            <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-[1fr_0.85fr_0.85fr_1fr]">
+              <FieldLabel label="Supplier">
+                <SelectInput
                   onChange={(event) => setSupplierId(event.target.value)}
                   value={supplierId}
                 >
@@ -1033,27 +1005,23 @@ export function InvoicesPage() {
                       {supplier.name}
                     </option>
                   ))}
-                </select>
-              </label>
-              <label className="text-sm text-muted">
-                Invoice date
-                <input
-                  className="mt-2 w-full rounded-tile border border-border bg-black/20 px-4 py-3 text-text outline-none transition focus:border-accent/40"
+                </SelectInput>
+              </FieldLabel>
+              <FieldLabel label="Invoice date">
+                <TextInput
                   onChange={(event) => setInvoiceDate(event.target.value)}
                   type="date"
                   value={invoiceDate}
                 />
-              </label>
-              <label className="text-sm text-muted">
-                Invoice number
-                <input
-                  className="mt-2 w-full rounded-tile border border-border bg-black/20 px-4 py-3 text-text outline-none transition focus:border-accent/40"
+              </FieldLabel>
+              <FieldLabel label="Invoice number">
+                <TextInput
                   onChange={(event) => setInvoiceNumber(event.target.value)}
                   placeholder="Optional invoice number"
                   type="text"
                   value={invoiceNumber}
                 />
-              </label>
+              </FieldLabel>
               <Panel className="rounded-tile p-4" tone="subtle">
                 <p className="text-[11px] uppercase tracking-[0.18em] text-muted">
                   {isOcrDraft ? "OCR draft status" : "Parse status"}
@@ -1164,12 +1132,13 @@ export function InvoicesPage() {
                 return (
                   <div
                     key={line.lineId}
-                    className={`rounded-panel border p-5 ${
+                    aria-label={`Review line ${line.rawProductName}`}
+                    className={`rounded-panel border p-5 transition ${
                       displayStatus === "needs_review"
-                        ? "border-warning/30 bg-warning/[0.08]"
+                        ? "border-warning/45 bg-warning/[0.08] ring-1 ring-warning/15"
                         : displayStatus === "ignored"
-                          ? "border-white/10 bg-white/[0.03]"
-                          : "border-border bg-black/20"
+                          ? "border-border bg-elevated/60 opacity-75"
+                          : "border-border bg-elevated"
                     }`}
                   >
                     <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
@@ -1238,24 +1207,19 @@ export function InvoicesPage() {
                     </div>
 
                     <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-                      <label className="text-sm text-muted">
-                        Quantity
-                        <input
-                          className="mt-2 w-full rounded-tile border border-border bg-black/20 px-4 py-3 text-text outline-none transition focus:border-accent/40"
+                      <FieldLabel label="Quantity">
+                        <NumberInput
                           onChange={(event) =>
                             updateLine(line.lineId, {
                               parsedQuantity: Number(event.target.value)
                             })
                           }
                           step="0.01"
-                          type="number"
                           value={line.parsedQuantity}
                         />
-                      </label>
-                      <label className="text-sm text-muted">
-                        Unit
-                        <select
-                          className="mt-2 w-full rounded-tile border border-border bg-black/20 px-4 py-3 text-text outline-none transition focus:border-accent/40"
+                      </FieldLabel>
+                      <FieldLabel label="Unit">
+                        <SelectInput
                           onChange={(event) =>
                             updateLine(line.lineId, {
                               parsedUnit: event.target.value as InvoiceUnit
@@ -1268,12 +1232,10 @@ export function InvoicesPage() {
                               {unit}
                             </option>
                           ))}
-                        </select>
-                      </label>
-                      <label className="text-sm text-muted">
-                        Unit price
-                        <input
-                          className="mt-2 w-full rounded-tile border border-border bg-black/20 px-4 py-3 text-text outline-none transition focus:border-accent/40"
+                        </SelectInput>
+                      </FieldLabel>
+                      <FieldLabel label="Unit price">
+                        <NumberInput
                           onChange={(event) =>
                             updateLine(line.lineId, {
                               parsedUnitPriceCents:
@@ -1283,18 +1245,15 @@ export function InvoicesPage() {
                             })
                           }
                           step="0.01"
-                          type="number"
                           value={
                             line.parsedUnitPriceCents !== null
                               ? (line.parsedUnitPriceCents / 100).toFixed(2)
                               : ""
                           }
                         />
-                      </label>
-                      <label className="text-sm text-muted">
-                        Matched ingredient
-                        <select
-                          className="mt-2 w-full rounded-tile border border-border bg-black/20 px-4 py-3 text-text outline-none transition focus:border-accent/40"
+                      </FieldLabel>
+                      <FieldLabel label="Matched ingredient">
+                        <SelectInput
                           onChange={(event) =>
                             updateLine(line.lineId, {
                               matchedIngredientId: event.target.value || undefined
@@ -1308,8 +1267,8 @@ export function InvoicesPage() {
                               {candidate.name}
                             </option>
                           ))}
-                        </select>
-                      </label>
+                        </SelectInput>
+                      </FieldLabel>
                     </div>
 
                     <div className="mt-5 grid gap-3 md:grid-cols-4">
@@ -1359,7 +1318,16 @@ export function InvoicesPage() {
                   ]}
                 />
               </div>
-              <p className="mt-5 text-sm leading-6 text-muted">{reviewCompletionLabel}</p>
+              {confirmDisabledReason ? (
+                <p className="mt-5 rounded-tile border border-warning/25 bg-warning/10 p-4 text-sm leading-6 text-warning">
+                  {confirmDisabledReason}
+                </p>
+              ) : (
+                <p className="mt-5 rounded-tile border border-profit/25 bg-profit/10 p-4 text-sm leading-6 text-profit">
+                  Confirm cost updates
+                </p>
+              )}
+              <p className="mt-4 text-sm leading-6 text-muted">{reviewCompletionLabel}</p>
               {confirmError ? <p className="mt-4 text-sm leading-6 text-danger">{confirmError}</p> : null}
               <div className="mt-6 flex flex-wrap gap-3">
                 <ActionButton disabled={confirmDisabled} onClick={() => void handleConfirmInvoice()} variant="primary">
@@ -1411,7 +1379,7 @@ export function InvoicesPage() {
                     {affectedDishes.slice(0, 3).map((dish) => (
                       <Link
                         key={dish.dishId}
-                        className="block rounded-tile border border-profit/15 bg-black/20 p-4 transition hover:border-accent/30"
+                        className="block rounded-tile border border-profit/15 bg-elevated p-4 transition hover:border-accent/30"
                         to={{
                           pathname: `/dishes/${dish.dishId}`,
                           search: buildDatasetSearch(selectedDataset.id)
@@ -1448,7 +1416,7 @@ export function InvoicesPage() {
                   />
                 ) : (
                   alertPreview.map((alert) => (
-                    <div key={alert.id} className="rounded-tile border border-border bg-black/20 p-4">
+                    <div key={alert.id} className="rounded-tile border border-border bg-elevated p-4">
                       <div className="flex flex-wrap items-center justify-between gap-3">
                         <SeverityBadge severity={alert.severity} />
                         <span className="text-xs uppercase tracking-[0.16em] text-muted">
@@ -1501,6 +1469,7 @@ export function InvoicesPage() {
           </div>
         </section>
       ) : null}
+      </section>
     </div>
   );
 }

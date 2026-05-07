@@ -75,6 +75,8 @@ Browser file input with image/PDF support and camera capture hint is acceptable 
 
 Sprint 3 reduced oversized responsive page header typography after mobile screenshots showed the invoice intake title consuming too much of the viewport.
 
+Sprint 4 focused specifically on invoice review interaction. The invoice workspace now separates source selection, parsed line review, and confirmation summary more clearly. Review lines expose card-oriented markers, unresolved lines show a direct resolve-or-ignore reason, ignored lines are visually de-emphasized, and the confirm action stays blocked until every non-ignored line is ready.
+
 ## Visual Audit Process
 
 Run:
@@ -113,10 +115,12 @@ This validates shell files, work-tree labels, theme/language controls, Settings 
 
 Sprint 2 additionally validates that the primary workspace markers exist for Menu, Dish Detail, Recipes, Ingredients, Invoices, Alerts, Onboarding, and Billing.
 
+Sprint 4 additionally validates invoice-specific interaction structure: review line cards, confirm-disabled reason, no horizontal-scroll/table dependency, and invoice-specific EE/EN labels.
+
 ## Known Remaining Visual Gaps
 
-- Some deeper form controls still use page-local styling and can be folded further into shared input components later.
-- Invoices keeps existing review-confirm business logic and tests; surrounding visual polish improved, but the full review interaction remains complex enough to deserve a later focused pass.
+- Some non-critical secondary invoice result panels can still be folded further into shared workspace primitives later.
+- Invoice review is substantially clearer, but full mobile browser interaction automation remains future work.
 - Pilot Tools remains an admin/diagnostics utility rather than a primary product workspace.
 - EE/EN coverage is intentionally partial.
 - Full mobile browser automation is still future work; current checks are smoke/static/component-level gates.

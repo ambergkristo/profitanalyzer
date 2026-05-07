@@ -112,13 +112,21 @@ async function main() {
     issuesFixed: [
       "Reduced responsive PageHeader scale.",
       "Moved core panel/button surfaces to theme-token backgrounds.",
-      "Added shared form primitives and applied them to recipe and ingredient editors."
+      "Added shared form primitives and applied them to recipe and ingredient editors.",
+      "Polished invoice review into clearer intake, review-line, and confirmation areas."
     ],
     remainingVisualGaps: [
-      "Invoice review business flow is still complex and should receive a deeper interaction-specific pass later.",
+      "Invoice review is screenshot-smoked, but full mobile browser interaction still needs dedicated automation later.",
       "EE/EN coverage is broader but still not full-string localization.",
       "Screenshots are generated locally and ignored from git to avoid heavy binary commits."
     ],
+    invoiceReviewChecks: {
+      desktopScreenshot: captured.some((item) => item.name === "desktop-invoices"),
+      mobileScreenshot: captured.some((item) => item.name === "mobile-invoices"),
+      lightScreenshot: captured.some((item) => item.name === "light-invoices"),
+      expectedFlow: "left intake, center review lines, right confirmation summary",
+      safetyCopy: "Review required before costs update."
+    },
     screenshots: captured
   };
 
@@ -147,6 +155,14 @@ ${report.issuesFixed.map((issue) => `- ${issue}`).join("\n")}
 ## Remaining Visual Gaps
 
 ${report.remainingVisualGaps.map((gap) => `- ${gap}`).join("\n")}
+
+## Invoice Review Checks
+
+- desktop screenshot: ${report.invoiceReviewChecks.desktopScreenshot}
+- mobile screenshot: ${report.invoiceReviewChecks.mobileScreenshot}
+- light screenshot: ${report.invoiceReviewChecks.lightScreenshot}
+- expected flow: ${report.invoiceReviewChecks.expectedFlow}
+- safety copy: ${report.invoiceReviewChecks.safetyCopy}
 `,
     "utf8"
   );

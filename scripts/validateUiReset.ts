@@ -113,6 +113,21 @@ function main() {
   if (!invoices.includes("rounded-panel border p-5")) {
     failures.push("Invoice review card path is missing.");
   }
+  if (!invoices.includes("aria-label={`Review line ${line.rawProductName}`}")) {
+    failures.push("Invoice review line cards should expose a card-oriented review marker.");
+  }
+  if (!invoices.includes("confirmDisabledReason")) {
+    failures.push("Invoice confirm CTA disabled reason is missing.");
+  }
+  if (!invoices.includes("Resolve or ignore")) {
+    failures.push("Invoice unresolved-line resolution copy is missing.");
+  }
+  if (invoices.includes("<table") || invoices.includes("overflow-x-auto")) {
+    failures.push("Invoice primary workflow should not use table or horizontal-scroll patterns.");
+  }
+  if (!i18n.includes("confirmCostUpdates") || !i18n.includes("Kinnita hinnauuendused")) {
+    failures.push("Invoice-specific EE/EN labels are missing from i18n.");
+  }
   if (!dashboard.includes("Recent cost intake") || !dashboard.includes("Priority actions")) {
     failures.push("Dashboard compact work-view sections are missing.");
   }
@@ -141,6 +156,7 @@ function main() {
     language: "EE/EN toggle and expanded navigation/action labels",
     demoSeparation: "scenario selector restrained to demo workspace area; diagnostics moved to settings",
     mobileInvoice: "invoice upload keeps capture hint and review-required safety copy",
+    invoiceReviewInteraction: "line cards, unresolved reason, and confirm CTA state are statically verified",
     formPrimitives: "shared FieldLabel/TextInput/NumberInput/SelectInput primitives applied to setup editors",
     consolidatedWorkspaces: requiredWorkspacePages.map((page) => page.marker),
     forbiddenCopyFailures: failures.filter((failure) => failure.includes("Forbidden")),
@@ -160,6 +176,7 @@ function main() {
 - language: ${report.language}
 - demoSeparation: ${report.demoSeparation}
 - mobileInvoice: ${report.mobileInvoice}
+- invoiceReviewInteraction: ${report.invoiceReviewInteraction}
 - formPrimitives: ${report.formPrimitives}
 - consolidatedWorkspaces: ${report.consolidatedWorkspaces.join(", ")}
 - pass: ${report.pass}
@@ -177,7 +194,7 @@ function main() {
   }
 
   console.log("PASS UI reset validation");
-  console.log("App shell, nav tree, EE/EN toggle, dark/light theme, settings diagnostics, form primitives, and mobile invoice safety passed.");
+  console.log("App shell, invoice review interaction, nav tree, EE/EN toggle, dark/light theme, and mobile invoice safety passed.");
 }
 
 main();

@@ -25,7 +25,20 @@ export const translations = {
     ingredientCosts: "Ingredient costs",
     invoiceCostIntake: "Invoice cost intake",
     supplierCostPressure: "Supplier cost pressure",
-    workspaceAccess: "Workspace access"
+    workspaceAccess: "Workspace access",
+    uploadInvoice: "Upload invoice",
+    reviewLines: "Review lines",
+    confirmCostUpdates: "Confirm cost updates",
+    resolveOrIgnore: "Resolve or ignore",
+    supplier: "Supplier",
+    invoiceDate: "Invoice date",
+    unitPrice: "Unit price",
+    lineTotal: "Line total",
+    matchedIngredient: "Matched ingredient",
+    confidence: "Confidence",
+    previousCost: "Previous cost",
+    newCost: "New cost",
+    priceChange: "Price change"
   },
   et: {
     overview: "Ülevaade",
@@ -41,7 +54,7 @@ export const translations = {
     export: "Ekspordi",
     confirm: "Kinnita",
     reviewRequired: "Vajab ülevaatamist",
-    reviewBeforeCostsUpdate: "Kulud muutuvad alles pärast ülevaatamist",
+    reviewBeforeCostsUpdate: "Ülevaatus on vajalik enne hindade uuendamist",
     theme: "Teema",
     language: "Keel",
     workspace: "Tööala",
@@ -49,7 +62,20 @@ export const translations = {
     ingredientCosts: "Koostisosade kulud",
     invoiceCostIntake: "Arvete kulusisestus",
     supplierCostPressure: "Tarnijakulude surve",
-    workspaceAccess: "Tööala ligipääs"
+    workspaceAccess: "Tööala ligipääs",
+    uploadInvoice: "Lae arve üles",
+    reviewLines: "Vaata read üle",
+    confirmCostUpdates: "Kinnita hinnauuendused",
+    resolveOrIgnore: "Paranda või ignoreeri",
+    supplier: "Tarnija",
+    invoiceDate: "Arve kuupäev",
+    unitPrice: "Ühikuhind",
+    lineTotal: "Rea summa",
+    matchedIngredient: "Seotud koostisosa",
+    confidence: "Kindlus",
+    previousCost: "Eelmine hind",
+    newCost: "Uus hind",
+    priceChange: "Hinnamuutus"
   }
 } as const;
 

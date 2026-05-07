@@ -463,6 +463,10 @@ describe("InvoicesPage", () => {
 
     expect(await screen.findByText("Mystery Herb Mix")).toBeInTheDocument();
     expect(await screen.findByText("Ingredient match is unresolved and must be reviewed or ignored.")).toBeInTheDocument();
+    expect(await screen.findByLabelText("Review line Mystery Herb Mix")).toBeInTheDocument();
+    expect((await screen.findAllByText("Previous cost")).length).toBeGreaterThan(0);
+    expect((await screen.findAllByText("New cost")).length).toBeGreaterThan(0);
+    expect((await screen.findAllByText("Line total")).length).toBeGreaterThan(0);
     expect(await screen.findByRole("button", { name: "Confirm cost updates" })).toBeDisabled();
     expect(
       (await screen.findAllByText("Resolve or ignore 1 lines before confirming.")).length
@@ -530,9 +534,11 @@ describe("InvoicesPage", () => {
     const confirmButton = await screen.findByRole("button", { name: "Confirm cost updates" });
     fireEvent.click(screen.getAllByRole("button", { name: "Ignore line" })[1]);
 
+    expect(await screen.findByText("ignored")).toBeInTheDocument();
     await waitFor(() => {
       expect(confirmButton).not.toBeDisabled();
     });
+    expect((await screen.findAllByText("Confirm cost updates")).length).toBeGreaterThan(0);
 
     fireEvent.click(confirmButton);
 
@@ -621,7 +627,7 @@ describe("InvoicesPage", () => {
     expect(screen.getByRole("option", { name: "External OCR provider (not configured)" })).toBeDisabled();
     expect(await screen.findByText("Configured")).toBeInTheDocument();
     expect(
-      await screen.findByText("Development upload adapter is local and deterministic for draft creation.")
+      await screen.findByText("Local review adapter creates deterministic drafts for validation.")
     ).toBeInTheDocument();
     expect(await screen.findByText(/Upload creates a review draft\. Costs update only after confirmation\./)).toBeInTheDocument();
     expect(await screen.findByText("Latest OCR jobs")).toBeInTheDocument();

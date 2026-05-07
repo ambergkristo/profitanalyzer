@@ -29,6 +29,8 @@ The app must support:
 - recipe setup uses line cards and large touch controls rather than a wide table
 - invoice review uses card-style rows, not a wide desktop-only table
 - unresolved lines stay visually obvious
+- confirmation shows a clear disabled reason until unresolved non-ignored lines are fixed
+- ignored lines are visually de-emphasized and ready lines remain calm
 - touch targets for confirm, ignore, and ingredient selection remain usable
 - dashboard KPI cards stack cleanly
 - top actions remain readable
@@ -61,7 +63,11 @@ For the current web product:
 - invoice upload accepts `image/*,application/pdf`
 - invoice upload exposes browser camera capture hint where supported
 - invoice review-confirm CTA renders
+- invoice confirm disabled reason renders
+- invoice review line-card marker renders
+- selected invoice file metadata renders
 - invoice page does not depend on a desktop-only table
+- invoice page does not use horizontal scrolling as the primary mobile path
 - dashboard supplier/action surfaces still render
 - dish detail simulator controls still render
 - language and theme controls remain available without blocking core work
@@ -81,6 +87,8 @@ Current validation is a smoke gate, not full browser automation.
 It now checks onboarding source/tests and mobile invoice upload assumptions, including image/PDF accept, browser capture hint, and draft-only safety copy.
 
 `validate:ui-reset` adds a shell-level smoke gate for the work-tree navigation, theme/language controls, forbidden primary copy, and mobile invoice safety copy.
+
+Sprint 4 extends these gates with invoice review interaction checks for line cards, unresolved-line copy, confirm disabled state, and no horizontal-scroll/table dependency.
 
 `screenshot:ui` captures mobile screenshots for Overview, Menu, Dish Detail, Invoices, Onboarding, and Billing against a running local app. The screenshots are local artifacts; the committed report summarizes the visual audit.
 
