@@ -3,7 +3,6 @@ import { Prisma, PrismaClient } from "@prisma/client";
 import {
   getDefaultPlans,
   getDemoDataset,
-  listDemoDatasets,
   type AffectedDishImpact,
   type DemoDatasetDefinition,
   type Ingredient,
@@ -108,9 +107,8 @@ export function buildStoreContext(datasetId: string, actorUserId?: string): Stor
 }
 
 function buildSeedDefinitions(appMode: AppMode): DemoDatasetDefinition[] {
-  const seeded = listDemoDatasets()
-    .map((dataset) => getDemoDataset(dataset.id))
-    .filter((dataset): dataset is DemoDatasetDefinition => dataset !== undefined);
+  const mixedRestaurant = getDemoDataset("mixed-restaurant");
+  const seeded = mixedRestaurant ? [mixedRestaurant] : [];
 
   if (appMode === "pilot") {
     return [...seeded, createPilotWorkspaceDefinition()];
@@ -140,6 +138,10 @@ function buildDatasetMeta(dataset: DemoDatasetDefinition) {
     demoNarrative: dataset.demoNarrative,
     validationStatus: dataset.validationStatus
   };
+}
+
+function normalizeSupplierName(value: string) {
+  return value.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 }
 
 function coerceDatasetMeta(
@@ -553,16 +555,19 @@ async function replaceRestaurantDataset(
       }))
     });
 
+    const ingredientIds = new Set(payload.ingredients.map((ingredient) => ingredient.id));
     const recipeIngredients = payload.recipes.flatMap((recipe) =>
-      recipe.ingredients.map((ingredient) => ({
-        id: `${recipe.id}:${ingredient.ingredientId}`,
-        workspaceId,
-        restaurantId,
-        recipeId: recipe.id,
-        ingredientId: ingredient.ingredientId,
-        quantity: ingredient.quantity,
-        unit: ingredient.unit
-      }))
+      recipe.ingredients
+        .filter((ingredient) => ingredientIds.has(ingredient.ingredientId))
+        .map((ingredient) => ({
+          id: `${recipe.id}:${ingredient.ingredientId}`,
+          workspaceId,
+          restaurantId,
+          recipeId: recipe.id,
+          ingredientId: ingredient.ingredientId,
+          quantity: ingredient.quantity,
+          unit: ingredient.unit
+        }))
     );
 
     if (recipeIngredients.length > 0) {
@@ -586,9 +591,26 @@ async function replaceRestaurantDataset(
     });
   }
 
-  if (payload.suppliers.length > 0) {
+  const suppliersById = new Map(payload.suppliers.map((supplier) => [supplier.id, supplier]));
+  for (const invoiceView of payload.invoices) {
+    if (!suppliersById.has(invoiceView.invoice.supplierId)) {
+      const fallbackName =
+        invoiceView.supplierSuggestion?.supplierName?.trim() ||
+        invoiceView.invoice.supplierId.replace(/^supplier-/u, "").replace(/[-_]+/g, " ");
+      suppliersById.set(invoiceView.invoice.supplierId, {
+        id: invoiceView.invoice.supplierId,
+        restaurantId,
+        name: fallbackName,
+        normalizedName: normalizeSupplierName(fallbackName),
+        createdAt: invoiceView.invoice.createdAt
+      });
+    }
+  }
+  const supplierRows = [...suppliersById.values()];
+
+  if (supplierRows.length > 0) {
     await prisma.supplier.createMany({
-      data: payload.suppliers.map((supplier) => ({
+      data: supplierRows.map((supplier) => ({
         id: supplier.id,
         workspaceId,
         restaurantId,

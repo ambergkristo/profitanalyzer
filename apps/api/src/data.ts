@@ -217,22 +217,26 @@ function buildTargetMarginActions(
 
 export interface CreateDataStoreOptions {
   extraDatasets?: DemoDatasetDefinition[];
+  includeDemoDatasets?: boolean;
   storageInfo?: Partial<AppStore["getStorageInfo"] extends () => infer T ? T : never>;
   exportedFromAppVersion?: string;
 }
 
 function resolveDatasetDefinition(
   datasetId: string | undefined,
-  extraDatasets: DemoDatasetDefinition[]
+  extraDatasets: DemoDatasetDefinition[],
+  includeDemoDatasets = true
 ): DemoDatasetDefinition | undefined {
-  return extraDatasets.find((dataset) => dataset.id === datasetId) ?? getDemoDataset(datasetId);
+  return extraDatasets.find((dataset) => dataset.id === datasetId) ??
+    (includeDemoDatasets ? getDemoDataset(datasetId) : undefined);
 }
 
 function createDatasetSession(
   datasetId: string | undefined,
-  extraDatasets: DemoDatasetDefinition[]
+  extraDatasets: DemoDatasetDefinition[],
+  includeDemoDatasets = true
 ): DatasetSession | null {
-  const baseDataset = resolveDatasetDefinition(datasetId, extraDatasets);
+  const baseDataset = resolveDatasetDefinition(datasetId, extraDatasets, includeDemoDatasets);
 
   if (!baseDataset) {
     return null;
@@ -705,14 +709,15 @@ export function createDataStore(options: CreateDataStoreOptions = {}): AppStore 
   const sessions = new Map<string, DatasetSession>();
   const sampleInvoices = getMockInvoiceSamples();
   const extraDatasets = options.extraDatasets ?? [];
+  const includeDemoDatasets = options.includeDemoDatasets ?? true;
   const storageInfo = {
     ...defaultMemoryStorageInfo,
     ...(options.storageInfo ?? {})
   };
   const exportedFromAppVersion = options.exportedFromAppVersion ?? "0.1.0";
-  const defaultDatasetId = resolveDatasetDefinition(undefined, extraDatasets)?.id;
+  const defaultDatasetId = resolveDatasetDefinition(undefined, extraDatasets, includeDemoDatasets)?.id;
   const seededDatasetSummaries = [
-    ...listDemoDatasets(),
+    ...(includeDemoDatasets ? listDemoDatasets() : []),
     ...extraDatasets
       .filter((dataset) => !listDemoDatasets().some((candidate) => candidate.id === dataset.id))
       .map((dataset) => toDatasetSummary(dataset))
@@ -726,7 +731,7 @@ export function createDataStore(options: CreateDataStoreOptions = {}): AppStore 
     }
 
     if (!sessions.has(resolvedId)) {
-      const session = createDatasetSession(resolvedId, extraDatasets);
+      const session = createDatasetSession(resolvedId, extraDatasets, includeDemoDatasets);
 
       if (!session) {
         return null;
@@ -1796,7 +1801,7 @@ export function createDataStore(options: CreateDataStoreOptions = {}): AppStore 
       const existingSession = sessions.get(datasetId);
       const nextSession = existingSession?.baseline
         ? createSessionFromExportPayload(existingSession.baseline, datasetId)
-        : createDatasetSession(datasetId, extraDatasets);
+        : createDatasetSession(datasetId, extraDatasets, includeDemoDatasets);
 
       if (!nextSession) {
         return null;

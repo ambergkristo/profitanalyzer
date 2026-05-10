@@ -32,8 +32,11 @@ Phase 12 introduces:
 - Prisma schema validation
 - DB driver selection through `STORE_DRIVER=database`
 - skip-aware `validate:db`
+- live local Postgres runtime validation when `DATABASE_URL` is configured
 - workspace and restaurant context foundations
 - data-model isolation rules at the store layer
+
+The live DB validation layer covers migrations, seed data, database store reload persistence, analytics, dish detail, core CRUD, invoice review-confirm, OCR job metadata, billing status, scoped export/reset, and workspace isolation.
 
 ## What Phase 13 Adds To Validation
 
@@ -104,7 +107,7 @@ Production SaaS readiness now requires:
 
 ## What Is Still Not Proven
 
-- live Postgres deployment in the target environment
+- hosted Postgres deployment in the target environment
 - hardened production identity lifecycle beyond dev login
 - authenticated isolation under a live DB in a production-like deployment
 - production backup and restore maturity

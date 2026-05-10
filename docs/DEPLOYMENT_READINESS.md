@@ -34,6 +34,23 @@ npm run validate:production-readiness
 npm run validate:mobile
 ```
 
+For local Postgres runtime validation:
+
+```bash
+docker compose up -d postgres
+```
+
+Then set `DATABASE_URL` to the local dev Postgres URL and run:
+
+```bash
+npm run db:generate
+npm run db:migrate
+npm run db:seed
+npm run validate:db
+```
+
+Details: `docs/DATABASE_RUNTIME_VALIDATION.md`.
+
 ## Node and Ports
 
 - Node 20+ recommended
@@ -87,6 +104,7 @@ OCR:
 
 - intended production-oriented path
 - requires Postgres and `DATABASE_URL`
+- local validation can use the repository Docker Compose Postgres service
 - should not silently fall back to memory
 - readiness fails clearly if DB is selected but not configured or reachable
 
@@ -163,7 +181,8 @@ Before public paid SaaS launch:
 - `PRODUCTION_LAUNCH_GATE.md` must change from no-go to go.
 - `validate:launch-gate` must pass.
 - `validate:production-readiness` must still be honest and only return `productionReady=true` when blockers are actually closed.
-- live database migration/seed/backup must be rehearsed.
+- local database migration/seed/runtime validation can be rehearsed with Docker Compose.
+- hosted database migration/seed/backup must still be rehearsed.
 - production auth must replace or harden dev-session auth.
 - legal/privacy drafts must be reviewed.
 

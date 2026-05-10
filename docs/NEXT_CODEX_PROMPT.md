@@ -18,24 +18,23 @@ Current roadmap:
 - Phase 16 - Production Invoice/OCR Pipeline - complete as invoice/OCR pipeline foundation
 - Phase 17 - Billing + License Model Readiness - complete as billing/license foundation
 - Phase 18 - Security, Privacy, Legal, and Launch Gate - complete as launch-gate foundation
-- Next recommended sprint - Live Postgres + deployment validation
+- Next recommended sprint - Production Identity Provider
 
 Sprint name:
-`PRODUCTION BLOCKER SPRINT 1 - Live Postgres + Deployment Validation`
+`PRODUCTION BLOCKER SPRINT 2 - Production Identity Provider + Session Hardening`
 
 Primary goal:
-Close the highest production blocker by validating a real hosted or local-production Postgres runtime behind the existing database store driver and deployment profile.
+Replace the dev-session auth foundation with a production-ready identity provider/session strategy while preserving workspace isolation and the existing database store boundary.
 
 Required scope:
 
-- configure `DATABASE_URL` for a safe non-production validation database
-- run Prisma generate/migrate/seed against that database
-- validate `STORE_DRIVER=database`
-- validate workspace/restaurant isolation through the database store
-- validate export/import scoped to workspace
-- validate invoice review-confirm through database-backed persistence if adapter parity supports it
-- validate OCR job metadata persistence through database store where implemented
-- document migration and rollback runbook
+- select and document the production identity approach
+- replace or gate `dev-login` so it cannot be used in production
+- implement production session/cookie/token handling
+- require authenticated workspace context for protected routes
+- validate owner/admin/member RBAC through authenticated API calls
+- prove no cross-workspace data leakage through auth and database context
+- keep local/dev auth available only for validation/demo modes
 - keep memory/file store working for demo/tests
 - do not claim production SaaS readiness unless all launch-gate blockers are closed
 
@@ -84,6 +83,6 @@ npm audit
 
 Git:
 
-- commit with: `feat: validate live database deployment foundation`
+- commit with: `feat: add production identity foundation`
 - push to `origin/main`
 - verify `HEAD == origin/main`

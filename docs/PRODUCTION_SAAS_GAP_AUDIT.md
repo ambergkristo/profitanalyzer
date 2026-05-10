@@ -33,6 +33,7 @@
 - OCR job retry/cancel lifecycle and confidence policy added
 - invoice pipeline validation command added
 - pricing plan, subscription/license, founding partner lifetime entitlement, usage counter, and billing provider seam added
+- local Postgres runtime validation path and live `validate:db` coverage when `DATABASE_URL` is configured
 
 ## Missing For Production SaaS
 
@@ -75,7 +76,7 @@ New foundations now exist:
 
 Remaining production SaaS blockers:
 
-- live database validation is not complete in this environment
+- hosted live database validation and backup/restore rehearsal are not complete
 - final production auth provider is not implemented
 - live payment provider is not implemented
 - live OCR benchmark on private real samples is not proven

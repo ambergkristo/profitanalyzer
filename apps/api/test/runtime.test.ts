@@ -35,6 +35,32 @@ describe("runtime profile", () => {
     expect(result.ok).toBe(false);
     expect(result.blockers.some((blocker) => blocker.includes("APP_MODE=production"))).toBe(true);
   });
+
+  it("requires database storage and rejects placeholder database credentials in production", () => {
+    const result = validateEnvironmentProfile({
+      environment: {
+        APP_MODE: "production",
+        AUTH_MODE: "production_future",
+        STORE_DRIVER: "database",
+        NODE_ENV: "production",
+        DATABASE_URL: "postgresql://user:password@db:5432/profit_analyzer",
+        SESSION_SECRET: "replace-me-with-a-real-production-secret",
+        APP_BASE_URL: "https://app.example.com",
+        API_BASE_URL: "https://api.example.com",
+        CORS_ORIGIN: "https://app.example.com",
+        OCR_PROVIDER: "fixture",
+        UPLOAD_STORAGE_DRIVER: "local_file"
+      },
+      authMode: "production_future"
+    });
+
+    expect(result.ok).toBe(false);
+    expect(
+      result.blockers.some((blocker) =>
+        blocker.includes("DATABASE_URL cannot use documentation placeholder credentials")
+      )
+    ).toBe(true);
+  });
 });
 
 describe("error normalization", () => {

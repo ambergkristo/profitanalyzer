@@ -122,7 +122,7 @@ function main() {
     .join("\n");
   const secretPatterns = [
     /SESSION_SECRET=(?!$|replace|local-dev-session-secret)[^\s"']+/iu,
-    /DATABASE_URL=(?!$|postgresql:\/\/user:password|postgres:\/\/user:password)[^\s"']+/iu,
+    /DATABASE_URL=(?!$|postgresql:\/\/user:password|postgres:\/\/user:password|postgresql:\/\/profit_analyzer:local_dev_password@localhost:55432\/profit_analyzer)[^\s"']+/iu,
     /sk-[A-Za-z0-9_-]{20,}/u,
     /bearer\s+[A-Za-z0-9._-]{20,}/iu,
     /OCR_PROVIDER_API_KEY=(?!$|your_api_key_here)[^\s"']+/iu,

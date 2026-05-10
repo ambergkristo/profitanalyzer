@@ -11,6 +11,8 @@ Phase 12 now includes a real database foundation:
 - DB seed scaffolding
 - `validate:db`
 - workspace and restaurant scoping in the data model
+- local Docker Postgres validation path
+- live DB runtime validation report when `DATABASE_URL` is present
 
 This is not yet a claim that production DB runtime is fully proven in every environment.
 
@@ -69,9 +71,30 @@ It also stores JSON snapshots where needed to preserve current invoice and OCR v
 - no ingredient-cost mutation before confirmation
 - no blind OCR import
 
+## Runtime Validation
+
+Use `docs/DATABASE_RUNTIME_VALIDATION.md` for the local Postgres path.
+
+When `DATABASE_URL` is configured, `validate:db` now proves:
+
+- Prisma connection and migrations
+- seed data
+- analytics and dish detail from database store
+- ingredient, recipe, and dish edit persistence after reload
+- invoice review-confirm cost history and alerts
+- OCR job metadata through API runtime
+- billing status
+- workspace isolation and scoped reset/export
+
+Current seed scope:
+
+- the database seed persists the mixed restaurant baseline as the default app dataset
+- `validate:db` creates a dedicated second isolation workspace/restaurant for tenant-isolation proof
+- the memory/file demo scenarios remain unchanged and still cover the broader synthetic scenario set
+
 ## Known Gaps
 
-- live DB validation is skip-aware when `DATABASE_URL` is missing
+- hosted production DB validation is still required
 - auth is not live yet
 - per-user actor context is only a placeholder
 - production-grade migration rollout and rollback playbooks are still future work

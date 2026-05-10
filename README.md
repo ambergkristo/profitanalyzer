@@ -15,6 +15,7 @@ RM1-RM9 are complete as a controlled pilot and founding-partner foundation. The 
 - Phase 16: complete as production invoice/OCR pipeline foundation
 - Phase 17: complete as billing/license foundation
 - Phase 18: complete as security/privacy/legal launch-gate foundation
+- Production blocker sprint 1: local Postgres runtime validation path added; hosted production DB validation still required
 - production SaaS readiness: `false`
 - OCR safety boundary: unchanged
 
@@ -84,6 +85,24 @@ If `DATABASE_URL` is missing:
 - `validate:db` skip-reports clearly
 - `STORE_DRIVER=database` routes fail clearly instead of silently falling back
 - readiness reports the DB blocker without exposing secrets
+
+Local Postgres validation:
+
+```bash
+docker compose up -d postgres
+```
+
+PowerShell:
+
+```powershell
+$env:DATABASE_URL="postgresql://profit_analyzer:local_dev_password@localhost:55432/profit_analyzer"
+npm run db:generate
+npm run db:migrate
+npm run db:seed
+npm run validate:db
+```
+
+See `docs/DATABASE_RUNTIME_VALIDATION.md`.
 
 ## Invoice/OCR Pipeline
 
@@ -179,7 +198,7 @@ npm run validate:db
 Notes:
 
 - `db:migrate` targets a configured Postgres database
-- `validate:db` is skip-aware when `DATABASE_URL` is missing
+- `validate:db` is skip-aware when `DATABASE_URL` is missing and live-validates local Postgres when it is present
 - memory and file validation still work without a database
 
 ## Local Run
@@ -301,7 +320,7 @@ Local URLs:
 
 - production SaaS readiness
 - production-complete auth provider, invite flow, or hardened session lifecycle
-- live DB runtime validation in this environment without `DATABASE_URL`
+- hosted production DB runtime validation, backup/restore rehearsal, and production migration rollout
 - live OCR accuracy benchmark on real restaurant invoices
 - live payment processing
 - final monitoring and backup maturity

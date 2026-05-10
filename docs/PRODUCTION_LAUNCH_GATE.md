@@ -16,7 +16,7 @@ The product has strong controlled-pilot and founding-partner foundations, but pr
 
 ## Critical Blockers
 
-- Live Postgres/database runtime validation is skipped without `DATABASE_URL`.
+- Hosted production Postgres/database runtime validation is not complete.
 - Final production identity provider is not implemented.
 - Dev-session auth remains a foundation, not final production auth.
 - Live payment provider is not implemented.
@@ -83,7 +83,8 @@ npm audit
 
 ## Required Live DB Validation
 
-- Run migrations against production-like Postgres.
+- Run local validation with `docs/DATABASE_RUNTIME_VALIDATION.md`.
+- Run migrations against production-like hosted Postgres.
 - Seed default workspace/restaurant safely.
 - Validate workspace isolation.
 - Validate export/import scoped to workspace.

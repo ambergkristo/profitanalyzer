@@ -8,7 +8,6 @@ import {
   persistDatasetPayload,
   seedDatabaseDatasetsIfEmpty
 } from "./databasePersistence.js";
-import { createPilotWorkspaceDefinition } from "./seedStore.js";
 import type {
   AppMode,
   AppStore,
@@ -38,7 +37,8 @@ export interface CreateDatabaseStoreOptions {
 
 function createBaseStore(options: CreateDatabaseStoreOptions) {
   return createDataStore({
-    extraDatasets: options.appMode === "pilot" ? [createPilotWorkspaceDefinition()] : [],
+    extraDatasets: [],
+    includeDemoDatasets: false,
     exportedFromAppVersion: options.exportedFromAppVersion
   });
 }

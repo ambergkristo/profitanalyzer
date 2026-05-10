@@ -1,0 +1,20 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: profit-analyzer-postgres
+    environment:
+      POSTGRES_DB: profit_analyzer
+      POSTGRES_USER: profit_analyzer
+      POSTGRES_PASSWORD: local_dev_password
+    ports:
+      - "55432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U profit_analyzer -d profit_analyzer"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    volumes:
+      - profit_analyzer_postgres_data:/var/lib/postgresql/data
+
+volumes:
+  profit_analyzer_postgres_data:

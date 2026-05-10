@@ -20,6 +20,37 @@ function docExists(filePath: string) {
   return fs.existsSync(path.resolve(filePath));
 }
 
+function readDbValidationReport(): {
+  liveRunExecuted: boolean;
+  connectionStatus: string;
+  migrationStatus: string;
+  seedStatus: string;
+  storeParityStatus: string;
+  isolationStatus: string;
+  invoiceFlowStatus: string;
+  blockers: string[];
+} | null {
+  const reportPath = path.resolve("reports/db-validation-report.json");
+  if (!fs.existsSync(reportPath)) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(fs.readFileSync(reportPath, "utf8")) as {
+      liveRunExecuted: boolean;
+      connectionStatus: string;
+      migrationStatus: string;
+      seedStatus: string;
+      storeParityStatus: string;
+      isolationStatus: string;
+      invoiceFlowStatus: string;
+      blockers: string[];
+    };
+  } catch {
+    return null;
+  }
+}
+
 function toMarkdown(report: {
   productionReady: false;
   currentMode: string;
@@ -70,21 +101,35 @@ async function main() {
     appMode: string;
     checks: Array<{ status: string; message: string }>;
   };
+  const dbReport = readDbValidationReport();
+  const dbLivePass =
+    dbReport?.liveRunExecuted === true &&
+    dbReport.connectionStatus === "pass" &&
+    dbReport.migrationStatus === "pass" &&
+    dbReport.seedStatus === "pass" &&
+    dbReport.storeParityStatus === "pass" &&
+    dbReport.isolationStatus === "pass" &&
+    dbReport.invoiceFlowStatus === "pass" &&
+    dbReport.blockers.length === 0;
 
   const sections: Record<string, ReadinessSection> = {
     database: {
-      status: process.env.DATABASE_URL?.trim() ? "partial" : "blocked",
-      summary: process.env.DATABASE_URL?.trim()
-        ? "Database driver exists, but live runtime validation is still environment-dependent."
-        : "DATABASE_URL is not configured in this environment, so live database validation is skipped."
+      status: dbLivePass ? "partial" : "blocked",
+      summary: dbLivePass
+        ? "Live local Postgres runtime validation has passed for migrations, seed, database store parity, invoice flow, and tenant isolation; hosted production DB validation is still required."
+        : dbReport?.liveRunExecuted
+          ? `Live database validation did not fully pass: ${dbReport.blockers.join("; ") || "see db validation report."}`
+          : "DATABASE_URL is not configured or live database validation has not run, so runtime database readiness remains blocked."
     },
     auth: {
       status: "partial",
       summary: "Dev-session auth, RBAC, and workspace scoping exist, but final production identity is not live."
     },
     tenantIsolation: {
-      status: "partial",
-      summary: "Workspace and restaurant scoping exist in the data and access layers, but production DB runtime is not fully proven here."
+      status: dbLivePass ? "partial" : "blocked",
+      summary: dbLivePass
+        ? "Workspace and restaurant scoping passed local Postgres runtime validation; auth-provider-backed production isolation still needs deployment validation."
+        : "Workspace and restaurant scoping exists architecturally, but live database isolation validation has not passed."
     },
     deployment: {
       status: "partial",

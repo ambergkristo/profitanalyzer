@@ -3,8 +3,8 @@
   "currentMode": "demo",
   "sections": {
     "database": {
-      "status": "blocked",
-      "summary": "DATABASE_URL is not configured in this environment, so live database validation is skipped."
+      "status": "partial",
+      "summary": "Live local Postgres runtime validation has passed for migrations, seed, database store parity, invoice flow, and tenant isolation; hosted production DB validation is still required."
     },
     "auth": {
       "status": "partial",
@@ -12,7 +12,7 @@
     },
     "tenantIsolation": {
       "status": "partial",
-      "summary": "Workspace and restaurant scoping exist in the data and access layers, but production DB runtime is not fully proven here."
+      "summary": "Workspace and restaurant scoping passed local Postgres runtime validation; auth-provider-backed production isolation still needs deployment validation."
     },
     "deployment": {
       "status": "partial",

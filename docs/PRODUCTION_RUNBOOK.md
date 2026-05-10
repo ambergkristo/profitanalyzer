@@ -55,6 +55,23 @@ npm run validate:invoice-pipeline
 npm run benchmark:ocr
 ```
 
+Local database runtime validation:
+
+```bash
+docker compose up -d postgres
+export DATABASE_URL=postgresql://profit_analyzer:local_dev_password@localhost:55432/profit_analyzer
+npm run db:generate
+npm run db:migrate
+npm run db:seed
+npm run validate:db
+```
+
+PowerShell:
+
+```powershell
+$env:DATABASE_URL="postgresql://profit_analyzer:local_dev_password@localhost:55432/profit_analyzer"
+```
+
 ## Migration And Seed
 
 Generate Prisma client:
@@ -114,6 +131,7 @@ Current state:
 - dataset export/import exists
 - file-store data can be copied from `DATA_DIR`
 - database backup is still expected to come from the DB provider or hosting layer
+- local Postgres validation proves application/runtime parity only; it does not replace hosted backup/restore rehearsal
 - `UPLOAD_DATA_DIR` must be backed up separately when `UPLOAD_STORAGE_DRIVER=local_file`
 - raw uploaded invoice files are not included in normal dataset export by default
 

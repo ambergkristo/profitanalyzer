@@ -15,3 +15,6 @@ reports/ui-screenshots/
 *.local.json
 *.private.json
 benchmarks/ocr/private-results/
+.local-dev/
+postgres-data/
+pgdata/

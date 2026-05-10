@@ -54,12 +54,13 @@ npm run db:generate
 npm run db:migrate
 npm run db:seed
 npm run validate:db
+npm run db:reset:local
 ```
 
 ## Validation Behavior
 
 - if `DATABASE_URL` is missing, `validate:db` prints `SKIPPED_DATABASE_VALIDATION`
-- if `DATABASE_URL` exists, validation checks DB connectivity, seed viability, store load, and scoped analytics access
+- if `DATABASE_URL` exists, validation checks DB connectivity, applied migrations, seed viability, store reload persistence, analytics, dish detail, core CRUD, invoice review-confirm, OCR job metadata, billing status, scoped export, scoped reset, and workspace isolation
 - `GET /api/health/readiness` reports DB configuration and reachability without exposing the raw connection string
 
 ## Access Rule
@@ -71,6 +72,7 @@ npm run validate:db
 ## Known Gaps
 
 - auth currently uses a dev-session flow, not the final production identity provider
-- full DB parity for every operational helper should continue to be verified in later phases
+- the default DB seed persists the mixed restaurant baseline; broader memory/file demo scenarios remain available outside DB mode
+- full hosted DB parity should continue to be verified during deployment validation
 - migration rollout policy and production backup strategy are still later work
-- live DB runtime is still unproven in this environment until `DATABASE_URL` is configured
+- hosted production DB runtime, backup/restore, and rollout/rollback rehearsals still need separate validation

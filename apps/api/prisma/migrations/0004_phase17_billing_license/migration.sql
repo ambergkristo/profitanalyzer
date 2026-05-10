@@ -1,4 +1,4 @@
-﻿-- Phase 17 billing and license model foundation.
+-- Phase 17 billing and license model foundation.
 CREATE TYPE "PlanCode" AS ENUM ('starter', 'pro', 'multi_location', 'founding_partner', 'internal_demo');
 CREATE TYPE "SubscriptionStatus" AS ENUM ('trialing', 'active', 'past_due', 'cancelled', 'expired', 'lifetime', 'internal');
 CREATE TYPE "BillingProvider" AS ENUM ('none', 'manual', 'stripe_future');
