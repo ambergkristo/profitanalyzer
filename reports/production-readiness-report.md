@@ -11,6 +11,7 @@
 - auth: partial - Password auth foundation, hardened sessions, RBAC, and dev-login production lockdown validate; external identity/email invite delivery and production deployment validation remain open.
 - tenantIsolation: partial - Workspace and restaurant scoping passed local Postgres runtime validation; password-auth and deployed production isolation still need hosted validation.
 - deployment: partial - Production build/start scripts, strict env validation, readiness behavior, CORS/base URL checks, deployment docs, and frontend secret exposure scan pass locally; hosted deploy execution is still required.
+- hostedDeployment: blocked - Hosted smoke validation is skipped until hosted inputs are provided: HOSTED_SMOKE_ENABLED=true, HOSTED_API_BASE_URL, HOSTED_APP_BASE_URL.
 - observability: partial - Structured request ids, request logging, and safe error handling exist; full monitoring is still future work.
 - ocrSafety: pass - OCR and invoice upload remain draft-only and still require review-confirm before cost mutation.
 - invoicePipeline: partial - Upload storage abstraction, OCR job lifecycle metadata, confidence policy, benchmark workflow, and invoice pipeline validation exist; live provider accuracy and production object storage remain unproven.

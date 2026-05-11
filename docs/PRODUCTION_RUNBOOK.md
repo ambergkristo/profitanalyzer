@@ -56,6 +56,7 @@ npm run validate:db
 npm run validate:auth
 npm run validate:runtime
 npm run validate:deployment
+npm run validate:hosted
 npm run validate:production-readiness
 npm run validate:mobile
 npm run validate:onboarding
@@ -83,6 +84,7 @@ $env:DATABASE_URL="postgresql://profit_analyzer:local_dev_password@localhost:554
 ## Migration And Seed
 
 See `docs/PRODUCTION_MIGRATION_RUNBOOK.md` for the full hosted migration checklist.
+See `docs/HOSTED_DEPLOYMENT_EXECUTION.md` for the complete hosted frontend/backend/Postgres execution sequence.
 
 Generate Prisma client:
 

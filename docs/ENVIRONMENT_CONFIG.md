@@ -38,6 +38,11 @@ This is not a claim that production SaaS readiness already exists.
 - `BILLING_PROVIDER=none|manual|stripe_future`
 - `BILLING_PROVIDER_SECRET_KEY=`
 - `BILLING_WEBHOOK_SECRET=`
+- `HOSTED_SMOKE_ENABLED=false`
+- `HOSTED_API_BASE_URL=`
+- `HOSTED_APP_BASE_URL=`
+- `HOSTED_TEST_EMAIL=`
+- `HOSTED_TEST_PASSWORD=`
 
 ## Defaults
 
@@ -201,6 +206,8 @@ This checks:
 - writable upload directory when `UPLOAD_STORAGE_DRIVER=local_file`
 - placeholder-like secrets in production-like mode
 - unsafe production blockers such as `AUTH_MODE=dev` or `STORE_DRIVER=memory`
+
+Hosted smoke validation uses `HOSTED_*` variables only when `HOSTED_SMOKE_ENABLED=true`. These values must stay in local shells or CI secret stores and must not be committed.
 
 Warnings are acceptable for non-fatal setups, such as `APP_MODE=pilot` with `STORE_DRIVER=memory`.
 

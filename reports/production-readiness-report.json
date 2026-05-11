@@ -18,6 +18,10 @@
       "status": "partial",
       "summary": "Production build/start scripts, strict env validation, readiness behavior, CORS/base URL checks, deployment docs, and frontend secret exposure scan pass locally; hosted deploy execution is still required."
     },
+    "hostedDeployment": {
+      "status": "blocked",
+      "summary": "Hosted smoke validation is skipped until hosted inputs are provided: HOSTED_SMOKE_ENABLED=true, HOSTED_API_BASE_URL, HOSTED_APP_BASE_URL."
+    },
     "observability": {
       "status": "partial",
       "summary": "Structured request ids, request logging, and safe error handling exist; full monitoring is still future work."

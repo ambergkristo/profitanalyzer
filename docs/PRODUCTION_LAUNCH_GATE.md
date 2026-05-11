@@ -17,6 +17,7 @@ The product has strong controlled-pilot and founding-partner foundations, but pr
 ## Critical Blockers
 
 - Local Postgres/database runtime validation passes, but hosted deployment execution is not complete.
+- Hosted smoke validation exists, but has not run against real hosted URLs in this environment.
 - Password auth foundation and session hardening exist, but hosted production identity validation is not complete.
 - External identity provider and email delivery are not implemented.
 - Live payment provider is not implemented.
@@ -57,6 +58,7 @@ npm run validate:db
 npm run validate:auth
 npm run validate:runtime
 npm run validate:deployment
+npm run validate:hosted
 npm run validate:production-readiness
 npm run validate:onboarding
 npm run validate:invoice-pipeline
@@ -72,6 +74,7 @@ npm audit
 - Workspace isolation using production database.
 - Auth/session behavior in hosted production-like deployment.
 - Frontend/backend CORS and base URL behavior in hosted deployment.
+- `npm run validate:hosted` against real hosted API/app URLs.
 - Backup/export/restore rehearsal.
 - OCR benchmark with 5-10 permissioned private invoice samples.
 - Legal review of privacy, terms, retention, and consent docs.
@@ -94,6 +97,7 @@ npm audit
 - Validate export/import scoped to workspace.
 - Validate backup/restore.
 - Run `npm run validate:deployment` after production build.
+- Run `npm run validate:hosted` after hosted frontend/backend deployment.
 
 ## Required Auth Hardening
 

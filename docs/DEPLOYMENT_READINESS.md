@@ -32,6 +32,7 @@ npm run validate:db
 npm run validate:auth
 npm run validate:runtime
 npm run validate:deployment
+npm run validate:hosted
 npm run validate:production-readiness
 npm run validate:mobile
 ```
@@ -142,10 +143,12 @@ npm run preview:web
 See:
 
 - `docs/HOSTED_DEPLOYMENT_PLAN.md`
+- `docs/HOSTED_DEPLOYMENT_EXECUTION.md`
 - `docs/PRODUCTION_MIGRATION_RUNBOOK.md`
 - `docs/BACKUP_RESTORE_RUNBOOK.md`
 
 `npm run validate:deployment` checks scripts, build artifacts, strict production env behavior, readiness response safety, frontend secret exposure, and required deployment docs.
+`npm run validate:hosted` checks real hosted URLs only when `HOSTED_SMOKE_ENABLED=true`; otherwise it writes a skipped report listing the missing hosted inputs.
 
 ## Pre-Deploy Validation
 
@@ -164,6 +167,7 @@ Run before any serious hosted environment:
 - `npm run validate:auth`
 - `npm run validate:runtime`
 - `npm run validate:deployment`
+- `npm run validate:hosted`
 - `npm run validate:production-readiness`
 - `npm run validate:mobile`
 - `npm run validate:onboarding`

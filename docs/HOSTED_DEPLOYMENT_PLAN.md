@@ -99,11 +99,13 @@ Readiness must show `productionReady=false` until all launch blockers are closed
 - Run the full validation suite.
 - Run `npm run build:production`.
 - Run `npm run validate:deployment`.
+- Follow `docs/HOSTED_DEPLOYMENT_EXECUTION.md`.
 - Apply migrations against hosted Postgres.
 - Confirm `/api/health/readiness`.
 - Confirm dev-login is blocked in production.
 - Confirm password login/logout in production-like mode.
 - Confirm CORS from frontend origin.
+- Run `npm run validate:hosted` with hosted smoke env when URLs and test credentials are available.
 - Confirm upload disk or object-storage blocker is accepted.
 
 ## Rollback Checklist
@@ -118,6 +120,7 @@ Readiness must show `productionReady=false` until all launch blockers are closed
 ## Known Blockers
 
 - Hosted deployment has not been executed end-to-end in this repository environment.
+- `validate:hosted` skip-reports until real hosted URLs and controlled test credentials are provided.
 - Hosted object storage is not implemented.
 - Backup/restore rehearsal is not complete.
 - Live OCR benchmark is not proven.

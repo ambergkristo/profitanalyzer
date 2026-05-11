@@ -15,36 +15,35 @@ Current status:
 - local Postgres runtime validation passes when `DATABASE_URL` is configured
 - password auth foundation exists and dev-login is blocked in production mode
 - hosted deployment validation foundation exists locally
+- hosted deployment execution checklist exists
+- `npm run validate:hosted` exists and skip-reports without hosted env
 - production SaaS readiness is still not claimed
 
 Recommended next sprint:
-`PRODUCTION BLOCKER SPRINT 4 - Hosted Deploy Execution + Production Smoke`
+`PRODUCTION BLOCKER SPRINT 5 - Execute Hosted Deploy Or Close Hosted Smoke Gaps`
 
 Primary goal:
-Execute a real hosted deployment rehearsal for frontend, backend, and hosted Postgres, then prove production-like runtime behavior through smoke validation.
+Run the hosted deployment smoke validation against real hosted frontend/backend/Postgres URLs, or close the exact hosted deploy gaps that prevent it from running.
 
 Required scope:
 
-- select actual hosting targets for frontend, backend, and Postgres
-- configure hosted env vars without committing secrets
-- run hosted DB migrations and seed
-- deploy backend build and confirm `npm run start:api`
-- deploy frontend build with `VITE_API_BASE_URL` or provider rewrites
-- verify CORS from hosted frontend to hosted backend
+- provision or select hosted frontend, backend, and Postgres targets
+- configure backend env vars in the hosting provider, without committing secrets
+- run hosted migrations and seed using `db:deploy:migrate` and `db:deploy:seed`
+- deploy backend and frontend
+- set frontend `VITE_API_BASE_URL`
+- create a controlled hosted test user
+- run `HOSTED_SMOKE_ENABLED=true npm run validate:hosted`
 - verify `/health`, `/api/health/deep`, and `/api/health/readiness`
-- verify password login/logout and dev-login production lockdown
-- verify workspace isolation through hosted API smoke checks
-- verify invoice/OCR draft-only safety in hosted environment
-- update deployment reports and launch gate honestly
+- verify production CORS from hosted frontend to hosted backend
+- verify password auth, dev-login lockdown, analytics, billing status, and invoice review-confirm safety
 - keep `productionReady=false` unless every remaining blocker is genuinely closed
 
-Important:
+If hosted validation passes, recommend the next blocker:
 
-- do not commit `.env`, hosted secrets, uploaded files, private invoices, or screenshots
-- do not add billing/payment checkout
-- do not add POS/accounting/inventory/supplier API sync
-- do not weaken OCR review-confirm safety
-- do not claim production SaaS readiness if legal, billing, OCR benchmark, monitoring, backup/restore, UI finalization, or launch-gate blockers remain
+- backup/restore rehearsal, or
+- live OCR provider benchmark, or
+- UI/UX Sprint 5 for full EE coverage and premium finish
 
 Validation:
 
@@ -60,6 +59,7 @@ npm run validate:db
 npm run validate:auth
 npm run validate:runtime
 npm run validate:deployment
+npm run validate:hosted
 npm run validate:production-readiness
 npm run validate:launch-gate
 npm run validate:ui-reset
@@ -74,6 +74,6 @@ npm audit
 
 Git:
 
-- commit with: `feat: validate hosted deployment smoke path`
+- commit with: `feat: execute hosted deployment smoke`
 - push to `origin/main`
 - verify `HEAD == origin/main`

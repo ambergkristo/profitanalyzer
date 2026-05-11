@@ -94,6 +94,9 @@ function main() {
   if (!readiness?.sections || !("securityPrivacyLegal" in readiness.sections)) {
     failures.push("Production readiness report must include Phase 18 security/privacy/legal section.");
   }
+  if (!readiness?.sections || !("hostedDeployment" in readiness.sections)) {
+    failures.push("Production readiness report must include hosted deployment section.");
+  }
   if (!privacy.includes("not lawyer-reviewed") || !terms.includes("not lawyer-reviewed")) {
     failures.push("Privacy and terms drafts must include not-lawyer-reviewed disclaimers.");
   }
@@ -156,6 +159,7 @@ function main() {
       noFakeEndorsements: consent.includes("No fake endorsements"),
       exportDeleteProcess: retention.includes("Deletion Request Process") && retention.includes("Export Process"),
       dependencyAuditDocumented: checklist.includes("Dependency Audit") && checklist.includes("5 moderate"),
+      hostedDeploymentDocumented: Boolean(readiness?.sections && "hostedDeployment" in readiness.sections),
       productionReadinessAgrees: readiness?.productionReady === false
     },
     failures

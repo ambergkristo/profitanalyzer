@@ -31,6 +31,17 @@ Dataset export does not include raw private invoice file contents by default.
 6. Run `npm run validate:db`.
 7. Confirm workspace isolation and invoice review-confirm still work.
 
+## Hosted Backup Setup Requirement
+
+Before public paid SaaS launch:
+
+- enable hosted Postgres automated backups
+- document backup retention in the provider console
+- rehearse restoring a backup into a separate database
+- point `DATABASE_URL` at the restored database in a local shell
+- run `npm run validate:db`
+- do not restore over production unless executing an approved incident rollback
+
 ## Delete/Retention Interaction
 
 - Deletion requests should not hard-delete blindly.

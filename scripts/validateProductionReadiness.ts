@@ -109,6 +109,45 @@ function readDeploymentValidationReport(): {
   }
 }
 
+function readHostedValidationReport(): {
+  hostedValidationRan: boolean;
+  hostedApiConfigured: boolean;
+  hostedAppConfigured: boolean;
+  health: string;
+  readiness: string;
+  cors: string;
+  auth: string;
+  analytics: string;
+  invoiceSafety: string;
+  billing: string;
+  blockers: string[];
+  missingInputs: string[];
+} | null {
+  const reportPath = path.resolve("reports/hosted-validation-report.json");
+  if (!fs.existsSync(reportPath)) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(fs.readFileSync(reportPath, "utf8")) as {
+      hostedValidationRan: boolean;
+      hostedApiConfigured: boolean;
+      hostedAppConfigured: boolean;
+      health: string;
+      readiness: string;
+      cors: string;
+      auth: string;
+      analytics: string;
+      invoiceSafety: string;
+      billing: string;
+      blockers: string[];
+      missingInputs: string[];
+    };
+  } catch {
+    return null;
+  }
+}
+
 function toMarkdown(report: {
   productionReady: false;
   currentMode: string;
@@ -162,6 +201,7 @@ async function main() {
   const dbReport = readDbValidationReport();
   const authReport = readAuthValidationReport();
   const deploymentReport = readDeploymentValidationReport();
+  const hostedReport = readHostedValidationReport();
   const dbLivePass =
     dbReport?.liveRunExecuted === true &&
     dbReport.connectionStatus === "pass" &&
@@ -207,6 +247,26 @@ async function main() {
         deploymentReport?.blockers.length === 0
           ? "Production build/start scripts, strict env validation, readiness behavior, CORS/base URL checks, deployment docs, and frontend secret exposure scan pass locally; hosted deploy execution is still required."
           : "Hosted deployment validation has not passed locally; see deployment validation report."
+    },
+    hostedDeployment: {
+      status:
+        hostedReport?.hostedValidationRan === true &&
+        hostedReport.health === "pass" &&
+        hostedReport.readiness === "pass" &&
+        hostedReport.cors === "pass" &&
+        hostedReport.auth === "pass" &&
+        hostedReport.analytics === "pass" &&
+        hostedReport.invoiceSafety === "pass" &&
+        hostedReport.billing === "pass" &&
+        hostedReport.blockers.length === 0
+          ? "partial"
+          : "blocked",
+      summary:
+        hostedReport?.hostedValidationRan === true
+          ? hostedReport.blockers.length === 0
+            ? "Hosted smoke validation passed for health, readiness, CORS, password auth, analytics, billing, and invoice safety; remaining launch blockers still prevent production readiness."
+            : `Hosted smoke validation ran but failed: ${hostedReport.blockers.join("; ")}.`
+          : `Hosted smoke validation is skipped until hosted inputs are provided: ${hostedReport?.missingInputs.join(", ") || "HOSTED_SMOKE_ENABLED and hosted URLs"}.`
     },
     observability: {
       status: "partial",

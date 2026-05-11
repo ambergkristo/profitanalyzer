@@ -16,6 +16,7 @@
 - noFakeEndorsements: true
 - exportDeleteProcess: true
 - dependencyAuditDocumented: true
+- hostedDeploymentDocumented: true
 - productionReadinessAgrees: true
 
 ## Failures

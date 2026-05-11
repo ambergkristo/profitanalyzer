@@ -64,7 +64,7 @@
 - production env validation as a gate
 - health, deep health, and readiness endpoints
 - `VITE_API_BASE_URL` for split-origin frontend deployments
-- hosted deployment validation command and runbooks
+- hosted deployment validation command, hosted smoke validator, and runbooks
 
 ### Auth Direction
 
@@ -140,7 +140,7 @@ Production readiness remains false because:
 - external production identity provider and full account lifecycle are not implemented
 - live payment processing is not implemented
 - hosted upload/object storage is not implemented
-- hosted deployment execution is not complete
+- hosted deployment execution has not been smoke-validated against real hosted URLs
 - monitoring is foundational, not complete
 - backup/restore rehearsal is not complete
 - legal/privacy drafts are not lawyer-reviewed

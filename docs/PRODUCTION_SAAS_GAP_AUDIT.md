@@ -36,11 +36,13 @@
 - pricing plan, subscription/license, founding partner lifetime entitlement, usage counter, and billing provider seam added
 - local Postgres runtime validation path and live `validate:db` coverage when `DATABASE_URL` is configured
 - hosted deployment validation foundation, migration runbook, and backup/restore runbook added
+- hosted deployment execution checklist and skip-aware hosted smoke validator added
 
 ## Missing For Production SaaS
 
 - live database rollout validated in target hosting environment
 - hosted frontend/backend deployment execution
+- hosted smoke validation with real hosted URLs
 - hosted production auth validation, account lifecycle, email verification/reset, invite delivery, and external-provider decision
 - invite and workspace management flows
 - hosted object storage strategy for OCR uploads

@@ -18,6 +18,7 @@ RM1-RM9 are complete as a controlled pilot and founding-partner foundation. The 
 - Production blocker sprint 1: local Postgres runtime validation path added; hosted production DB validation still required
 - Production blocker sprint 2: password auth foundation and session hardening added; hosted production identity validation still required
 - Production blocker sprint 3: hosted deployment validation foundation added; actual hosted deploy execution still required
+- Production blocker sprint 4: hosted smoke validation path added; real hosted URLs are still required to prove execution
 - production SaaS readiness: `false`
 - OCR safety boundary: unchanged
 
@@ -33,6 +34,7 @@ The current product already includes:
 - auth/session foundation with workspace roles
 - deployment profile, readiness checks, and runtime validation
 - hosted deployment plan, migration runbook, backup/restore runbook, and `validate:deployment`
+- hosted deployment execution checklist and skip-aware `validate:hosted`
 - mobile-first restaurant onboarding and invoice review flow
 - onboarding checklist for profile, ingredients, recipes, dishes, suppliers, first invoice, and dashboard review
 - upload storage abstraction, OCR retry/cancel lifecycle, confidence policy, and OCR benchmark workflow
@@ -169,6 +171,7 @@ npm run validate:db
 npm run validate:auth
 npm run validate:runtime
 npm run validate:deployment
+npm run validate:hosted
 npm run validate:production-readiness
 npm run validate:mobile
 npm run validate:onboarding

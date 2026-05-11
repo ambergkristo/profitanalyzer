@@ -25,13 +25,13 @@ npm run db:generate
 Apply migrations:
 
 ```bash
-npm run db:migrate
+npm run db:deploy:migrate
 ```
 
 Seed baseline/default data when required:
 
 ```bash
-npm run db:seed
+npm run db:deploy:seed
 ```
 
 Validate runtime:
@@ -45,11 +45,12 @@ npm run validate:db
 1. Deploy backend build without routing public traffic if the platform supports it.
 2. Set production environment variables.
 3. Run `npm run db:generate`.
-4. Run `npm run db:migrate`.
-5. Run `npm run db:seed`.
+4. Run `npm run db:deploy:migrate`.
+5. Run `npm run db:deploy:seed`.
 6. Run `npm run validate:db`.
 7. Check `/api/health/readiness`.
-8. Route traffic only if validation passes and readiness has no unexpected blockers.
+8. Run `npm run validate:hosted` when hosted URLs and test credentials are available.
+9. Route traffic only if validation passes and readiness has no unexpected blockers.
 
 ## Verification Queries
 

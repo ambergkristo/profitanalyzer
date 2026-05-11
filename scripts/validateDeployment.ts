@@ -24,6 +24,7 @@ interface DeploymentReport {
 
 const requiredDocs = [
   "docs/HOSTED_DEPLOYMENT_PLAN.md",
+  "docs/HOSTED_DEPLOYMENT_EXECUTION.md",
   "docs/PRODUCTION_MIGRATION_RUNBOOK.md",
   "docs/BACKUP_RESTORE_RUNBOOK.md",
   "docs/DEPLOYMENT_READINESS.md",
@@ -128,8 +129,11 @@ function validateScripts(report: DeploymentReport) {
     "start:api",
     "preview:web",
     "validate:deployment",
+    "validate:hosted",
     "db:migrate",
     "db:seed",
+    "db:deploy:migrate",
+    "db:deploy:seed",
     "validate:db"
   ];
   const missing = requiredScripts.filter((script) => !rootPackage.scripts?.[script]);
