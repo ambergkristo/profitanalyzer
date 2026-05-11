@@ -1,0 +1,22 @@
+# Deployment Validation Report
+
+## Summary
+
+- scripts: pass
+- buildArtifacts: pass
+- envValidation: pass
+- corsAndUrls: pass
+- readiness: pass
+- frontendSecretExposure: pass
+- docs: pass
+- productionReady: false
+
+## Blockers
+
+- none
+
+## Warnings
+
+- Production mode has no live payment provider; this is acceptable only before paid launch.
+- Local upload file storage requires a persistent disk or external storage before production launch.
+- Production mode uses password auth foundation; hardening and operational controls still need launch review.

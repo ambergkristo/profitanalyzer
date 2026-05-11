@@ -855,7 +855,7 @@ export function InvoicesPage() {
                         ? "Local review adapter creates deterministic drafts for validation."
                         : selectedOcrProvider.isConfigured
                           ? "Creates review drafts only. Confirmation still required before ingredient costs change."
-                          : "Configure OCR_PROVIDER_API_KEY and OCR_PROVIDER_MODEL on the API server to enable."}
+                          : "Configure external OCR provider credentials on the API server to enable."}
                     </p>
                   </div>
                 ) : null}

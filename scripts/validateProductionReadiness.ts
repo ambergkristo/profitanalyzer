@@ -78,6 +78,37 @@ function readAuthValidationReport(): {
   }
 }
 
+function readDeploymentValidationReport(): {
+  scripts: string;
+  buildArtifacts: string;
+  envValidation: string;
+  corsAndUrls: string;
+  readiness: string;
+  frontendSecretExposure: string;
+  docs: string;
+  blockers: string[];
+} | null {
+  const reportPath = path.resolve("reports/deployment-validation-report.json");
+  if (!fs.existsSync(reportPath)) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(fs.readFileSync(reportPath, "utf8")) as {
+      scripts: string;
+      buildArtifacts: string;
+      envValidation: string;
+      corsAndUrls: string;
+      readiness: string;
+      frontendSecretExposure: string;
+      docs: string;
+      blockers: string[];
+    };
+  } catch {
+    return null;
+  }
+}
+
 function toMarkdown(report: {
   productionReady: false;
   currentMode: string;
@@ -130,6 +161,7 @@ async function main() {
   };
   const dbReport = readDbValidationReport();
   const authReport = readAuthValidationReport();
+  const deploymentReport = readDeploymentValidationReport();
   const dbLivePass =
     dbReport?.liveRunExecuted === true &&
     dbReport.connectionStatus === "pass" &&
@@ -163,8 +195,18 @@ async function main() {
         : "Workspace and restaurant scoping exists architecturally, but live database isolation validation has not passed."
     },
     deployment: {
-      status: "partial",
-      summary: "Deployment profile, readiness endpoint, and runtime validation exist, but production rollout is not yet claimed."
+      status:
+        deploymentReport?.scripts === "pass" &&
+        deploymentReport.buildArtifacts === "pass" &&
+        deploymentReport.envValidation === "pass" &&
+        deploymentReport.readiness === "pass" &&
+        deploymentReport.blockers.length === 0
+          ? "partial"
+          : "blocked",
+      summary:
+        deploymentReport?.blockers.length === 0
+          ? "Production build/start scripts, strict env validation, readiness behavior, CORS/base URL checks, deployment docs, and frontend secret exposure scan pass locally; hosted deploy execution is still required."
+          : "Hosted deployment validation has not passed locally; see deployment validation report."
     },
     observability: {
       status: "partial",
@@ -184,7 +226,7 @@ async function main() {
     },
     backupExport: {
       status: "partial",
-      summary: "Dataset export/import exists, but full database backup strategy remains a deployment concern."
+      summary: "Dataset export/import and backup/restore runbook exist, but hosted database backup/restore rehearsal remains a deployment blocker."
     },
     billingLicense: {
       status: "partial",
@@ -207,7 +249,7 @@ async function main() {
       .filter((check) => check.status === "fail")
       .map((check) => check.message)
       .filter((message) => !(dbLivePass && message.includes("Database storage is configured and awaiting initialization"))),
-    "Production readiness remains false until legal review, hosted deployment validation, production auth operational controls, payment decision, live OCR benchmark, monitoring, and backup/restore gates are closed."
+    "Production readiness remains false until legal review, hosted deploy execution, production auth operational controls, payment decision, live OCR benchmark, monitoring, UI finalization, and backup/restore rehearsal are closed."
   ];
 
   const report = {

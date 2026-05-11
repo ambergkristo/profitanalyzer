@@ -82,6 +82,11 @@ export interface ReadinessResponse {
     driver: "memory" | "local_file";
     maxFileSizeBytes: number;
   };
+  runtime: {
+    appBaseUrlConfigured: boolean;
+    apiBaseUrlConfigured: boolean;
+    corsOriginConfigured: boolean;
+  };
   checks: RuntimeCheck[];
 }
 
@@ -166,6 +171,11 @@ export function buildReadiness(
     uploadStorage: {
       driver: validation.profile.uploadStorageDriver,
       maxFileSizeBytes: validation.profile.uploadMaxFileSizeBytes
+    },
+    runtime: {
+      appBaseUrlConfigured: validation.profile.appBaseUrlConfigured,
+      apiBaseUrlConfigured: validation.profile.apiBaseUrlConfigured,
+      corsOriginConfigured: validation.profile.corsOriginConfigured
     },
     checks: validation.checks
   };

@@ -43,6 +43,7 @@ The live DB validation layer covers migrations, seed data, database store reload
 Phase 13 introduces:
 
 - `validate:auth`
+- `validate:deployment`
 - dev-session local validation plus password-auth coverage
 - protected route checks in non-demo mode
 - role-based access validation for owner, admin, and member
@@ -143,6 +144,7 @@ Additional production validation still required:
 
 - live DB validation
 - production auth validation, including dev-login lockdown and password session validation
+- deployment validation for build artifacts, strict production env behavior, readiness safety, CORS/base URLs, and frontend secret exposure
 - live OCR benchmark
 - backup/restore rehearsal
 - legal review

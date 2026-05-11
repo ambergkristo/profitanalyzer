@@ -20,6 +20,7 @@ This is not a claim that production SaaS readiness already exists.
 - `OIDC_CLIENT_SECRET=`
 - `APP_BASE_URL=http://localhost:5173`
 - `API_BASE_URL=http://localhost:3001`
+- `VITE_API_BASE_URL=`
 - `CORS_ORIGIN=http://localhost:5173`
 - `LOG_LEVEL=debug|info|warn|error`
 - `STORE_DRIVER=memory|file|database`
@@ -117,6 +118,7 @@ UPLOAD_STORAGE_DRIVER=local_file
 UPLOAD_DATA_DIR=/var/lib/profit-analyzer/uploads
 APP_BASE_URL=https://app.example.com
 API_BASE_URL=https://api.example.com
+VITE_API_BASE_URL=https://api.example.com
 CORS_ORIGIN=https://app.example.com
 LOG_LEVEL=info
 OCR_PROVIDER=disabled
@@ -193,6 +195,7 @@ This checks:
 - `SESSION_SECRET` for password auth and non-demo authenticated modes
 - `APP_MODE=production` rejects `AUTH_MODE=dev` and `AUTH_MODE=disabled`
 - `APP_BASE_URL`, `API_BASE_URL`, and `CORS_ORIGIN` in production mode
+- `VITE_API_BASE_URL` for split-origin frontend deployments
 - OCR env completeness only when `OCR_PROVIDER=external_env`
 - upload storage driver and max upload size
 - writable upload directory when `UPLOAD_STORAGE_DRIVER=local_file`

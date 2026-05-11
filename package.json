@@ -27,6 +27,7 @@
     "validate:invoice-pipeline": "tsx scripts/validateInvoicePipeline.ts",
     "validate:billing": "tsx scripts/validateBilling.ts",
     "validate:launch-gate": "tsx scripts/validateLaunchGate.ts",
+    "validate:deployment": "tsx scripts/validateDeployment.ts",
     "validate:ui-reset": "tsx scripts/validateUiReset.ts",
     "screenshot:ui": "tsx scripts/screenshotUi.ts",
     "benchmark:ocr": "tsx scripts/benchmarkOcr.ts",
@@ -36,7 +37,8 @@
     "db:reset:local": "npm run db:reset:local -w @profit-analyzer/api",
     "validate:db": "tsx scripts/validateDb.ts",
     "build:production": "npm run build",
-    "start:api": "node apps/api/dist/index.js"
+    "start:api": "node apps/api/dist/index.js",
+    "preview:web": "npm run build -w @profit-analyzer/web && npm exec -- vite preview --host 0.0.0.0 --port 4173 --config apps/web/vite.config.ts"
   },
   "devDependencies": {
     "@eslint/js": "^9.18.0",

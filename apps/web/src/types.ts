@@ -172,6 +172,11 @@ export interface ReadinessResponse {
     driver: "memory" | "local_file";
     maxFileSizeBytes: number;
   };
+  runtime: {
+    appBaseUrlConfigured: boolean;
+    apiBaseUrlConfigured: boolean;
+    corsOriginConfigured: boolean;
+  };
   checks: Array<{
     name: string;
     status: "pass" | "warn" | "fail" | "skipped";

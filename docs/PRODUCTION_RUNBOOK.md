@@ -18,6 +18,12 @@ Frontend build:
 npm run build -w @profit-analyzer/web
 ```
 
+Frontend preview:
+
+```bash
+npm run preview:web
+```
+
 ## Required Environment
 
 - `NODE_ENV=production`
@@ -28,6 +34,7 @@ npm run build -w @profit-analyzer/web
 - `SESSION_SECRET=...`
 - `APP_BASE_URL=https://app.example.com`
 - `API_BASE_URL=https://api.example.com`
+- `VITE_API_BASE_URL=https://api.example.com`
 - `CORS_ORIGIN=https://app.example.com`
 - `LOG_LEVEL=info`
 - `OCR_PROVIDER=fixture|external_env|disabled`
@@ -48,6 +55,7 @@ npm run validate:env
 npm run validate:db
 npm run validate:auth
 npm run validate:runtime
+npm run validate:deployment
 npm run validate:production-readiness
 npm run validate:mobile
 npm run validate:onboarding
@@ -73,6 +81,8 @@ $env:DATABASE_URL="postgresql://profit_analyzer:local_dev_password@localhost:554
 ```
 
 ## Migration And Seed
+
+See `docs/PRODUCTION_MIGRATION_RUNBOOK.md` for the full hosted migration checklist.
 
 Generate Prisma client:
 
@@ -125,6 +135,8 @@ Current logging foundation:
 - if a destructive migration exists later, add a migration-specific rollback runbook before deploy
 
 ## Backup And Export
+
+See `docs/BACKUP_RESTORE_RUNBOOK.md` for restore rehearsal steps.
 
 Current state:
 

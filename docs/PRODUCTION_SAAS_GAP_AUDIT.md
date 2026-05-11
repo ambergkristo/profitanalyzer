@@ -35,15 +35,17 @@
 - invoice pipeline validation command added
 - pricing plan, subscription/license, founding partner lifetime entitlement, usage counter, and billing provider seam added
 - local Postgres runtime validation path and live `validate:db` coverage when `DATABASE_URL` is configured
+- hosted deployment validation foundation, migration runbook, and backup/restore runbook added
 
 ## Missing For Production SaaS
 
 - live database rollout validated in target hosting environment
+- hosted frontend/backend deployment execution
 - hosted production auth validation, account lifecycle, email verification/reset, invite delivery, and external-provider decision
 - invite and workspace management flows
 - hosted object storage strategy for OCR uploads
 - monitoring and operational alerting
-- production backup and restore process beyond controlled export/import
+- hosted backup and restore rehearsal beyond controlled export/import
 - privacy, legal, and security baseline
 - live payment provider, checkout, webhook handling, and production billing operations
 - full mobile browser validation for critical workflows
@@ -57,7 +59,7 @@ The product now has a stronger SaaS foundation than the earlier controlled pilot
 
 It still is not production SaaS ready until:
 
-- DB runtime is proven
+- DB runtime is proven in hosted deployment, not only local Docker
 - auth and access control are hardened beyond dev-session mode and validated in hosted production-like deployment
 - deployment and observability are in place
 - mobile onboarding and invoice intake are validated
@@ -77,7 +79,8 @@ New foundations now exist:
 
 Remaining production SaaS blockers:
 
-- hosted live database validation and backup/restore rehearsal are not complete
+- hosted deployment execution and hosted live database validation are not complete
+- backup/restore runbook exists, but rehearsal is not complete
 - password auth foundation exists, but final hosted identity/account lifecycle is not complete
 - live payment provider is not implemented
 - live OCR benchmark on private real samples is not proven

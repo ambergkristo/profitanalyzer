@@ -63,6 +63,8 @@
 - database as separate managed service
 - production env validation as a gate
 - health, deep health, and readiness endpoints
+- `VITE_API_BASE_URL` for split-origin frontend deployments
+- hosted deployment validation command and runbooks
 
 ### Auth Direction
 
@@ -108,10 +110,10 @@ The DB adapter is additive:
 - database runtime is not yet universally validated in this local environment without `DATABASE_URL`
 - production-complete identity lifecycle, invite email delivery, password reset/email verification, and external provider are not live
 - auth works today as password/dev-session and RBAC foundations, not a complete hosted customer identity program
-- production deployment is documented, but not yet claimed as fully proven in a hosted environment
+- production deployment is locally validated through build/env/readiness checks, but not yet executed end-to-end in a hosted environment
 - billing/license foundation exists with plans, workspace subscription state, lifetime entitlements, usage counters, and a provider seam
 - live payment processing, checkout, and webhook handling are not live
-- production object or file storage strategy is not finalized
+- production object storage strategy is not finalized; local file upload storage requires persistent disk
 - monitoring and alerting are not live beyond the current logging and readiness foundation
 - backup and restore operations are not fully productionized
 - external OCR is not benchmarked on real invoices yet
@@ -138,6 +140,7 @@ Production readiness remains false because:
 - external production identity provider and full account lifecycle are not implemented
 - live payment processing is not implemented
 - hosted upload/object storage is not implemented
+- hosted deployment execution is not complete
 - monitoring is foundational, not complete
 - backup/restore rehearsal is not complete
 - legal/privacy drafts are not lawyer-reviewed

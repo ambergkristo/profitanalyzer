@@ -77,6 +77,52 @@ describe("runtime profile", () => {
     expect(result.ok).toBe(false);
     expect(result.blockers.some((blocker) => blocker.includes("SESSION_SECRET"))).toBe(true);
   });
+
+  it("rejects wildcard CORS origins in production", () => {
+    const result = validateEnvironmentProfile({
+      environment: {
+        APP_MODE: "production",
+        NODE_ENV: "production",
+        AUTH_MODE: "password",
+        SESSION_SECRET: "production-session-secret",
+        STORE_DRIVER: "database",
+        DATABASE_URL: "postgresql://prod_user:prod_pass@db.example.com:5432/profit_analyzer",
+        APP_BASE_URL: "https://app.example.com",
+        API_BASE_URL: "https://api.example.com",
+        CORS_ORIGIN: "*",
+        OCR_PROVIDER: "disabled",
+        UPLOAD_STORAGE_DRIVER: "local_file"
+      },
+      authMode: "password"
+    });
+
+    expect(result.ok).toBe(false);
+    expect(result.blockers.some((blocker) => blocker.includes("CORS_ORIGIN"))).toBe(true);
+  });
+
+  it("accepts a strict production-like profile while keeping launch warnings", () => {
+    const result = validateEnvironmentProfile({
+      environment: {
+        APP_MODE: "production",
+        NODE_ENV: "production",
+        AUTH_MODE: "password",
+        SESSION_SECRET: "production-session-secret",
+        STORE_DRIVER: "database",
+        DATABASE_URL: "postgresql://prod_user:prod_pass@db.example.com:5432/profit_analyzer",
+        APP_BASE_URL: "https://app.example.com",
+        API_BASE_URL: "https://api.example.com",
+        CORS_ORIGIN: "https://app.example.com",
+        OCR_PROVIDER: "disabled",
+        UPLOAD_STORAGE_DRIVER: "local_file",
+        UPLOAD_DATA_DIR: "/var/lib/profit-analyzer/uploads",
+        BILLING_PROVIDER: "manual"
+      },
+      authMode: "password"
+    });
+
+    expect(result.ok).toBe(true);
+    expect(result.warnings.length).toBeGreaterThan(0);
+  });
 });
 
 describe("error normalization", () => {

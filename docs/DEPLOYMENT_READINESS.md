@@ -11,6 +11,7 @@ Suggested split:
 - frontend: static hosting
 - backend: Node service
 - database: managed Postgres
+- upload storage: persistent disk only for controlled deployments until object storage is implemented
 
 ## Local Commands
 
@@ -30,6 +31,7 @@ npm run validate:env
 npm run validate:db
 npm run validate:auth
 npm run validate:runtime
+npm run validate:deployment
 npm run validate:production-readiness
 npm run validate:mobile
 ```
@@ -67,6 +69,7 @@ Core:
 - `SESSION_SECRET=`
 - `APP_BASE_URL=`
 - `API_BASE_URL=`
+- `VITE_API_BASE_URL=` for split-origin frontend deployments
 - `CORS_ORIGIN=`
 - `LOG_LEVEL=debug|info|warn|error`
 - `STORE_DRIVER=memory|file|database`
@@ -131,7 +134,18 @@ Readiness behaviors:
 ```bash
 npm run build:production
 npm run start:api
+npm run preview:web
 ```
+
+## Hosted Deployment Plan
+
+See:
+
+- `docs/HOSTED_DEPLOYMENT_PLAN.md`
+- `docs/PRODUCTION_MIGRATION_RUNBOOK.md`
+- `docs/BACKUP_RESTORE_RUNBOOK.md`
+
+`npm run validate:deployment` checks scripts, build artifacts, strict production env behavior, readiness response safety, frontend secret exposure, and required deployment docs.
 
 ## Pre-Deploy Validation
 
@@ -149,6 +163,7 @@ Run before any serious hosted environment:
 - `npm run validate:db`
 - `npm run validate:auth`
 - `npm run validate:runtime`
+- `npm run validate:deployment`
 - `npm run validate:production-readiness`
 - `npm run validate:mobile`
 - `npm run validate:onboarding`

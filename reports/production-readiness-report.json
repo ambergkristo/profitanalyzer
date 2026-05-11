@@ -16,7 +16,7 @@
     },
     "deployment": {
       "status": "partial",
-      "summary": "Deployment profile, readiness endpoint, and runtime validation exist, but production rollout is not yet claimed."
+      "summary": "Production build/start scripts, strict env validation, readiness behavior, CORS/base URL checks, deployment docs, and frontend secret exposure scan pass locally; hosted deploy execution is still required."
     },
     "observability": {
       "status": "partial",
@@ -36,7 +36,7 @@
     },
     "backupExport": {
       "status": "partial",
-      "summary": "Dataset export/import exists, but full database backup strategy remains a deployment concern."
+      "summary": "Dataset export/import and backup/restore runbook exist, but hosted database backup/restore rehearsal remains a deployment blocker."
     },
     "billingLicense": {
       "status": "partial",
@@ -52,6 +52,6 @@
     }
   },
   "blockers": [
-    "Production readiness remains false until legal review, hosted deployment validation, production auth operational controls, payment decision, live OCR benchmark, monitoring, and backup/restore gates are closed."
+    "Production readiness remains false until legal review, hosted deploy execution, production auth operational controls, payment decision, live OCR benchmark, monitoring, UI finalization, and backup/restore rehearsal are closed."
   ]
 }

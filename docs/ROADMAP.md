@@ -120,9 +120,9 @@ Make the app deployable and operable.
 
 ### Honest Current Position
 
-- readiness, runtime validation, and production-oriented env checks now exist
+- readiness, runtime validation, deployment validation, and production-oriented env checks now exist
 - `productionReady` still remains `false`
-- final deployment, monitoring, backup, legal/privacy, and billing gates are still open
+- actual hosted deployment execution, monitoring, backup rehearsal, legal/privacy, and billing gates are still open
 
 ## PHASE 15 - Mobile-First Restaurant Onboarding
 
@@ -261,4 +261,4 @@ Establish the production launch baseline.
 ### Honest Current Position
 
 - Privacy, terms, retention, security, and consent documents are drafts/foundations, not lawyer-reviewed final legal documents.
-- Production readiness remains false because hosted deployment validation, production identity/account lifecycle, live payment provider decision, live OCR benchmark, monitoring, backup/restore rehearsal, and legal review remain open.
+- Production readiness remains false because hosted deployment execution, production identity/account lifecycle, live payment provider decision, live OCR benchmark, monitoring, backup/restore rehearsal, UI finalization, and legal review remain open.

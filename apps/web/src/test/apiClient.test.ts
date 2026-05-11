@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { buildDatasetPath } from "../api/client.js";
+import { buildApiPath, buildDatasetPath } from "../api/client.js";
 
 describe("api client dataset path builder", () => {
   it("adds a dataset query param when missing", () => {
@@ -17,5 +17,15 @@ describe("api client dataset path builder", () => {
 
   it("leaves the path untouched without a dataset id", () => {
     expect(buildDatasetPath("/api/analytics/overview")).toBe("/api/analytics/overview");
+  });
+});
+
+describe("api client base URL builder", () => {
+  it("keeps relative paths relative when no public API base URL is configured", () => {
+    expect(buildApiPath("/api/app/config")).toBe("/api/app/config");
+  });
+
+  it("leaves absolute URLs untouched", () => {
+    expect(buildApiPath("https://api.example.com/health")).toBe("https://api.example.com/health");
   });
 });

@@ -17,6 +17,7 @@ RM1-RM9 are complete as a controlled pilot and founding-partner foundation. The 
 - Phase 18: complete as security/privacy/legal launch-gate foundation
 - Production blocker sprint 1: local Postgres runtime validation path added; hosted production DB validation still required
 - Production blocker sprint 2: password auth foundation and session hardening added; hosted production identity validation still required
+- Production blocker sprint 3: hosted deployment validation foundation added; actual hosted deploy execution still required
 - production SaaS readiness: `false`
 - OCR safety boundary: unchanged
 
@@ -31,6 +32,7 @@ The current product already includes:
 - Prisma/Postgres-oriented database layer
 - auth/session foundation with workspace roles
 - deployment profile, readiness checks, and runtime validation
+- hosted deployment plan, migration runbook, backup/restore runbook, and `validate:deployment`
 - mobile-first restaurant onboarding and invoice review flow
 - onboarding checklist for profile, ingredients, recipes, dishes, suppliers, first invoice, and dashboard review
 - upload storage abstraction, OCR retry/cancel lifecycle, confidence policy, and OCR benchmark workflow
@@ -166,6 +168,7 @@ npm run validate:env
 npm run validate:db
 npm run validate:auth
 npm run validate:runtime
+npm run validate:deployment
 npm run validate:production-readiness
 npm run validate:mobile
 npm run validate:onboarding
@@ -216,6 +219,7 @@ Optional production-oriented local build:
 ```bash
 npm run build:production
 npm run start:api
+npm run preview:web
 ```
 
 Local URLs:
@@ -347,6 +351,17 @@ Current launch verdict:
 - controlled demo: yes
 - founding partner controlled launch: conditional
 - public paid SaaS launch: no-go
+
+## Hosted Deployment
+
+Recommended topology:
+
+- frontend: Vercel or equivalent static hosting
+- backend: Render/Fly/Railway or equivalent Node service
+- database: hosted Postgres
+- uploads: persistent disk only for controlled deployments; managed object storage remains a blocker
+
+Use `VITE_API_BASE_URL` for split-origin frontend deployments. See `docs/HOSTED_DEPLOYMENT_PLAN.md`, `docs/PRODUCTION_MIGRATION_RUNBOOK.md`, and `docs/BACKUP_RESTORE_RUNBOOK.md`.
 
 ## Documentation
 

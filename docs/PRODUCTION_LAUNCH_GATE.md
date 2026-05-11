@@ -16,13 +16,15 @@ The product has strong controlled-pilot and founding-partner foundations, but pr
 
 ## Critical Blockers
 
-- Hosted production Postgres/database runtime validation is not complete.
+- Local Postgres/database runtime validation passes, but hosted deployment execution is not complete.
 - Password auth foundation and session hardening exist, but hosted production identity validation is not complete.
 - External identity provider and email delivery are not implemented.
 - Live payment provider is not implemented.
 - Legal/privacy documents are drafts and not lawyer-reviewed.
 - Live OCR accuracy is not proven with private benchmark samples.
 - Hosted object storage strategy is not implemented.
+- Backup/restore runbook exists, but hosted backup/restore rehearsal is not complete.
+- UI/UX final quality is still open according to product owner.
 - Production monitoring/alerting is foundational only.
 - Production backup/restore rehearsal is not complete.
 - `npm audit` has known moderate transitive Vite/Vitest/esbuild vulnerabilities.
@@ -54,6 +56,7 @@ npm run validate:env
 npm run validate:db
 npm run validate:auth
 npm run validate:runtime
+npm run validate:deployment
 npm run validate:production-readiness
 npm run validate:onboarding
 npm run validate:invoice-pipeline
@@ -67,7 +70,8 @@ npm audit
 
 - Mobile invoice upload and review on real phone viewport.
 - Workspace isolation using production database.
-- Auth/session behavior in production-like deployment.
+- Auth/session behavior in hosted production-like deployment.
+- Frontend/backend CORS and base URL behavior in hosted deployment.
 - Backup/export/restore rehearsal.
 - OCR benchmark with 5-10 permissioned private invoice samples.
 - Legal review of privacy, terms, retention, and consent docs.
@@ -89,6 +93,7 @@ npm audit
 - Validate workspace isolation.
 - Validate export/import scoped to workspace.
 - Validate backup/restore.
+- Run `npm run validate:deployment` after production build.
 
 ## Required Auth Hardening
 

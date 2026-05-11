@@ -52,6 +52,19 @@ const AUTH_CHANGE_EVENT = "profit-analyzer-auth-change";
 let authToken =
   typeof window !== "undefined" ? window.localStorage.getItem(AUTH_TOKEN_STORAGE_KEY) : null;
 
+function getApiBaseUrl() {
+  return import.meta.env.VITE_API_BASE_URL?.replace(/\/+$/u, "") ?? "";
+}
+
+export function buildApiPath(path: string) {
+  if (/^https?:\/\//u.test(path)) {
+    return path;
+  }
+
+  const baseUrl = getApiBaseUrl();
+  return baseUrl ? `${baseUrl}${path.startsWith("/") ? path : `/${path}`}` : path;
+}
+
 export function buildDatasetPath(path: string, datasetId?: string): string {
   if (!datasetId) {
     return path;
@@ -62,7 +75,7 @@ export function buildDatasetPath(path: string, datasetId?: string): string {
 }
 
 async function getJson<T>(path: string): Promise<T> {
-  const response = await fetch(path, {
+  const response = await fetch(buildApiPath(path), {
     headers: buildAuthHeaders()
   });
   if (!response.ok) {
@@ -76,7 +89,7 @@ async function getJson<T>(path: string): Promise<T> {
 }
 
 async function postJson<T>(path: string, body: unknown): Promise<T> {
-  const response = await fetch(path, {
+  const response = await fetch(buildApiPath(path), {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -96,7 +109,7 @@ async function postJson<T>(path: string, body: unknown): Promise<T> {
 }
 
 async function patchJson<T>(path: string, body: unknown): Promise<T> {
-  const response = await fetch(path, {
+  const response = await fetch(buildApiPath(path), {
     method: "PATCH",
     headers: {
       "Content-Type": "application/json",
@@ -116,7 +129,7 @@ async function patchJson<T>(path: string, body: unknown): Promise<T> {
 }
 
 async function getBlob(path: string): Promise<Blob> {
-  const response = await fetch(path, {
+  const response = await fetch(buildApiPath(path), {
     headers: buildAuthHeaders()
   });
   if (!response.ok) {
@@ -130,7 +143,7 @@ async function getBlob(path: string): Promise<Blob> {
 }
 
 async function postFormData<T>(path: string, body: FormData): Promise<T> {
-  const response = await fetch(path, {
+  const response = await fetch(buildApiPath(path), {
     method: "POST",
     headers: buildAuthHeaders(),
     body
