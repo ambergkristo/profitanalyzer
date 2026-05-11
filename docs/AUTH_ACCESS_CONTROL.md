@@ -14,13 +14,14 @@ Current implementation goals:
 - preserve demo mode for product walkthroughs
 - keep OCR and invoice safety unchanged
 
-## Auth Mode
+## Auth Modes
 
 - `AUTH_MODE=dev`
 - `AUTH_MODE=disabled`
-- `AUTH_MODE=production_future`
+- `AUTH_MODE=password`
+- `AUTH_MODE=external_oidc_future`
 
-`AUTH_MODE=dev` is the current working auth path.
+`AUTH_MODE=dev` is the local/demo validation auth path.
 
 It provides:
 
@@ -32,18 +33,29 @@ It provides:
 
 `AUTH_MODE=disabled` is only appropriate for demo mode or deliberately open local workflows.
 
-`AUTH_MODE=production_future` is a readiness placeholder so production-mode validation can reject `dev` auth while still making the gap explicit.
+`AUTH_MODE=password` adds the first production-shaped login path:
+
+- email/password registration and login
+- scrypt password hashing with per-user salt
+- no plaintext password storage
+- server-generated session tokens with hashed token storage
+- session expiry and logout invalidation
+- controlled public signup through `ALLOW_PUBLIC_SIGNUP`
+
+`AUTH_MODE=external_oidc_future` is a documented future provider seam. It is not a live identity provider integration yet.
 
 ## Current Endpoints
 
 - `POST /api/auth/dev-login`
+- `POST /api/auth/register`
+- `POST /api/auth/login`
 - `GET /api/auth/me`
 - `POST /api/auth/logout`
 - `POST /api/auth/context`
 
 ## Session Model
 
-Current dev auth uses:
+Current auth uses:
 
 - a `User`
 - `WorkspaceMembership`
@@ -51,7 +63,7 @@ Current dev auth uses:
 
 Session tokens are issued by the server and only token hashes are stored.
 
-This is intentionally safer than fake client-side auth, but it is still not the final production identity system.
+Password auth stores only password hashes. Dev login is blocked in production mode.
 
 ## Roles
 
@@ -136,10 +148,10 @@ Database-backed audit persistence is ready when the database path is configured.
 
 ## Known Limitations
 
-- current login is `dev-login`, not the final production login product
-- invite flow is not implemented
-- password or external identity provider flow is not implemented
-- production cookie and session hardening is still future work
+- external identity provider flow is not implemented
+- invite flow is not implemented beyond documented future work
+- password auth still needs hosted production validation and rate limiting
+- production cookie/session deployment behavior still needs final hosting validation
 - live DB-backed auth validation depends on `DATABASE_URL`
 
 ## Phase 14 Handoff

@@ -71,7 +71,7 @@ npm run db:reset:local
 
 ## Known Gaps
 
-- auth currently uses a dev-session flow, not the final production identity provider
+- auth now includes dev-session validation plus password auth, but hosted production identity/account lifecycle is not complete
 - the default DB seed persists the mixed restaurant baseline; broader memory/file demo scenarios remain available outside DB mode
 - full hosted DB parity should continue to be verified during deployment validation
 - migration rollout policy and production backup strategy are still later work

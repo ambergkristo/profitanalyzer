@@ -1,5 +1,6 @@
-export type AuthMode = "disabled" | "dev" | "production_future";
+export type AuthMode = "disabled" | "dev" | "password" | "external_oidc_future";
 export type WorkspaceRole = "owner" | "admin" | "member";
+export type UserStatus = "active" | "disabled" | "invited";
 
 export interface AuthWorkspaceRestaurant {
   restaurantId: string;
@@ -17,6 +18,8 @@ export interface AuthUserProfile {
   id: string;
   email: string;
   name: string;
+  status: UserStatus;
+  emailVerifiedAt?: string;
   createdAt: string;
 }
 
@@ -25,6 +28,10 @@ export interface AuthSessionRecord {
   userId: string;
   tokenHash: string;
   expiresAt: string;
+  revokedAt?: string;
+  lastSeenAt?: string;
+  userAgent?: string;
+  ipHash?: string;
   createdAt: string;
   updatedAt: string;
   activeWorkspaceId: string;

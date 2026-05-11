@@ -200,7 +200,7 @@ async function main() {
       NODE_ENV: "production",
       STORE_DRIVER: "database",
       DATABASE_URL: "postgresql://user:password@example.invalid:5432/profit",
-      AUTH_MODE: "production_future",
+      AUTH_MODE: "password",
       SESSION_SECRET: "replace-me",
       APP_BASE_URL: "https://app.example.com",
       API_BASE_URL: "https://api.example.com",
@@ -209,7 +209,7 @@ async function main() {
       BILLING_PROVIDER: "stripe_future",
       BILLING_PROVIDER_SECRET_KEY: ""
     },
-    authMode: getAuthMode({ AUTH_MODE: "production_future" })
+    authMode: getAuthMode({ AUTH_MODE: "password" })
   });
   assertCondition(
     billingEnvValidation.blockers.some((blocker) => blocker.includes("BILLING_PROVIDER_SECRET_KEY")),

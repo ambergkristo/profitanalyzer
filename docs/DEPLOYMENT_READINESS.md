@@ -63,7 +63,7 @@ Core:
 
 - `NODE_ENV=development|test|production`
 - `APP_MODE=demo|pilot|production`
-- `AUTH_MODE=dev|disabled|production_future`
+- `AUTH_MODE=dev|disabled|password|external_oidc_future`
 - `SESSION_SECRET=`
 - `APP_BASE_URL=`
 - `API_BASE_URL=`
@@ -161,12 +161,12 @@ Run before any serious hosted environment:
 - production hosting should move toward managed Postgres
 - `UPLOAD_STORAGE_DRIVER=local_file` requires persistent disk and is not equivalent to managed object storage
 - external object storage remains future work for hosted production
-- the current auth layer is a production-shaped foundation, not the final customer identity system
+- the current auth layer includes password auth and hardened sessions, but hosted production identity validation is still required
 - monitoring, backups, and rollout playbooks are foundations, not final operations maturity
 
 ## Known Gaps
 
-- production-complete auth is not live
+- production-complete identity lifecycle, email verification/reset, invite delivery, and external provider decision are not complete
 - billing/license foundation exists, but live payment processing, checkout, and webhook handling are not live
 - production backup flow is not fully implemented
 - full monitoring stack is not live
@@ -183,7 +183,7 @@ Before public paid SaaS launch:
 - `validate:production-readiness` must still be honest and only return `productionReady=true` when blockers are actually closed.
 - local database migration/seed/runtime validation can be rehearsed with Docker Compose.
 - hosted database migration/seed/backup must still be rehearsed.
-- production auth must replace or harden dev-session auth.
+- production auth must run with `AUTH_MODE=password` or a future configured external provider; `dev-login` must remain blocked in production.
 - legal/privacy drafts must be reviewed.
 
 Current status: public paid SaaS launch is no-go.

@@ -1,0 +1,10 @@
+ALTER TABLE "User"
+ADD COLUMN "passwordHash" TEXT,
+ADD COLUMN "emailVerifiedAt" TIMESTAMP(3),
+ADD COLUMN "status" TEXT NOT NULL DEFAULT 'active';
+
+ALTER TABLE "AuthSession"
+ADD COLUMN "revokedAt" TIMESTAMP(3),
+ADD COLUMN "lastSeenAt" TIMESTAMP(3),
+ADD COLUMN "userAgent" TEXT,
+ADD COLUMN "ipHash" TEXT;

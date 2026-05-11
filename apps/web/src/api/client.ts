@@ -1,5 +1,6 @@
 import type {
   AppConfigResponse,
+  AuthLoginResponse,
   AuthMeResponse,
   BillingStatus,
   DatasetExportPayload,
@@ -181,6 +182,16 @@ export const apiClient = {
   getAppConfig: () => getJson<AppConfigResponse>("/api/app/config"),
   devLogin: async (body: { email: string; workspaceId?: string; role?: "owner" | "admin" | "member" }) => {
     const result = await postJson<DevLoginResponse>("/api/auth/dev-login", body);
+    setStoredAuthToken(result.token);
+    return result;
+  },
+  login: async (body: { email: string; password: string }) => {
+    const result = await postJson<AuthLoginResponse>("/api/auth/login", body);
+    setStoredAuthToken(result.token);
+    return result;
+  },
+  register: async (body: { email: string; name: string; password: string; workspaceId?: string }) => {
+    const result = await postJson<AuthLoginResponse>("/api/auth/register", body);
     setStoredAuthToken(result.token);
     return result;
   },

@@ -17,8 +17,8 @@ The product has strong controlled-pilot and founding-partner foundations, but pr
 ## Critical Blockers
 
 - Hosted production Postgres/database runtime validation is not complete.
-- Final production identity provider is not implemented.
-- Dev-session auth remains a foundation, not final production auth.
+- Password auth foundation and session hardening exist, but hosted production identity validation is not complete.
+- External identity provider and email delivery are not implemented.
 - Live payment provider is not implemented.
 - Legal/privacy documents are drafts and not lawyer-reviewed.
 - Live OCR accuracy is not proven with private benchmark samples.
@@ -92,8 +92,10 @@ npm audit
 
 ## Required Auth Hardening
 
-- Select final identity provider.
-- Replace dev-login with production login/session.
+- Validate password auth in hosted production-like deployment.
+- Keep dev-login blocked in production mode.
+- Decide whether password auth is sufficient for first paid launch or select an external identity provider.
+- Add invite email delivery or controlled account provisioning.
 - Validate RBAC and tenant isolation through authenticated routes.
 - Configure session secrets and cookie/security settings.
 

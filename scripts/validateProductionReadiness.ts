@@ -51,6 +51,33 @@ function readDbValidationReport(): {
   }
 }
 
+function readAuthValidationReport(): {
+  passwordAuth: string;
+  productionLockdown: string;
+  sessionHardening: string;
+  databaseBackedAuth: string;
+  inviteFlow: string;
+  failures: string[];
+} | null {
+  const reportPath = path.resolve("reports/auth-validation-report.json");
+  if (!fs.existsSync(reportPath)) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(fs.readFileSync(reportPath, "utf8")) as {
+      passwordAuth: string;
+      productionLockdown: string;
+      sessionHardening: string;
+      databaseBackedAuth: string;
+      inviteFlow: string;
+      failures: string[];
+    };
+  } catch {
+    return null;
+  }
+}
+
 function toMarkdown(report: {
   productionReady: false;
   currentMode: string;
@@ -102,6 +129,7 @@ async function main() {
     checks: Array<{ status: string; message: string }>;
   };
   const dbReport = readDbValidationReport();
+  const authReport = readAuthValidationReport();
   const dbLivePass =
     dbReport?.liveRunExecuted === true &&
     dbReport.connectionStatus === "pass" &&
@@ -122,13 +150,16 @@ async function main() {
           : "DATABASE_URL is not configured or live database validation has not run, so runtime database readiness remains blocked."
     },
     auth: {
-      status: "partial",
-      summary: "Dev-session auth, RBAC, and workspace scoping exist, but final production identity is not live."
+      status: authReport?.passwordAuth === "pass" && authReport.productionLockdown === "pass" ? "partial" : "blocked",
+      summary:
+        authReport?.passwordAuth === "pass" && authReport.productionLockdown === "pass"
+          ? "Password auth foundation, hardened sessions, RBAC, and dev-login production lockdown validate; external identity/email invite delivery and production deployment validation remain open."
+          : "Production-shaped auth validation has not passed; dev-session-only auth remains a launch blocker."
     },
     tenantIsolation: {
       status: dbLivePass ? "partial" : "blocked",
       summary: dbLivePass
-        ? "Workspace and restaurant scoping passed local Postgres runtime validation; auth-provider-backed production isolation still needs deployment validation."
+        ? "Workspace and restaurant scoping passed local Postgres runtime validation; password-auth and deployed production isolation still need hosted validation."
         : "Workspace and restaurant scoping exists architecturally, but live database isolation validation has not passed."
     },
     deployment: {
@@ -174,8 +205,9 @@ async function main() {
   const blockers = [
     ...currentReadiness.checks
       .filter((check) => check.status === "fail")
-      .map((check) => check.message),
-    "Production readiness remains false until legal review, live DB deployment, production auth, payment decision, live OCR benchmark, monitoring, and backup/restore gates are closed."
+      .map((check) => check.message)
+      .filter((message) => !(dbLivePass && message.includes("Database storage is configured and awaiting initialization"))),
+    "Production readiness remains false until legal review, hosted deployment validation, production auth operational controls, payment decision, live OCR benchmark, monitoring, and backup/restore gates are closed."
   ];
 
   const report = {

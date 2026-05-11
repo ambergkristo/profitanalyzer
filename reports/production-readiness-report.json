@@ -8,11 +8,11 @@
     },
     "auth": {
       "status": "partial",
-      "summary": "Dev-session auth, RBAC, and workspace scoping exist, but final production identity is not live."
+      "summary": "Password auth foundation, hardened sessions, RBAC, and dev-login production lockdown validate; external identity/email invite delivery and production deployment validation remain open."
     },
     "tenantIsolation": {
       "status": "partial",
-      "summary": "Workspace and restaurant scoping passed local Postgres runtime validation; auth-provider-backed production isolation still needs deployment validation."
+      "summary": "Workspace and restaurant scoping passed local Postgres runtime validation; password-auth and deployed production isolation still need hosted validation."
     },
     "deployment": {
       "status": "partial",
@@ -52,6 +52,6 @@
     }
   },
   "blockers": [
-    "Production readiness remains false until legal review, live DB deployment, production auth, payment decision, live OCR benchmark, monitoring, and backup/restore gates are closed."
+    "Production readiness remains false until legal review, hosted deployment validation, production auth operational controls, payment decision, live OCR benchmark, monitoring, and backup/restore gates are closed."
   ]
 }

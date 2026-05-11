@@ -96,7 +96,7 @@ Protect the SaaS app and isolate customer data through authenticated workspace c
 
 - the app now has real protected-route behavior, workspace membership, and basic RBAC
 - demo mode still intentionally bypasses auth for product demonstration
-- the current `dev-login` flow is a local and deployment-foundation auth layer, not the final production identity product
+- dev-login is local/demo only, password auth foundation exists, and hosted production identity/account lifecycle remains future work
 - production SaaS readiness is still not claimed at the end of this phase alone
 
 ## PHASE 14 - Production Deployment + Observability
@@ -261,4 +261,4 @@ Establish the production launch baseline.
 ### Honest Current Position
 
 - Privacy, terms, retention, security, and consent documents are drafts/foundations, not lawyer-reviewed final legal documents.
-- Production readiness remains false because live DB validation, final production auth, live payment provider decision, live OCR benchmark, monitoring, backup/restore rehearsal, and legal review remain open.
+- Production readiness remains false because hosted deployment validation, production identity/account lifecycle, live payment provider decision, live OCR benchmark, monitoring, backup/restore rehearsal, and legal review remain open.

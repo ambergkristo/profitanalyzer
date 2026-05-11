@@ -38,7 +38,13 @@ export const translations = {
     confidence: "Confidence",
     previousCost: "Previous cost",
     newCost: "New cost",
-    priceChange: "Price change"
+    priceChange: "Price change",
+    email: "Email",
+    password: "Password",
+    signIn: "Sign in",
+    signOut: "Sign out",
+    continue: "Continue",
+    invalidCredentials: "Invalid credentials"
   },
   et: {
     overview: "Ülevaade",
@@ -75,7 +81,13 @@ export const translations = {
     confidence: "Kindlus",
     previousCost: "Eelmine hind",
     newCost: "Uus hind",
-    priceChange: "Hinnamuutus"
+    priceChange: "Hinnamuutus",
+    email: "E-post",
+    password: "Parool",
+    signIn: "Logi sisse",
+    signOut: "Logi välja",
+    continue: "Jätka",
+    invalidCredentials: "Vale e-post või parool"
   }
 } as const;
 

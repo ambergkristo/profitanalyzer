@@ -1,10 +1,11 @@
-import { createHash, randomBytes } from "node:crypto";
+import { createHash, randomBytes, scrypt as scryptCallback, timingSafeEqual } from "node:crypto";
+import { promisify } from "node:util";
 
 import { PrismaClient } from "@prisma/client";
 
 import { getAppMode } from "../config.js";
-import type { AppStore } from "../store/types.js";
 import { getDatabaseUrl, getStoreDriver } from "../store/persistence.js";
+import type { AppStore } from "../store/types.js";
 import type {
   AuthContext,
   AuthMeResponse,
@@ -12,8 +13,12 @@ import type {
   AuthSessionRecord,
   AuthUserProfile,
   AuthWorkspaceMembership,
+  UserStatus,
   WorkspaceRole
 } from "./types.js";
+
+const scrypt = promisify(scryptCallback);
+const passwordHashPrefix = "scrypt";
 
 function nowIso() {
   return new Date().toISOString();
@@ -23,8 +28,10 @@ function buildHash(value: string) {
   return createHash("sha256").update(value).digest("hex");
 }
 
-function buildSessionExpiry() {
-  return new Date(Date.now() + 1000 * 60 * 60 * 24 * 7).toISOString();
+function buildSessionExpiry(environment: NodeJS.ProcessEnv) {
+  const ttlHours = Number(environment.SESSION_TTL_HOURS ?? 168);
+  const safeTtlHours = Number.isFinite(ttlHours) && ttlHours > 0 ? ttlHours : 168;
+  return new Date(Date.now() + 1000 * 60 * 60 * safeTtlHours).toISOString();
 }
 
 function inferRoleFromEmail(email: string): WorkspaceRole {
@@ -53,15 +60,62 @@ function buildUserName(email: string) {
     : "User";
 }
 
+function isValidEmail(email: string) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/u.test(email.trim().toLowerCase());
+}
+
+function getPasswordMinLength(environment: NodeJS.ProcessEnv) {
+  const configured = Number(environment.PASSWORD_MIN_LENGTH ?? 10);
+  return Number.isFinite(configured) && configured >= 10 ? Math.floor(configured) : 10;
+}
+
+function isPublicSignupAllowed(environment: NodeJS.ProcessEnv) {
+  return environment.ALLOW_PUBLIC_SIGNUP === "true";
+}
+
+async function hashPassword(password: string) {
+  const salt = randomBytes(16).toString("hex");
+  const derived = (await scrypt(password, salt, 64)) as Buffer;
+  return `${passwordHashPrefix}$${salt}$${derived.toString("hex")}`;
+}
+
+async function verifyPassword(password: string, encodedHash: string | undefined) {
+  if (!encodedHash) {
+    return false;
+  }
+
+  const [algorithm, salt, hash] = encodedHash.split("$");
+  if (algorithm !== passwordHashPrefix || !salt || !hash) {
+    return false;
+  }
+
+  const expected = Buffer.from(hash, "hex");
+  const actual = (await scrypt(password, salt, expected.length)) as Buffer;
+  return actual.length === expected.length && timingSafeEqual(actual, expected);
+}
+
 export interface DevLoginInput {
   email: string;
   workspaceId?: string;
   role?: WorkspaceRole;
 }
 
+export interface PasswordRegisterInput {
+  email: string;
+  name: string;
+  password: string;
+  workspaceId?: string;
+}
+
+export interface PasswordLoginInput {
+  email: string;
+  password: string;
+}
+
 interface AuthUserRecord {
   profile: AuthUserProfile;
   memberships: AuthWorkspaceMembership[];
+  passwordHash?: string;
 }
 
 export interface AuthService {
@@ -69,6 +123,8 @@ export interface AuthService {
   getMode(): AuthMode;
   isAuthRequired(): boolean;
   devLogin(input: DevLoginInput): Promise<{ token: string; me: AuthMeResponse }>;
+  register(input: PasswordRegisterInput): Promise<{ token: string; me: AuthMeResponse }>;
+  login(input: PasswordLoginInput): Promise<{ token: string; me: AuthMeResponse }>;
   getMe(token: string): Promise<AuthMeResponse | null>;
   getAuthContext(token: string): Promise<AuthContext | null>;
   logout(token: string): Promise<void>;
@@ -92,7 +148,15 @@ export function getAuthMode(environment: NodeJS.ProcessEnv = process.env): AuthM
     return "disabled";
   }
 
-  return environment.AUTH_MODE === "production_future" ? "production_future" : "dev";
+  if (environment.AUTH_MODE === "password") {
+    return "password";
+  }
+
+  if (environment.AUTH_MODE === "external_oidc_future") {
+    return "external_oidc_future";
+  }
+
+  return "dev";
 }
 
 function buildMemberships(store: AppStore, appMode: ReturnType<typeof getAppMode>, preferredWorkspaceId?: string) {
@@ -123,6 +187,10 @@ function buildMemberships(store: AppStore, appMode: ReturnType<typeof getAppMode
       ]
     }
   ] satisfies AuthWorkspaceMembership[];
+}
+
+function normalizeUserStatus(value: string | null | undefined): UserStatus {
+  return value === "disabled" || value === "invited" ? value : "active";
 }
 
 export function createAuthService(options: CreateAuthServiceOptions): AuthService {
@@ -157,6 +225,49 @@ export function createAuthService(options: CreateAuthServiceOptions): AuthServic
     initialized = true;
   }
 
+  async function persistMemberships(profile: AuthUserProfile, memberships: AuthWorkspaceMembership[], passwordHash?: string) {
+    if (!prisma) {
+      return;
+    }
+
+    await prisma.user.upsert({
+      where: { id: profile.id },
+      update: {
+        email: profile.email,
+        name: profile.name,
+        status: profile.status,
+        passwordHash: passwordHash ?? undefined
+      },
+      create: {
+        id: profile.id,
+        email: profile.email,
+        name: profile.name,
+        status: profile.status,
+        passwordHash
+      }
+    });
+
+    for (const membership of memberships) {
+      await prisma.workspaceMembership.upsert({
+        where: {
+          workspaceId_userId: {
+            workspaceId: membership.workspaceId,
+            userId: profile.id
+          }
+        },
+        update: {
+          role: membership.role
+        },
+        create: {
+          id: `membership-${membership.workspaceId}-${profile.id}`,
+          workspaceId: membership.workspaceId,
+          userId: profile.id,
+          role: membership.role
+        }
+      });
+    }
+  }
+
   async function ensureUser(input: DevLoginInput): Promise<AuthUserRecord> {
     await initialize();
 
@@ -175,6 +286,7 @@ export function createAuthService(options: CreateAuthServiceOptions): AuthServic
       id: buildUserId(email),
       email,
       name: buildUserName(email),
+      status: "active",
       createdAt: nowIso()
     };
 
@@ -184,41 +296,7 @@ export function createAuthService(options: CreateAuthServiceOptions): AuthServic
     };
 
     usersByEmail.set(email, record);
-
-    if (prisma) {
-      await prisma.user.upsert({
-        where: { id: profile.id },
-        update: {
-          email: profile.email,
-          name: profile.name
-        },
-        create: {
-          id: profile.id,
-          email: profile.email,
-          name: profile.name
-        }
-      });
-
-      for (const membership of memberships) {
-        await prisma.workspaceMembership.upsert({
-          where: {
-            workspaceId_userId: {
-              workspaceId: membership.workspaceId,
-              userId: profile.id
-            }
-          },
-          update: {
-            role: membership.role
-          },
-          create: {
-            id: `membership-${membership.workspaceId}-${profile.id}`,
-            workspaceId: membership.workspaceId,
-            userId: profile.id,
-            role: membership.role
-          }
-        });
-      }
-    }
+    await persistMemberships(profile, memberships);
 
     return record;
   }
@@ -235,19 +313,210 @@ export function createAuthService(options: CreateAuthServiceOptions): AuthServic
     };
   }
 
+  async function createSession(record: AuthUserRecord) {
+    const firstMembership = record.memberships[0];
+    if (!firstMembership || firstMembership.restaurants.length === 0) {
+      throw new Error("No workspace membership is available for this user.");
+    }
+
+    const token = randomBytes(24).toString("hex");
+    const session: AuthSessionRecord = {
+      id: `session-${randomBytes(8).toString("hex")}`,
+      userId: record.profile.id,
+      tokenHash: buildHash(token),
+      expiresAt: buildSessionExpiry(environment),
+      createdAt: nowIso(),
+      updatedAt: nowIso(),
+      lastSeenAt: nowIso(),
+      activeWorkspaceId: firstMembership.workspaceId,
+      activeRestaurantId: firstMembership.restaurants[0].restaurantId
+    };
+    sessionsByHash.set(session.tokenHash, session);
+
+    if (prisma) {
+      await prisma.authSession.upsert({
+        where: { id: session.id },
+        update: {
+          userId: session.userId,
+          tokenHash: session.tokenHash,
+          expiresAt: new Date(session.expiresAt),
+          updatedAt: new Date(session.updatedAt),
+          lastSeenAt: session.lastSeenAt ? new Date(session.lastSeenAt) : null,
+          activeWorkspaceId: session.activeWorkspaceId,
+          activeRestaurantId: session.activeRestaurantId
+        },
+        create: {
+          id: session.id,
+          userId: session.userId,
+          tokenHash: session.tokenHash,
+          expiresAt: new Date(session.expiresAt),
+          lastSeenAt: session.lastSeenAt ? new Date(session.lastSeenAt) : null,
+          activeWorkspaceId: session.activeWorkspaceId,
+          activeRestaurantId: session.activeRestaurantId
+        }
+      });
+    }
+
+    return {
+      token,
+      me: buildMe(record, session)
+    };
+  }
+
+  async function loadUserRecordByEmail(email: string) {
+    const existing = usersByEmail.get(email);
+    if (existing) {
+      return existing;
+    }
+
+    if (!prisma) {
+      return null;
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { email },
+      include: {
+        memberships: {
+          include: {
+            workspace: {
+              include: {
+                restaurants: true
+              }
+            }
+          }
+        }
+      }
+    });
+
+    if (!user) {
+      return null;
+    }
+
+    const record: AuthUserRecord = {
+      profile: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        status: normalizeUserStatus(user.status),
+        emailVerifiedAt: user.emailVerifiedAt?.toISOString(),
+        createdAt: user.createdAt.toISOString()
+      },
+      passwordHash: user.passwordHash ?? undefined,
+      memberships: user.memberships.map((membership) => ({
+        workspaceId: membership.workspaceId,
+        workspaceName: membership.workspace.name,
+        role: membership.role,
+        restaurants: membership.workspace.restaurants.map((restaurant) => ({
+          restaurantId: restaurant.id,
+          restaurantName: restaurant.name
+        }))
+      }))
+    };
+    usersByEmail.set(email, record);
+    return record;
+  }
+
+  async function loadUserRecordById(userId: string) {
+    const existing = [...usersByEmail.values()].find((user) => user.profile.id === userId);
+    if (existing) {
+      return existing;
+    }
+
+    if (!prisma) {
+      return null;
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      include: {
+        memberships: {
+          include: {
+            workspace: {
+              include: {
+                restaurants: true
+              }
+            }
+          }
+        }
+      }
+    });
+
+    if (!user) {
+      return null;
+    }
+
+    const record: AuthUserRecord = {
+      profile: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        status: normalizeUserStatus(user.status),
+        emailVerifiedAt: user.emailVerifiedAt?.toISOString(),
+        createdAt: user.createdAt.toISOString()
+      },
+      passwordHash: user.passwordHash ?? undefined,
+      memberships: user.memberships.map((membership) => ({
+        workspaceId: membership.workspaceId,
+        workspaceName: membership.workspace.name,
+        role: membership.role,
+        restaurants: membership.workspace.restaurants.map((restaurant) => ({
+          restaurantId: restaurant.id,
+          restaurantName: restaurant.name
+        }))
+      }))
+    };
+    usersByEmail.set(user.email, record);
+    return record;
+  }
+
   async function getSession(token: string) {
     await initialize();
-    const session = sessionsByHash.get(buildHash(token));
+    const tokenHash = buildHash(token);
+    let session = sessionsByHash.get(tokenHash);
+    if (!session && prisma) {
+      const persisted = await prisma.authSession.findUnique({
+        where: { tokenHash }
+      });
+
+      if (persisted) {
+        session = {
+          id: persisted.id,
+          userId: persisted.userId,
+          tokenHash: persisted.tokenHash,
+          expiresAt: persisted.expiresAt.toISOString(),
+          revokedAt: persisted.revokedAt?.toISOString(),
+          lastSeenAt: persisted.lastSeenAt?.toISOString(),
+          userAgent: persisted.userAgent ?? undefined,
+          ipHash: persisted.ipHash ?? undefined,
+          createdAt: persisted.createdAt.toISOString(),
+          updatedAt: persisted.updatedAt.toISOString(),
+          activeWorkspaceId: persisted.activeWorkspaceId,
+          activeRestaurantId: persisted.activeRestaurantId
+        };
+        sessionsByHash.set(tokenHash, session);
+      }
+    }
+
     if (!session) {
       return null;
     }
 
-    if (new Date(session.expiresAt).getTime() <= Date.now()) {
+    if (session.revokedAt || new Date(session.expiresAt).getTime() <= Date.now()) {
       sessionsByHash.delete(session.tokenHash);
-      if (prisma) {
-        await prisma.authSession.deleteMany({ where: { id: session.id } });
-      }
       return null;
+    }
+
+    session.lastSeenAt = nowIso();
+    sessionsByHash.set(session.tokenHash, session);
+
+    if (prisma) {
+      await prisma.authSession.updateMany({
+        where: { id: session.id, revokedAt: null },
+        data: {
+          lastSeenAt: new Date(session.lastSeenAt),
+          updatedAt: new Date(session.lastSeenAt)
+        }
+      });
     }
 
     return session;
@@ -264,7 +533,7 @@ export function createAuthService(options: CreateAuthServiceOptions): AuthServic
       return appMode !== "demo" && authMode !== "disabled";
     },
     async devLogin(input) {
-      if (authMode !== "dev") {
+      if (authMode !== "dev" || appMode === "production") {
         throw new DevAuthUnavailableError(`Dev login is unavailable when AUTH_MODE=${authMode}.`);
       }
 
@@ -272,51 +541,63 @@ export function createAuthService(options: CreateAuthServiceOptions): AuthServic
         throw new Error("email is required.");
       }
 
-      const record = await ensureUser(input);
-      const firstMembership = record.memberships[0];
-      if (!firstMembership || firstMembership.restaurants.length === 0) {
-        throw new Error("No workspace membership is available for this user.");
+      return createSession(await ensureUser(input));
+    },
+    async register(input) {
+      if (authMode !== "password") {
+        throw new DevAuthUnavailableError(`Password registration is unavailable when AUTH_MODE=${authMode}.`);
       }
 
-      const token = randomBytes(24).toString("hex");
-      const session: AuthSessionRecord = {
-        id: `session-${randomBytes(8).toString("hex")}`,
-        userId: record.profile.id,
-        tokenHash: buildHash(token),
-        expiresAt: buildSessionExpiry(),
-        createdAt: nowIso(),
-        updatedAt: nowIso(),
-        activeWorkspaceId: firstMembership.workspaceId,
-        activeRestaurantId: firstMembership.restaurants[0].restaurantId
-      };
-      sessionsByHash.set(session.tokenHash, session);
+      await initialize();
+      const email = input.email.trim().toLowerCase();
+      const minLength = getPasswordMinLength(environment);
 
-      if (prisma) {
-        await prisma.authSession.upsert({
-          where: { id: session.id },
-          update: {
-            userId: session.userId,
-            tokenHash: session.tokenHash,
-            expiresAt: new Date(session.expiresAt),
-            updatedAt: new Date(session.updatedAt),
-            activeWorkspaceId: session.activeWorkspaceId,
-            activeRestaurantId: session.activeRestaurantId
-          },
-          create: {
-            id: session.id,
-            userId: session.userId,
-            tokenHash: session.tokenHash,
-            expiresAt: new Date(session.expiresAt),
-            activeWorkspaceId: session.activeWorkspaceId,
-            activeRestaurantId: session.activeRestaurantId
-          }
-        });
+      if (!isValidEmail(email)) {
+        throw new Error("A valid email is required.");
       }
 
-      return {
-        token,
-        me: buildMe(record, session)
+      if (input.password.length < minLength) {
+        throw new Error(`Password must be at least ${minLength} characters.`);
+      }
+
+      if (!isPublicSignupAllowed(environment) && !input.workspaceId) {
+        throw new Error("Public signup is disabled.");
+      }
+
+      if (await loadUserRecordByEmail(email)) {
+        throw new Error("User already exists.");
+      }
+
+      const memberships = buildMemberships(options.store, appMode, input.workspaceId).map((membership) => ({
+        ...membership,
+        role: "owner" as const
+      }));
+      const passwordHash = await hashPassword(input.password);
+      const profile: AuthUserProfile = {
+        id: buildUserId(email),
+        email,
+        name: input.name.trim() || buildUserName(email),
+        status: "active",
+        createdAt: nowIso()
       };
+      const record: AuthUserRecord = { profile, memberships, passwordHash };
+      usersByEmail.set(email, record);
+      await persistMemberships(profile, memberships, passwordHash);
+
+      return createSession(record);
+    },
+    async login(input) {
+      if (authMode !== "password") {
+        throw new DevAuthUnavailableError(`Password login is unavailable when AUTH_MODE=${authMode}.`);
+      }
+
+      await initialize();
+      const record = await loadUserRecordByEmail(input.email.trim().toLowerCase());
+      if (!record || record.profile.status !== "active" || !(await verifyPassword(input.password, record.passwordHash))) {
+        throw new Error("Invalid credentials.");
+      }
+
+      return createSession(record);
     },
     async getMe(token) {
       const session = await getSession(token);
@@ -324,7 +605,7 @@ export function createAuthService(options: CreateAuthServiceOptions): AuthServic
         return null;
       }
 
-      const record = [...usersByEmail.values()].find((user) => user.profile.id === session.userId);
+      const record = await loadUserRecordById(session.userId);
       if (!record) {
         return null;
       }
@@ -337,7 +618,7 @@ export function createAuthService(options: CreateAuthServiceOptions): AuthServic
         return null;
       }
 
-      const record = [...usersByEmail.values()].find((user) => user.profile.id === session.userId);
+      const record = await loadUserRecordById(session.userId);
       if (!record) {
         return null;
       }
@@ -360,7 +641,13 @@ export function createAuthService(options: CreateAuthServiceOptions): AuthServic
       sessionsByHash.delete(tokenHash);
 
       if (prisma && session) {
-        await prisma.authSession.deleteMany({ where: { id: session.id } });
+        await prisma.authSession.updateMany({
+          where: { id: session.id },
+          data: {
+            revokedAt: new Date(),
+            updatedAt: new Date()
+          }
+        });
       }
     },
     async setActiveContext(token, input) {
@@ -369,7 +656,7 @@ export function createAuthService(options: CreateAuthServiceOptions): AuthServic
         return null;
       }
 
-      const record = [...usersByEmail.values()].find((user) => user.profile.id === session.userId);
+      const record = await loadUserRecordById(session.userId);
       if (!record) {
         return null;
       }

@@ -66,12 +66,14 @@
 
 ### Auth Direction
 
-- `AUTH_MODE=dev|disabled`
-- server-generated dev session tokens with hashed server-side storage
+- `AUTH_MODE=dev|disabled|password|external_oidc_future`
+- server-generated session tokens with hashed server-side storage
+- password auth foundation with hashed passwords
+- dev-login blocked in production mode
 - workspace membership based access checks
 - owner, admin, member roles
 - authenticated `StoreContext` for protected routes
-- final production identity provider selection remains later work
+- hosted production identity validation and external provider selection remain later work
 
 ### Observability Direction
 
@@ -99,13 +101,13 @@ The DB adapter is additive:
 
 - no silent fallback from `database` to `memory`
 - no requirement for `DATABASE_URL` in normal demo or test validation
-- no auth dependency yet
+- password auth and RBAC exist above the store boundary; DB migrations remain additive
 
 ## Production Gaps Still Open
 
 - database runtime is not yet universally validated in this local environment without `DATABASE_URL`
-- production-complete auth provider, invite flow, and hardened session lifecycle are not live
-- auth works today as a dev-session and RBAC foundation, not final customer identity
+- production-complete identity lifecycle, invite email delivery, password reset/email verification, and external provider are not live
+- auth works today as password/dev-session and RBAC foundations, not a complete hosted customer identity program
 - production deployment is documented, but not yet claimed as fully proven in a hosted environment
 - billing/license foundation exists with plans, workspace subscription state, lifetime entitlements, usage counters, and a provider seam
 - live payment processing, checkout, and webhook handling are not live
@@ -133,7 +135,7 @@ Added validation:
 Production readiness remains false because:
 
 - live Postgres runtime validation is skipped without `DATABASE_URL`
-- final production identity provider is not implemented
+- external production identity provider and full account lifecycle are not implemented
 - live payment processing is not implemented
 - hosted upload/object storage is not implemented
 - monitoring is foundational, not complete

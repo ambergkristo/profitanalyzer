@@ -101,6 +101,77 @@ describe("api", () => {
     expect(meBody.workspaces[0]?.workspaceId).toBe("workspace-pilot-workspace");
   });
 
+  it("blocks dev login in production mode", async () => {
+    const app = buildApp({
+      env: {
+        ...process.env,
+        NODE_ENV: "production",
+        APP_MODE: "production",
+        AUTH_MODE: "dev",
+        STORE_DRIVER: "database",
+        DATABASE_URL: "postgresql://user:password@localhost:5432/app",
+        SESSION_SECRET: "test-session-secret",
+        APP_BASE_URL: "https://app.example.com",
+        API_BASE_URL: "https://api.example.com",
+        CORS_ORIGIN: "https://app.example.com",
+        UPLOAD_STORAGE_DRIVER: "local_file"
+      }
+    });
+
+    const response = await request(app).post("/api/auth/dev-login").send({
+      email: "owner@example.com"
+    });
+
+    expect(response.status).toBe(403);
+  });
+
+  it("supports password auth without exposing password hashes", async () => {
+    const app = buildApp({
+      env: {
+        ...process.env,
+        APP_MODE: "pilot",
+        AUTH_MODE: "password",
+        ALLOW_PUBLIC_SIGNUP: "true",
+        PASSWORD_MIN_LENGTH: "10",
+        SESSION_SECRET: "test-password-session-secret"
+      }
+    });
+
+    const registerResponse = await request(app).post("/api/auth/register").send({
+      email: "password-owner@example.com",
+      name: "Password Owner",
+      password: "CorrectHorseBattery1!"
+    });
+    const registerBody = registerResponse.body as { token: string };
+
+    expect(registerResponse.status).toBe(201);
+    expect(registerBody.token).toBeTruthy();
+    expect(JSON.stringify(registerResponse.body)).not.toContain("scrypt$");
+    expect(JSON.stringify(registerResponse.body)).not.toContain("CorrectHorseBattery");
+
+    const badLoginResponse = await request(app).post("/api/auth/login").send({
+      email: "password-owner@example.com",
+      password: "wrong-password"
+    });
+    expect(badLoginResponse.status).toBe(401);
+
+    const meResponse = await request(app)
+      .get("/api/auth/me")
+      .set("Authorization", `Bearer ${registerBody.token}`);
+    expect(meResponse.status).toBe(200);
+
+    const logoutResponse = await request(app)
+      .post("/api/auth/logout")
+      .set("Authorization", `Bearer ${registerBody.token}`)
+      .send({});
+    expect(logoutResponse.status).toBe(200);
+
+    const afterLogoutResponse = await request(app)
+      .get("/api/auth/me")
+      .set("Authorization", `Bearer ${registerBody.token}`);
+    expect(afterLogoutResponse.status).toBe(401);
+  });
+
   it("requires auth in pilot mode but keeps demo mode open", async () => {
     const pilotApp = buildApp({
       env: {

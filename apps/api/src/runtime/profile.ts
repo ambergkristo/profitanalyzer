@@ -10,7 +10,7 @@ export type BillingProviderId = "none" | "manual" | "stripe_future";
 
 const allowedNodeEnvs = ["development", "test", "production"] as const;
 const allowedAppModes = ["demo", "pilot", "production"] as const;
-const allowedAuthModes = ["disabled", "dev", "production_future"] as const;
+const allowedAuthModes = ["disabled", "dev", "password", "external_oidc_future"] as const;
 const allowedStoreDrivers = ["memory", "file", "database"] as const;
 const allowedOcrProviders = ["fixture", "external_env", "disabled"] as const;
 const allowedLogLevels = ["debug", "info", "warn", "error"] as const;
@@ -23,7 +23,8 @@ const obviousPlaceholderValues = new Set([
   "replace-me",
   "replace_with_real_value",
   "your_api_key_here",
-  "your_model_here"
+  "your_model_here",
+  "replace-me-with-a-real-production-secret"
 ]);
 
 export interface RuntimeCheck {
@@ -186,6 +187,11 @@ export function validateEnvironmentProfile(input: {
   const apiBaseUrlConfigured = isConfigured(environment.API_BASE_URL);
   const corsOriginConfigured = isConfigured(environment.CORS_ORIGIN);
   const databaseConfigured = isConfigured(environment.DATABASE_URL);
+  const oidcConfigured =
+    isConfigured(environment.OIDC_ISSUER_URL) &&
+    isConfigured(environment.OIDC_CLIENT_ID) &&
+    isConfigured(environment.OIDC_CLIENT_SECRET) &&
+    !isPlaceholderValue(environment.OIDC_CLIENT_SECRET);
   const billingProviderConfigured =
     billingProvider === "stripe_future"
       ? isConfigured(environment.BILLING_PROVIDER_SECRET_KEY) &&
@@ -265,6 +271,34 @@ export function validateEnvironmentProfile(input: {
     isAllowedValue(rawAuthMode, allowedAuthModes)
       ? `AUTH_MODE is ${rawAuthMode}.`
       : `AUTH_MODE must be one of: ${allowedAuthModes.join(", ")}.`
+  );
+
+  pushCheck(
+    "password_public_signup",
+    authMode === "password" && appMode === "production" && environment.ALLOW_PUBLIC_SIGNUP === "true"
+      ? "warn"
+      : "skipped",
+    authMode === "password" && appMode === "production" && environment.ALLOW_PUBLIC_SIGNUP === "true"
+      ? "Public signup is enabled in production; this requires explicit launch acceptance and abuse controls."
+      : "Public signup production rule is not active."
+  );
+
+  pushCheck(
+    "oidc_provider_config",
+    authMode === "external_oidc_future"
+      ? oidcConfigured
+        ? "warn"
+        : appMode === "production"
+          ? "fail"
+          : "warn"
+      : "skipped",
+    authMode === "external_oidc_future"
+      ? oidcConfigured
+        ? "OIDC future provider env is present, but live OIDC login is intentionally not implemented yet."
+        : appMode === "production"
+          ? "OIDC_ISSUER_URL, OIDC_CLIENT_ID, and OIDC_CLIENT_SECRET are required when AUTH_MODE=external_oidc_future in production mode."
+          : "OIDC future provider is selected but not configured; live OIDC login remains disabled."
+      : "OIDC provider config is not required for this auth mode."
   );
 
   pushCheck(
@@ -359,7 +393,7 @@ export function validateEnvironmentProfile(input: {
       : "DATABASE_URL is not required for this storage driver."
   );
 
-  const authRequiresSessionSecret = appMode !== "demo" && authMode !== "disabled";
+  const authRequiresSessionSecret = authMode === "password" || (appMode !== "demo" && authMode !== "disabled");
   pushCheck(
     "session_secret",
     authRequiresSessionSecret
@@ -395,13 +429,15 @@ export function validateEnvironmentProfile(input: {
   pushCheck(
     "production_auth",
     appMode === "production"
-      ? authMode === "production_future"
+      ? authMode === "password" || authMode === "external_oidc_future"
         ? "warn"
         : "fail"
       : "skipped",
     appMode === "production"
-      ? authMode === "production_future"
-        ? "Production mode uses the placeholder production auth mode and still needs a real identity provider."
+      ? authMode === "password"
+        ? "Production mode uses password auth foundation; hardening and operational controls still need launch review."
+        : authMode === "external_oidc_future"
+          ? "Production mode uses the future OIDC seam; a real provider is still not implemented."
         : "APP_MODE=production cannot use AUTH_MODE=dev or AUTH_MODE=disabled."
       : "Production auth rules are not required for this mode."
   );

@@ -40,7 +40,7 @@ describe("runtime profile", () => {
     const result = validateEnvironmentProfile({
       environment: {
         APP_MODE: "production",
-        AUTH_MODE: "production_future",
+        AUTH_MODE: "password",
         STORE_DRIVER: "database",
         NODE_ENV: "production",
         DATABASE_URL: "postgresql://user:password@db:5432/profit_analyzer",
@@ -51,7 +51,7 @@ describe("runtime profile", () => {
         OCR_PROVIDER: "fixture",
         UPLOAD_STORAGE_DRIVER: "local_file"
       },
-      authMode: "production_future"
+      authMode: "password"
     });
 
     expect(result.ok).toBe(false);
@@ -60,6 +60,22 @@ describe("runtime profile", () => {
         blocker.includes("DATABASE_URL cannot use documentation placeholder credentials")
       )
     ).toBe(true);
+  });
+
+  it("requires a session secret for password auth", () => {
+    const result = validateEnvironmentProfile({
+      environment: {
+        APP_MODE: "pilot",
+        AUTH_MODE: "password",
+        STORE_DRIVER: "memory",
+        NODE_ENV: "development",
+        OCR_PROVIDER: "fixture"
+      },
+      authMode: "password"
+    });
+
+    expect(result.ok).toBe(false);
+    expect(result.blockers.some((blocker) => blocker.includes("SESSION_SECRET"))).toBe(true);
   });
 });
 

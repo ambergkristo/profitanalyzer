@@ -10,8 +10,14 @@ This is not a claim that production SaaS readiness already exists.
 
 - `NODE_ENV=development|test|production`
 - `APP_MODE=demo|pilot|production`
-- `AUTH_MODE=dev|disabled|production_future`
+- `AUTH_MODE=dev|disabled|password|external_oidc_future`
+- `ALLOW_PUBLIC_SIGNUP=false`
+- `PASSWORD_MIN_LENGTH=10`
+- `SESSION_TTL_HOURS=168`
 - `SESSION_SECRET=`
+- `OIDC_ISSUER_URL=`
+- `OIDC_CLIENT_ID=`
+- `OIDC_CLIENT_SECRET=`
 - `APP_BASE_URL=http://localhost:5173`
 - `API_BASE_URL=http://localhost:3001`
 - `CORS_ORIGIN=http://localhost:5173`
@@ -80,7 +86,10 @@ OCR_PROVIDER=fixture
 ```bash
 NODE_ENV=development
 APP_MODE=pilot
-AUTH_MODE=dev
+AUTH_MODE=password
+ALLOW_PUBLIC_SIGNUP=false
+PASSWORD_MIN_LENGTH=10
+SESSION_TTL_HOURS=168
 SESSION_SECRET=local-dev-session-secret
 STORE_DRIVER=database
 DATABASE_URL=postgresql://user:password@localhost:5432/profit_analyzer
@@ -97,7 +106,10 @@ OCR_PROVIDER=fixture
 ```bash
 NODE_ENV=production
 APP_MODE=production
-AUTH_MODE=production_future
+AUTH_MODE=password
+ALLOW_PUBLIC_SIGNUP=false
+PASSWORD_MIN_LENGTH=10
+SESSION_TTL_HOURS=168
 SESSION_SECRET=replace-with-real-secret
 STORE_DRIVER=database
 DATABASE_URL=postgresql://user:password@db:5432/profit_analyzer
@@ -178,7 +190,8 @@ This checks:
 - valid `STORE_DRIVER`
 - valid `LOG_LEVEL`
 - `DATABASE_URL` when `STORE_DRIVER=database`
-- `SESSION_SECRET` in non-demo authenticated modes
+- `SESSION_SECRET` for password auth and non-demo authenticated modes
+- `APP_MODE=production` rejects `AUTH_MODE=dev` and `AUTH_MODE=disabled`
 - `APP_BASE_URL`, `API_BASE_URL`, and `CORS_ORIGIN` in production mode
 - OCR env completeness only when `OCR_PROVIDER=external_env`
 - upload storage driver and max upload size
@@ -194,5 +207,5 @@ This configuration layer does not mean:
 
 - production SaaS readiness is complete
 - DB runtime was validated in the current environment
-- production-complete auth or billing exists
+- production-complete external identity, email invite delivery, or billing exists
 - live OCR accuracy is proven

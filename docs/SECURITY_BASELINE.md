@@ -4,7 +4,7 @@ This document is a production-readiness baseline, not a final security certifica
 
 ## Current Status
 
-- Authentication/session: partial. The app has dev-session authentication, hashed session tokens, `/api/auth/me`, logout, workspace context, and role-aware protected routes. A final production identity provider is not implemented.
+- Authentication/session: partial. The app has dev-login for local/demo validation, password auth foundation, hashed passwords, hashed session tokens, `/api/auth/me`, logout invalidation, workspace context, and role-aware protected routes. Hosted production identity validation and external provider/email lifecycle are not complete.
 - RBAC: partial/pass for foundation. Owner, admin, and member roles exist for key data mutations, invoice confirmation, OCR upload, import/export/reset, and read access.
 - Workspace isolation: partial. Workspace and restaurant context is enforced in access-layer flows, and database schema includes workspace/restaurant scoping. Live database runtime isolation is not validated here because `DATABASE_URL` is not configured.
 - Database: blocked for production launch in this environment. Prisma/Postgres schema and driver foundation exist, but live Postgres validation is skipped without `DATABASE_URL`.
@@ -17,7 +17,7 @@ This document is a production-readiness baseline, not a final security certifica
 
 ## Production Blockers
 
-- Final production identity provider is not implemented.
+- External production identity provider, email verification, password reset, and invite email delivery are not implemented.
 - Live DB runtime validation is not complete in this environment.
 - Production secrets are not configured.
 - Dependency audit still has known moderate transitive issues.
@@ -29,7 +29,7 @@ This document is a production-readiness baseline, not a final security certifica
 ## Required Before Public Paid SaaS Launch
 
 - Configure and validate production database.
-- Replace or harden dev-session auth for production identity.
+- Validate password auth/session behavior in hosted production-like deployment and decide whether external identity is required before paid launch.
 - Validate tenant isolation against live database-backed storage.
 - Configure production secrets and rotate any test values.
 - Resolve or formally accept dependency audit risk.

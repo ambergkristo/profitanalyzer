@@ -43,7 +43,7 @@ The live DB validation layer covers migrations, seed data, database store reload
 Phase 13 introduces:
 
 - `validate:auth`
-- dev-session auth coverage
+- dev-session local validation plus password-auth coverage
 - protected route checks in non-demo mode
 - role-based access validation for owner, admin, and member
 - cross-workspace denial checks at the access layer
@@ -108,7 +108,7 @@ Production SaaS readiness now requires:
 ## What Is Still Not Proven
 
 - hosted Postgres deployment in the target environment
-- hardened production identity lifecycle beyond dev login
+- hosted production identity lifecycle beyond the password-auth foundation
 - authenticated isolation under a live DB in a production-like deployment
 - production backup and restore maturity
 - live OCR accuracy on real restaurant invoices
@@ -142,7 +142,7 @@ Phase 18 adds launch-gate validation:
 Additional production validation still required:
 
 - live DB validation
-- production auth validation
+- production auth validation, including dev-login lockdown and password session validation
 - live OCR benchmark
 - backup/restore rehearsal
 - legal review

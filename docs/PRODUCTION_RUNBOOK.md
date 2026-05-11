@@ -24,7 +24,7 @@ npm run build -w @profit-analyzer/web
 - `APP_MODE=production`
 - `STORE_DRIVER=database`
 - `DATABASE_URL=...`
-- `AUTH_MODE=production_future`
+- `AUTH_MODE=password`
 - `SESSION_SECRET=...`
 - `APP_BASE_URL=https://app.example.com`
 - `API_BASE_URL=https://api.example.com`
@@ -139,7 +139,7 @@ This is not a full production backup strategy yet.
 
 ## Known Production Blockers
 
-- final production identity provider is not live
+- password auth foundation is available, but hosted identity validation, email verification/reset, invite delivery, and external-provider decision remain open
 - billing/license foundation exists, but live payment provider, checkout, and webhook operations are not live
 - legal/privacy launch gates are not complete
 - live OCR benchmark on real invoices is not complete

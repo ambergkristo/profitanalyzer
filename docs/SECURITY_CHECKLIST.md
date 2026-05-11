@@ -10,8 +10,8 @@ Status values: pass, partial, blocked, not started.
 
 ## Auth And Session
 
-- partial: dev-session auth and hashed session token storage exist.
-- blocked: final production identity provider is not implemented.
+- partial: dev-login is locked to non-production, password auth foundation exists, and password/session hashes are stored instead of raw secrets.
+- blocked: hosted production identity validation, email verification/reset, invite delivery, and final external-provider decision remain open.
 
 ## RBAC
 
@@ -65,7 +65,8 @@ Status values: pass, partial, blocked, not started.
 
 ## Launch Blockers
 
-- blocked: final auth provider.
+- partial: password auth foundation.
+- blocked: external identity/email lifecycle decision.
 - blocked: live database validation.
 - blocked: production monitoring.
 - blocked: backup/restore rehearsal.

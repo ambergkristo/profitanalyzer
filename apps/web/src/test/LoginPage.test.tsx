@@ -8,7 +8,8 @@ vi.mock("../api/client.js", () => ({
   apiClient: {
     getAppConfig: vi.fn(),
     getStoredAuthToken: vi.fn(() => null),
-    devLogin: vi.fn()
+    devLogin: vi.fn(),
+    login: vi.fn()
   }
 }));
 
@@ -77,6 +78,33 @@ describe("LoginPage", () => {
         activeRestaurantId: "pilot-workspace"
       }
     });
+    vi.mocked(apiClient.login).mockResolvedValue({
+      token: "password-session-token",
+      me: {
+        user: {
+          id: "user-owner-example-com",
+          email: "owner@example.com",
+          name: "Owner",
+          status: "active",
+          createdAt: "2026-04-30T09:00:00.000Z"
+        },
+        workspaces: [
+          {
+            workspaceId: "workspace-pilot-workspace",
+            workspaceName: "Pilot Workspace",
+            role: "owner",
+            restaurants: [
+              {
+                restaurantId: "pilot-workspace",
+                restaurantName: "Pilot Workspace"
+              }
+            ]
+          }
+        ],
+        activeWorkspaceId: "workspace-pilot-workspace",
+        activeRestaurantId: "pilot-workspace"
+      }
+    });
   });
 
   it("renders the login form and submits dev login", async () => {
@@ -104,6 +132,70 @@ describe("LoginPage", () => {
     await waitFor(() => {
       expect(vi.mocked(apiClient.devLogin)).toHaveBeenCalledWith({
         email: "admin@example.com"
+      });
+    });
+  });
+
+  it("submits password login when password auth mode is configured", async () => {
+    vi.mocked(apiClient.getAppConfig).mockResolvedValueOnce({
+      appMode: "pilot",
+      nodeEnv: "test",
+      version: "0.1.0",
+      productionReadinessClaimed: false,
+      storage: {
+        driver: "file",
+        dataDirConfigured: true,
+        readable: true,
+        writable: true,
+        persistenceWarning: null
+      },
+      workspaceContext: {
+        workspaceId: "workspace-pilot-workspace",
+        restaurantId: "pilot-workspace"
+      },
+      auth: {
+        mode: "password",
+        required: true
+      },
+      runtime: {
+        logLevel: "warn",
+        appBaseUrlConfigured: true,
+        apiBaseUrlConfigured: true,
+        corsOriginConfigured: true
+      },
+      features: {
+        invoiceIntake: true,
+        ocrFixture: true,
+        externalOcrConfigured: false,
+        databaseConfigured: false
+      }
+    });
+
+    render(
+      <MemoryRouter
+        future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
+        initialEntries={["/login?next=%2F"]}
+      >
+        <Routes>
+          <Route element={<LoginPage />} path="/login" />
+          <Route element={<div>Overview route</div>} path="/" />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    expect(await screen.findByLabelText("Password")).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText("Email"), {
+      target: { value: "owner@example.com" }
+    });
+    fireEvent.change(screen.getByLabelText("Password"), {
+      target: { value: "CorrectHorseBattery1!" }
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Sign in" }));
+
+    await waitFor(() => {
+      expect(vi.mocked(apiClient.login)).toHaveBeenCalledWith({
+        email: "owner@example.com",
+        password: "CorrectHorseBattery1!"
       });
     });
   });

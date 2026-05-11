@@ -21,6 +21,7 @@ export function LoginPage() {
   const loadConfig = useCallback(() => apiClient.getAppConfig(), []);
   const config = useAsyncData(loadConfig);
   const [email, setEmail] = useState("owner@example.com");
+  const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -36,7 +37,11 @@ export function LoginPage() {
     setError(null);
 
     try {
-      await apiClient.devLogin({ email });
+      if (config.data?.auth.mode === "password") {
+        await apiClient.login({ email, password });
+      } else {
+        await apiClient.devLogin({ email });
+      }
       navigate(nextPath, { replace: true });
     } catch (reason: unknown) {
       setError(reason instanceof Error ? reason.message : "Login failed.");
@@ -65,6 +70,8 @@ export function LoginPage() {
     );
   }
 
+  const isPasswordMode = config.data.auth.mode === "password";
+
   return (
     <div className="min-h-screen bg-bg px-4 py-6 text-text md:px-6 xl:px-8">
       <div className="mx-auto flex max-w-[1200px] flex-col gap-6">
@@ -77,8 +84,10 @@ export function LoginPage() {
               </h1>
               <p className="mt-4 max-w-2xl text-sm leading-6 text-muted">
                 {config.data.auth.required
-                  ? "Phase 13 adds workspace-scoped access control. Use the local dev login to load a restaurant context without weakening invoice review-confirm safety."
-                  : "Auth is not required in demo mode. You can still use the local dev login to inspect workspace-scoped flows."}
+                  ? isPasswordMode
+                    ? "Use your workspace email and password. Restaurant data remains scoped to your active workspace."
+                    : "Use local dev access to load a restaurant context for validation. Dev login is blocked in production mode."
+                  : "Auth is not required in demo mode. You can still sign in to inspect workspace-scoped flows."}
               </p>
               <div className="mt-4 flex flex-wrap gap-2">
                 <span className="rounded-full border border-white/10 px-4 py-2 text-[11px] uppercase tracking-[0.18em] text-text">
@@ -94,12 +103,18 @@ export function LoginPage() {
             </div>
 
             <Panel className="rounded-tile border-white/8 bg-black/20 p-5" tone="subtle">
-              <p className="text-[11px] uppercase tracking-[0.18em] text-muted">Local dev access</p>
+              <p className="text-[11px] uppercase tracking-[0.18em] text-muted">
+                {isPasswordMode ? "Password access" : "Local dev access"}
+              </p>
               <p className="mt-3 text-sm leading-6 text-text">
-                Use email prefixes to test roles: <code>owner@</code>, <code>admin@</code>, or <code>member@</code>.
+                {isPasswordMode
+                  ? "Password sessions use server-generated tokens with hashed session storage."
+                  : "Use email prefixes to test roles: owner@, admin@, or member@."}
               </p>
               <p className="mt-2 text-sm leading-6 text-muted">
-                This is a development auth path, not production-complete authentication.
+                {isPasswordMode
+                  ? "Public signup stays controlled unless explicitly enabled by configuration."
+                  : "This is a development auth path, not production-complete authentication."}
               </p>
             </Panel>
           </div>
@@ -121,6 +136,22 @@ export function LoginPage() {
                   value={email}
                 />
               </div>
+
+              {isPasswordMode ? (
+                <div>
+                  <label className="text-[11px] uppercase tracking-[0.18em] text-muted" htmlFor="password">
+                    Password
+                  </label>
+                  <input
+                    className="mt-2 w-full rounded-2xl border border-border bg-panel px-4 py-3 text-text outline-none transition focus:border-accent/40"
+                    id="password"
+                    onChange={(event) => setPassword(event.target.value)}
+                    placeholder="Enter password"
+                    type="password"
+                    value={password}
+                  />
+                </div>
+              ) : null}
 
               {error ? (
                 <div className="rounded-2xl border border-danger/20 bg-danger/[0.08] px-4 py-3 text-sm text-danger">

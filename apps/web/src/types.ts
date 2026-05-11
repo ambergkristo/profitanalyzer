@@ -83,7 +83,7 @@ export type InvoiceDetailResponse = StoredInvoiceView;
 export type AppMode = "demo" | "pilot" | "production";
 export type PersistenceDriver = "memory" | "file" | "database";
 export type RecipeInputUnit = Ingredient["unit"] | "kg" | "l" | "pcs" | "pack";
-export type AuthMode = "disabled" | "dev" | "production_future";
+export type AuthMode = "disabled" | "dev" | "password" | "external_oidc_future";
 export type WorkspaceRole = "owner" | "admin" | "member";
 export type OnboardingStepId =
   | "restaurant_profile"
@@ -193,6 +193,8 @@ export interface AuthUserProfile {
   id: string;
   email: string;
   name: string;
+  status?: "active" | "disabled" | "invited";
+  emailVerifiedAt?: string;
   createdAt: string;
 }
 
@@ -207,6 +209,8 @@ export interface DevLoginResponse {
   token: string;
   me: AuthMeResponse;
 }
+
+export type AuthLoginResponse = DevLoginResponse;
 
 export interface DatasetExportPayload {
   schemaVersion: 1;

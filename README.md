@@ -16,6 +16,7 @@ RM1-RM9 are complete as a controlled pilot and founding-partner foundation. The 
 - Phase 17: complete as billing/license foundation
 - Phase 18: complete as security/privacy/legal launch-gate foundation
 - Production blocker sprint 1: local Postgres runtime validation path added; hosted production DB validation still required
+- Production blocker sprint 2: password auth foundation and session hardening added; hosted production identity validation still required
 - production SaaS readiness: `false`
 - OCR safety boundary: unchanged
 
@@ -59,7 +60,7 @@ The frontend now uses a production app shell instead of a demo-first cockpit:
 ## Runtime Profiles
 
 - `APP_MODE=demo|pilot|production`
-- `AUTH_MODE=dev|disabled|production_future`
+- `AUTH_MODE=dev|disabled|password|external_oidc_future`
 - `STORE_DRIVER=memory|file|database`
 - `UPLOAD_STORAGE_DRIVER=memory|local_file`
 - `OCR_PROVIDER=fixture|external_env|disabled`
@@ -115,20 +116,23 @@ See `docs/DATABASE_RUNTIME_VALIDATION.md`.
 
 ## Auth Modes
 
-- `AUTH_MODE=dev`: local dev-session auth with server-generated session tokens and hashed token storage
+- `AUTH_MODE=dev`: local/demo validation auth with server-generated session tokens and hashed token storage
 - `AUTH_MODE=disabled`: allowed for demo mode only
-- `AUTH_MODE=production_future`: readiness placeholder for later production identity work
+- `AUTH_MODE=password`: password auth foundation with hashed passwords, hashed session tokens, expiry, and logout invalidation
+- `AUTH_MODE=external_oidc_future`: documented future provider seam; not a live provider integration yet
 
 Current auth scope:
 
 - `POST /api/auth/dev-login`
+- `POST /api/auth/register`
+- `POST /api/auth/login`
 - `GET /api/auth/me`
 - `POST /api/auth/logout`
 - `POST /api/auth/context`
 - owner/admin/member RBAC on protected restaurant data endpoints
 - demo mode remains usable without login
 
-This is a production-oriented auth foundation, not production-complete auth yet.
+Dev login is blocked in production mode. This is a stronger production-oriented auth foundation, not production-complete identity yet.
 
 ## Health And Readiness
 
@@ -245,6 +249,8 @@ Local URLs:
 - `GET /api/health/readiness`
 - `GET /api/demo/datasets`
 - `POST /api/auth/dev-login`
+- `POST /api/auth/register`
+- `POST /api/auth/login`
 - `GET /api/auth/me`
 - `POST /api/auth/logout`
 - `POST /api/auth/context`
@@ -319,7 +325,7 @@ Local URLs:
 ## What Is Still Not Claimed
 
 - production SaaS readiness
-- production-complete auth provider, invite flow, or hardened session lifecycle
+- production-complete identity lifecycle, invite email delivery, password reset/email verification, or external identity provider
 - hosted production DB runtime validation, backup/restore rehearsal, and production migration rollout
 - live OCR accuracy benchmark on real restaurant invoices
 - live payment processing

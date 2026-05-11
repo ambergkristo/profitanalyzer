@@ -311,7 +311,53 @@ export function createApp(options: CreateAppOptions = {}) {
       response.json(result);
     } catch (error) {
       const message = error instanceof Error ? error.message : "Login failed.";
-      response.status(error instanceof DevAuthUnavailableError ? 503 : 400).json({ message });
+      response.status(error instanceof DevAuthUnavailableError ? 403 : 400).json({ message });
+    }
+  });
+
+  app.post("/api/auth/register", async (request, response) => {
+    const body = request.body as { email?: unknown; name?: unknown; password?: unknown; workspaceId?: unknown };
+
+    if (!isNonEmptyString(body.email) || !isNonEmptyString(body.name) || !isNonEmptyString(body.password)) {
+      response.status(400).json({ message: "email, name, and password are required." });
+      return;
+    }
+
+    try {
+      const result = await authService.register({
+        email: body.email,
+        name: body.name,
+        password: body.password,
+        workspaceId: isNonEmptyString(body.workspaceId) ? body.workspaceId : undefined
+      });
+
+      response.status(201).json(result);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Registration failed.";
+      response.status(error instanceof DevAuthUnavailableError ? 403 : 400).json({ message });
+    }
+  });
+
+  app.post("/api/auth/login", async (request, response) => {
+    const body = request.body as { email?: unknown; password?: unknown };
+
+    if (!isNonEmptyString(body.email) || !isNonEmptyString(body.password)) {
+      response.status(400).json({ message: "email and password are required." });
+      return;
+    }
+
+    try {
+      const result = await authService.login({
+        email: body.email,
+        password: body.password
+      });
+
+      response.json(result);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Login failed.";
+      response.status(error instanceof DevAuthUnavailableError ? 403 : 401).json({
+        message: message === "Invalid credentials." ? "Invalid credentials." : message
+      });
     }
   });
 

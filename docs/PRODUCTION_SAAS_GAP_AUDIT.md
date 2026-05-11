@@ -22,6 +22,7 @@
 - DB store driver implemented behind the store boundary
 - workspace and restaurant scoping added at the data model layer
 - auth/session and workspace membership foundation added
+- password auth foundation, dev-login production lockdown, and session invalidation added
 - protected route and RBAC foundation added
 - deployment profile, readiness endpoint, and runtime validation added
 - structured logging foundation and safe error responses added
@@ -38,7 +39,7 @@
 ## Missing For Production SaaS
 
 - live database rollout validated in target hosting environment
-- production-complete auth provider and account lifecycle
+- hosted production auth validation, account lifecycle, email verification/reset, invite delivery, and external-provider decision
 - invite and workspace management flows
 - hosted object storage strategy for OCR uploads
 - monitoring and operational alerting
@@ -57,7 +58,7 @@ The product now has a stronger SaaS foundation than the earlier controlled pilot
 It still is not production SaaS ready until:
 
 - DB runtime is proven
-- auth and access control are hardened beyond dev-session mode
+- auth and access control are hardened beyond dev-session mode and validated in hosted production-like deployment
 - deployment and observability are in place
 - mobile onboarding and invoice intake are validated
 - OCR accuracy and operational reliability are benchmarked honestly
@@ -77,7 +78,7 @@ New foundations now exist:
 Remaining production SaaS blockers:
 
 - hosted live database validation and backup/restore rehearsal are not complete
-- final production auth provider is not implemented
+- password auth foundation exists, but final hosted identity/account lifecycle is not complete
 - live payment provider is not implemented
 - live OCR benchmark on private real samples is not proven
 - hosted object storage is not implemented
